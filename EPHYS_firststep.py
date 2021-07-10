@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # ## EPHYS analysis
-
+from utilsJ.Behavior import ComPipe
 # Load modules and data
 import statsmodels.api as sm
 from sklearn.linear_model import LogisticRegression
@@ -17,112 +17,25 @@ import matplotlib.pyplot as plt
 import scipy
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.patches as mpatches
-from statannot import add_stat_annotation
 import itertools
 from scipy import stats
-from datahandler import Utils
 from ast import literal_eval
 from glob import glob
 from open_ephys.analysis import Session
-import pyopenephys
 from statsmodels.genmod.bayes_mixed_glm import BinomialBayesMixedGLM
 
-
-def ApplyChannelMap(Data, ChannelMap):
-    print('Retrieving channels according to ChannelMap... ', end='')
-    for R, Rec in Data.items():
-        if Rec.shape[1] < len(ChannelMap) or max(ChannelMap) > Rec.shape[1]-1:
-            print('')
-            print('Not enough channels in data to apply channel map. Skipping...')
-            continue
-
-        Data[R] = Data[R][:, ChannelMap]
-
-    return(Data)
+# BEHAVIOR
+p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
+    parentpath='/home/molano/fof_data/',
+    analyze_trajectories=False) # precarga sesiones disponibles
+p.load_available() # just in case, refresh
+print(p.available[2]) # example target session / filename string is the actual arg
+p.load(p.available[2])
+p.process()
+p.trial_sess.head() # preprocessed df stored in attr. trial_sess
 
 
-def BitsToVolts(Data, ChInfo, Unit):
-    print('Converting to uV... ', end='')
-    Data = {R: Rec.astype('float32') for R, Rec in Data.items()}
-
-    if Unit.lower() == 'uv':
-        U = 1
-    elif Unit.lower() == 'mv':
-        U = 10**-3
-
-    for R in Data.keys():
-        for C in range(len(ChInfo)):
-            Data[R][:, C] = Data[R][:, C] * ChInfo[C]['bit_volts'] * U
-            if 'ADC' in ChInfo[C]['channel_name']:
-                Data[R][:, C] *= 10**6
-
-    return(Data)
-
-
-def Load(Folder, Processor=None, Experiment=None, Recording=None,
-         Unit='uV', ChannelMap=[]):
-    Files = sorted(glob(Folder+'/**/*.dat', recursive=True))
-    InfoFiles = sorted(glob(Folder+'/*/*/structure.oebin'))
-
-    Data, Rate = {}, {}
-    for F, File in enumerate(Files):
-        File = File.replace('\\', '/')  # Replace windows file delims
-        Exp, Rec, _, Proc = File.split('/')[-5:-1]
-        Exp = str(int(Exp[10:])-1)
-        Rec = str(int(Rec[9:])-1)
-        Proc = Proc.split('.')[0].split('-')[-1]
-        if '_' in Proc:
-            Proc = Proc.split('_')[0]
-
-        if Proc not in Data.keys():
-            Data[Proc], Rate[Proc] = {}, {}
-
-        if Experiment:
-            if int(Exp) != Experiment-1:
-                continue
-
-        if Recording:
-            if int(Rec) != Recording-1:
-                continue
-
-        if Processor:
-            if Proc != Processor:
-                continue
-
-        print('Loading recording', int(Rec)+1, '...')
-        if Exp not in Data[Proc]:
-            Data[Proc][Exp] = {}
-        Data[Proc][Exp][Rec] = np.memmap(File, dtype='int16', mode='c')
-
-        Info = literal_eval(open(InfoFiles[F]).read())
-        ProcIndex = [Info['continuous'].index(_) for _ in Info['continuous']
-                     # Changed to source_processor_id from recorded_processor_id
-                     if str(_['source_processor_id']) == Proc][0]
-
-        ChNo = Info['continuous'][ProcIndex]['num_channels']
-        if Data[Proc][Exp][Rec].shape[0] % ChNo:
-            print('Rec', Rec, 'is broken')
-            del(Data[Proc][Exp][Rec])
-            continue
-
-        SamplesPerCh = Data[Proc][Exp][Rec].shape[0]//ChNo
-        Data[Proc][Exp][Rec] = Data[Proc][Exp][Rec].reshape((SamplesPerCh, ChNo))
-        Rate[Proc][Exp] = Info['continuous'][ProcIndex]['sample_rate']
-
-    for Proc in Data.keys():
-        for Exp in Data[Proc].keys():
-            if Unit.lower() in ['uv', 'mv']:
-                ChInfo = Info['continuous'][ProcIndex]['channels']
-                Data[Proc][Exp] = BitsToVolts(Data[Proc][Exp], ChInfo, Unit)
-
-            if ChannelMap:
-                Data[Proc][Exp] = ApplyChannelMap(Data[Proc][Exp], ChannelMap)
-
-    print('Done.')
-
-    return(Data, Rate)
-
-
+# ELECTRO
 # Importing the data from a session
 path = '/home/molano/fof_data/LE113/LE113_2021-06-05_12-38-09/'
 # Load spike sorted data
@@ -159,54 +72,7 @@ sns.scatterplot('fixed_times', 'cluster_id', data=df.loc[(df['fixed_times'] < 60
                                                          (df.group == 'good')],
                 s=30, color='black')
 
-
-# BEHAVIOR
-os.getcwd()
-os.chdir(path)
-df.to_csv(path+'spike.csv')
-
-batch = 'general'
-
-path2 = ''
-os.getcwd()
-os.chdir(path2)
-
-df_trials = pd.read_csv(path2 + '/global_trials.csv', sep=';')
-df_params = pd.read_csv(path2 + '/global_params.csv', sep=';')
-df_behavior = pd.merge(df_params, df_trials, on=['session', 'subject_name'])
-
-# Rename some of the variables for a global consensus.
-df_behavior = df_behavior.rename(columns={'subject_name': 'subject',
-                                          'hithistory': 'hit',
-                                          'probabilities': 'prob',
-                                          'validhistory': 'valids'})
-
-# Remove those sessions that the animal wasn't in the final training step:
-# STAGE 3 or above, MOTOR 6, no delay progression (delay lengths remain the same),
-# good accuracy in short trials.
-df_behavior = df_behavior.loc[(df_behavior['stage_number'] >= 3) &
-                              (df_behavior['motor'] == 6) &
-                              (df_behavior['delay_progression'] == 0) &
-                              (df_behavior['accuracy_low'] >= 0.60) &
-                              (df_behavior['accuracy'] >= 0.60)]
-
-df_behavior['hit'] = df_behavior['hit'].astype(float)
-
-# df.groupby(['subject','day']).count()
-
 session = Session(path)
-
-df_behavior = df_behavior.loc[(df_behavior.day == '2021-06-13') &
-                              (df_behavior.subject == 'E10')]
-
-# Because the first trial has no delay, we need to shift one on the behavioral data
-# in order to fit with the ttl one.
-df_behavior.delay_times[1:]
-
-vector_answer_dev = np.logical_not(np.logical_xor(df_behavior['reward_side'],
-                                                  df_behavior['hit'].astype(int)))
-vector_answer = np.where(vector_answer_dev, 0, 1)
-df_behavior['vector_answer'] = vector_answer
 
 try:
     samples = session.recordings[0].continuous[0].samples[:, -8]

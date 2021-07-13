@@ -25,10 +25,10 @@ from open_ephys.analysis import Session
 from statsmodels.genmod.bayes_mixed_glm import BinomialBayesMixedGLM
 
 # BEHAVIOR
-p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
+p = ComPipe.chom('LE113',  # sujeto (folder name under parentpath)
     parentpath='/home/molano/fof_data/',
-    analyze_trajectories=False) # precarga sesiones disponibles
-p.load_available() # just in case, refresh
+    analyze_trajectories=False)
+p.load_available()
 print(p.available[2]) # example target session / filename string is the actual arg
 p.load(p.available[2])
 p.process()
@@ -45,6 +45,9 @@ spike_times = np.load(path+'spike_times.npy')
 spike_clusters = np.load(path+'spike_clusters.npy')
 # Cluster labels (good, noise, mua) for the previous two arrays
 df_labels = pd.read_csv(path+"cluster_group.tsv", sep='\t')
+good_clusters = df_labels.loc[df_labels.group == 'good']
+
+
 
 # Transforms array of lists into array of ints
 spike_times_df = [item for sublist in spike_times for item in sublist]

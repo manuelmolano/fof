@@ -138,6 +138,7 @@ if __name__ == '__main__':
     ev_strt.append(starts)
     ev_end.append(ends)
     events = {'ev_strt': ev_strt, 'ev_end': ev_end}
+    print(len(events['ev_strt']))
     np.savez(path+'/events.npz', **events)
     stop = True
     if stop:

@@ -92,9 +92,9 @@ if __name__ == '__main__':
         trace = trace/np.max(trace)
         abv_th = 1*(trace > 0.8)
         starts = np.where(np.diff(abv_th) > 0.5)[0]
-        starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
+        # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
         ends = np.where(np.diff(abv_th) < -0.5)[0]
-        ends = iti_clean(times=ends, min_ev_dur=min_ev_dur, bef_aft='aft')
+        # ends = iti_clean(times=ends, min_ev_dur=min_ev_dur, bef_aft='aft')
         ev_strt.append(starts)
         ev_end.append(ends)
         print(len(starts))

@@ -124,6 +124,19 @@ if __name__ == '__main__':
         ax[1].set_xlabel('Time (s)')
         ax[0].set_ylabel('Normalized values')
         ax[1].set_ylabel('Normalized values')
+    # get stim only which corresponds to ch-35==0 and ch-36==1
+    trace = samples[:, 35]
+    trace = trace/np.max(trace)
+    abv_th1 = trace > 0.8
+    trace = samples[:, 36]
+    trace = trace/np.max(trace)
+    abv_th2 = trace > 0.8
+    stim = 1*np.logical_and(~abv_th1, abv_th2)
+    starts = np.where(np.diff(stim) > 0.5)[0]
+    # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
+    ends = np.where(np.diff(stim) < -0.5)[0]
+    ev_strt.append(starts)
+    ev_end.append(ends)
     events = {'ev_strt': ev_strt, 'ev_end': ev_end}
     np.savez(path+'/events.npz', **events)
     stop = True

@@ -45,6 +45,10 @@ if __name__ == '__main__':
     p.load(p.available[2])
     p.process()
     p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
+    # stop = True
+    # if stop:
+    #     import sys
+    #     sys.exit()
 
     # ELECTRO
     # sampling rate
@@ -81,7 +85,7 @@ if __name__ == '__main__':
         ln_stl = ['-', '--']
     ev_strt = []
     ev_end = []
-    for i_ch, ch in enumerate(range(35, 39)):
+    for i_ch, ch in enumerate(range(35, 37)):
         print('--------')
         print(ch)
         trace = samples[:, ch]
@@ -120,6 +124,8 @@ if __name__ == '__main__':
         ax[1].set_xlabel('Time (s)')
         ax[0].set_ylabel('Normalized values')
         ax[1].set_ylabel('Normalized values')
+    events = {'ev_strt': ev_strt, 'ev_end': ev_end}
+    np.savez(path+'/events.npz', **events)
     stop = True
     if stop:
         import sys

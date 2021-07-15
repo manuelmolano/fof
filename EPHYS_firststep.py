@@ -73,7 +73,8 @@ if __name__ == '__main__':
     # Cluster labels (good, noise, mua) for the previous two arrays
     df_labels = pd.read_csv(path+"cluster_group.tsv", sep='\t')
     # sel_clltrs = df_labels.loc[df_labels.group == 'good', 'cluster_id'].values
-    sel_clltrs = df_labels['cluster_id'].values
+    sel_clstrs = df_labels['cluster_id'].values
+    clstrs_qlt = df_labels['group']
     # load channels (continuous) data
     data_files = glob.glob(path+'/*.dat')
     data_files = [f for f in data_files if 'temp' not in f]
@@ -121,15 +122,16 @@ if __name__ == '__main__':
     step = np.diff(bins)[0]
     f, ax = plt.subplots(nrows=3, ncols=5)
     ax = ax.flatten()
-    for i_cl, cl in enumerate(sel_clltrs):
+    for i_cl, cl in enumerate(sel_clstrs):
         spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
         spks_mat = np.tile(spks_cl, (1, len(ttl_ev_strt)))-ttl_ev_strt[None, :]
         hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
-                          for i in range(spks_mat.shape[1])]))
+                          for i in range(spks_mat.shape[1])])
         psth = np.mean(hists, axis=0)
         # hist, _ = np.histogram(spks_cl, bins=bins)
         # hist = hist/step
         ax[i_cl].plot(bins[:-1]+step/2, psth)
+        ax[i_cl].set_title(clstrs_qlt[i_cl])
     f.savefig('/home/molano/Dropbox/psths.png')
     # plot_events(ttl_ev_strt, label='ttl-stim', color='m')
     # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')

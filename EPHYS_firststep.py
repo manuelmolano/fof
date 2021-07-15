@@ -88,12 +88,12 @@ if __name__ == '__main__':
     for i_ch, ch in enumerate(range(35, 37)):
         print('--------')
         print(ch)
-        trace = samples[:, ch]
+        trace = samples[:, ch].copy()
         trace = trace/np.max(trace)
-        abv_th = 1*(trace > 0.8)
-        starts = np.where(np.diff(abv_th) > 0.5)[0]
+        abv_th = 1*(trace > 0.99)
+        starts = np.where(np.diff(abv_th) > 0.9)[0]
         # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
-        ends = np.where(np.diff(abv_th) < -0.5)[0]
+        ends = np.where(np.diff(abv_th) < -0.9)[0]
         # ends = iti_clean(times=ends, min_ev_dur=min_ev_dur, bef_aft='aft')
         ev_strt.append(starts)
         ev_end.append(ends)
@@ -125,19 +125,16 @@ if __name__ == '__main__':
         ax[0].set_ylabel('Normalized values')
         ax[1].set_ylabel('Normalized values')
     # get stim only which corresponds to ch-35==0 and ch-36==1
-    trace = samples[:, 35]
-    trace = trace/np.max(trace)
-    abv_th1 = trace > 0.8
-    trace = samples[:, 36]
-    trace = trace/np.max(trace)
-    abv_th2 = trace > 0.8
-    stim = 1*np.logical_and(~abv_th1, abv_th2)
-    starts = np.where(np.diff(stim) > 0.5)[0]
+    trace1 = samples[:, 35]
+    trace2 = samples[:, 36]
+    stim = 1*((trace2-trace1) > 0.9)
+    starts = np.where(np.diff(stim) > 0.9)[0]
+    print(starts[:10]/s_rate)
     # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
-    ends = np.where(np.diff(stim) < -0.5)[0]
+    ends = np.where(np.diff(stim) < -0.9)[0]
     ev_strt.append(starts)
     ev_end.append(ends)
-    events = {'ev_strt': ev_strt, 'ev_end': ev_end}
+    events = {'ev_strt': ev_strt, 'ev_end': ev_end, 'samples': samples[15000000:15000000+300000, 35:39]}
     print(len(events['ev_strt']))
     np.savez(path+'/events.npz', **events)
     stop = True

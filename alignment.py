@@ -11,20 +11,21 @@ import matplotlib.pyplot as plt
 from utilsJ.Behavior import ComPipe
 
 plt.close('all')
-main_folder = '/home/manuel/fof_data/'
+main_folder = '/home/molano/fof_data/'
 s_rate = 3e4
-# p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
-#                  parentpath=main_folder,
-#                  analyze_trajectories=False)  # precarga sesiones disponibles
-# p.load_available()  # just in case, refresh
-# print(p.available[2])  # exmpl target sess / filename string is the actual arg
-# p.load(p.available[2])
-# p.process()
-# p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
-
-df = pd.read_csv(main_folder+'/LE113/sessions/LE113_p4_noenv_20210605-123818.csv',
-                 sep=';', skiprows=6)
-df['PC-TIME'] = pd.to_datetime(df['PC-TIME'])
+p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
+                  parentpath=main_folder,
+                  analyze_trajectories=False)  # precarga sesiones disponibles
+p.load_available()  # just in case, refresh
+print(p.available[2])  # exmpl target sess / filename string is the actual arg
+p.load(p.available[2])
+p.process()
+p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
+df = p.sess
+# df = pd.read_csv(main_folder+
+#                  '/LE113/sessions/LE113_p4_noenv_20210605-123818.csv',
+#                   sep=';', skiprows=6)
+# df['PC-TIME'] = pd.to_datetime(df['PC-TIME'])
 strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
                         (df.TYPE == 'TRANSITION'), 'PC-TIME']
 
@@ -44,15 +45,21 @@ bnc2L_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
 
 path = main_folder+'/LE113/electro/LE113_2021-06-05_12-38-09/'
 events = np.load(path+'/events.npz', allow_pickle=1)
+print(len(events['ev_strt'][2]))
+print(len(strt_snd_times))
 plt.figure()
 offset = 15000000
 num_secs = 100000
 samples = events['samples'].T/np.max(events['samples'], axis=0)[:, None]
 samples = samples[:, :int(num_secs*s_rate)]
-plt.plot((offset+np.arange(samples.shape[1]))/s_rate, samples[0, :], label='ttl1')
-plt.plot((offset+np.arange(samples.shape[1]))/s_rate, samples[1, :], label='ttl2')
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate, samples[2, :], label='ttl3')
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate, samples[3, :], label='ttl4')
+plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
+         samples[0, :], label='ttl1')
+plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
+         samples[1, :], label='ttl2')
+# plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
+#          samples[2, :], label='ttl3')
+# plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
+#          samples[3, :], label='ttl4')
 
 trace1 = samples[0, :]
 trace2 = samples[1, :]
@@ -79,6 +86,10 @@ for i in sst_sec:
     plt.plot(np.array([i, i]), [0.5, 1], 'b', label=label)
 
 
+plt.figure()
+diff = ev_strt-sst_sec
+plt.hist(ev_strt-sst_sec, 100)
+print(np.argmax(diff))
 # bnc2H_sec -= bnc2H_sec[0]
 # bnc2H_sec += ev_strt[0]
 # bnc2H_sec = bnc2H_sec[bnc2H_sec < 200]

@@ -45,10 +45,11 @@ if __name__ == '__main__':
     p.load(p.available[2])
     p.process()
     p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
-    # stop = True
-    # if stop:
-    #     import sys
-    #     sys.exit()
+    df = p.sess
+    strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+                            (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    sst_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+                        for x in strt_snd_times])
 
     # ELECTRO
     # sampling rate
@@ -78,9 +79,9 @@ if __name__ == '__main__':
         samples = data.reshape((len(data) // num_ch, num_ch))
         assert len(data) % num_ch+1 != 0
 
-    num_samples = 1500000
     plot = False
     if plot:
+        num_s_plot = 1500000
         _, ax = plt.subplots(nrows=2, ncols=1, sharex=True)
         ln_stl = ['-', '--']
     ev_strt = []
@@ -103,18 +104,18 @@ if __name__ == '__main__':
         comp_starts_durs = np.diff(starts) > ev_durs[:-1]
         assert comp_starts_durs.all(), np.where(~comp_starts_durs)[0]
         if plot:
-            trace_plt = trace[:num_samples]
-            abv_th_plt = abv_th[:num_samples]
+            trace_plt = trace[:num_s_plot]
+            abv_th_plt = abv_th[:num_s_plot]
             ax[i_ch//2].plot(np.arange(len(trace_plt))/s_rate, trace_plt,
                              label='ch '+str(ch+1), linestyle=ln_stl[i_ch//2])
 
             ax[i_ch//2].plot(np.arange(len(trace_plt))/s_rate, abv_th_plt,
                              label='ch '+str(ch+1), linestyle=ln_stl[i_ch//2])
 
-            strts_plt = starts[starts < num_samples]
+            strts_plt = starts[starts < num_s_plot]
             for strt in strts_plt:
                 ax[i_ch//2].axvline(x=strt/s_rate, linestyle='--', color='k')
-            ends_plt = ends[ends < num_samples]
+            ends_plt = ends[ends < num_s_plot]
             for end in ends_plt:
                 ax[i_ch//2].axvline(x=end/s_rate, linestyle='--',
                                     color=(.5, .5, .5))
@@ -126,15 +127,38 @@ if __name__ == '__main__':
         ax[1].set_ylabel('Normalized values')
     # get stim only which corresponds to ch-35==0 and ch-36==1
     trace1 = samples[:, 35]
+    trace1 = trace1/np.max(trace1)
     trace2 = samples[:, 36]
-    stim = 1*((trace2-trace1) > 0.9)
+    trace2 = trace2/np.max(trace2)
+    import scipy.signal as ss
+    trace2_filt = ss.medfilt(trace2, 3)
+    stim = 1*((trace2_filt-trace1) > 0.5)
+    plt.figure()
+    start_sec = 1744
+    end_sec = 1747
+    plt.plot(np.arange(int(start_sec*s_rate), int(end_sec*s_rate))/s_rate,
+             trace1[int(start_sec*s_rate):int(end_sec*s_rate)], label='trace1')
+    plt.plot(np.arange(int(start_sec*s_rate), int(end_sec*s_rate))/s_rate,
+             trace2[int(start_sec*s_rate):int(end_sec*s_rate)], label='trace2')
+    plt.plot(np.arange(int(start_sec*s_rate), int(end_sec*s_rate))/s_rate,
+             trace2_filt[int(start_sec*s_rate):int(end_sec*s_rate)], label='tr2-f')
+    plt.plot(np.arange(int(start_sec*s_rate), int(end_sec*s_rate))/s_rate,
+             stim[int(start_sec*s_rate):int(end_sec*s_rate)], label='stim')
+    plt.legend()
     starts = np.where(np.diff(stim) > 0.9)[0]
+    for i in starts:
+        i_plt = i/s_rate
+        if i_plt > start_sec and i_plt < end_sec:
+            plt.plot([i_plt, i_plt], [0, 1], '--k')
     print(starts[:10]/s_rate)
     # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
     ends = np.where(np.diff(stim) < -0.9)[0]
     ev_strt.append(starts)
     ev_end.append(ends)
-    events = {'ev_strt': ev_strt, 'ev_end': ev_end, 'samples': samples[15000000:15000000+300000, 35:39]}
+    offset = 52320000
+    num_samples = 100000
+    events = {'ev_strt': ev_strt, 'ev_end': ev_end,
+              'samples': samples[offset:offset+300000, 35:39]}
     print(len(events['ev_strt']))
     np.savez(path+'/events.npz', **events)
     stop = True

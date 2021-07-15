@@ -34,6 +34,13 @@ def iti_clean(times, min_ev_dur, bef_aft):
     return times
 
 
+def plot_events(evs, label='', color='k', lnstl='-'):
+    for i in evs:
+        label = label if i == evs[0] else ''
+        plt.plot(np.array([i, i]), [0, 1], color=color, label=label,
+                 linestyle=lnstl)
+
+
 if __name__ == '__main__':
     plt.close('all')
     main_folder = '/home/molano/fof_data/'
@@ -51,7 +58,7 @@ if __name__ == '__main__':
                                 (df.TYPE == 'TRANSITION'), 'PC-TIME']
     csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
                            for x in csv_strt_snd_times])
-
+    csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
     # ELECTRO
     # sampling rate
     s_rate = 3e4
@@ -65,12 +72,13 @@ if __name__ == '__main__':
     spike_clusters = np.load(path+'spike_clusters.npy')
     # Cluster labels (good, noise, mua) for the previous two arrays
     df_labels = pd.read_csv(path+"cluster_group.tsv", sep='\t')
-
+    # sel_clltrs = df_labels.loc[df_labels.group == 'good', 'cluster_id'].values
+    sel_clltrs = df_labels['cluster_id'].values
+    # load channels (continuous) data
     data_files = glob.glob(path+'/*.dat')
     data_files = [f for f in data_files if 'temp' not in f]
-    assert len(data_files) == 1
+    assert len(data_files) == 1, 'Number of .dat files is different from 0'
     data = np.memmap(data_files[0], dtype='int16')
-
     if len(data) % 40 == 0:
         num_ch = 40
         samples = data.reshape((len(data) // num_ch, num_ch))
@@ -79,23 +87,45 @@ if __name__ == '__main__':
         num_ch = 39
         samples = data.reshape((len(data) // num_ch, num_ch))
         assert len(data) % num_ch+1 != 0
+    # load and med-filter TTL channels
     trace1 = samples[:, 35]
     trace1 = trace1/np.max(trace1)
     trace2 = samples[:, 36]
     trace2 = trace2/np.max(trace2)
     import scipy.signal as ss
     trace2_filt = ss.medfilt(trace2, 3)
+    # stimulus corresponds to ch36=high and ch35=low
     stim = 1*((trace2_filt-trace1) > 0.5)
     starts = np.where(np.diff(stim) > 0.9)[0]
     # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
     ends = np.where(np.diff(stim) < -0.9)[0]
     ttl_ev_strt = starts/s_rate
-    spikes_offset = csv_ss_sec[0]-ttl_ev_strt[0]
+    # compute spikes offset
+    spikes_offset = -ttl_ev_strt[0]
+    ttl_ev_strt = ttl_ev_strt+spikes_offset
     assert len(csv_ss_sec) == len(ttl_ev_strt)
-    assert np.max(csv_ss_sec-ttl_ev_strt) > 0.05
+    assert np.max(csv_ss_sec-ttl_ev_strt) < 0.05, print(np.max(csv_ss_sec -
+                                                               ttl_ev_strt))
     offset = 52320000
     num_samples = 100000
     events = {'ttl_ev_strt': starts, 'ev_end': ends,
               'samples': samples[offset:offset+300000, 35:39]}
     print(len(events['ttl_ev_strt']))
     np.savez(path+'/events.npz', **events)
+
+    # plot stuff
+    margin_spks_plot = 50
+    bin_size = 0.2
+    bins = np.linspace(-margin_spks_plot, ttl_ev_strt[-1]+margin_spks_plot,
+                       ttl_ev_strt[-1]//bin_size)
+    step = np.diff(bins)[0]
+    f, ax = plt.subplots(nrows=3, ncols=5)
+    ax = ax.flatten()
+    for i_cl, cl in enumerate(sel_clltrs):
+        spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
+        spks_mat = np.tile(spks_cl, (1, len(ttl_ev_strt)))-ttl_ev_strt[None, :]
+        # hist, _ = np.histogram(spks_cl, bins=bins)
+        # hist = hist/step
+        ax[i_cl].plot(np.mean(spks_mat, axis=1))
+    # plot_events(ttl_ev_strt, label='ttl-stim', color='m')
+    # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')

@@ -116,16 +116,20 @@ if __name__ == '__main__':
     # plot stuff
     margin_spks_plot = 50
     bin_size = 0.2
-    bins = np.linspace(-margin_spks_plot, ttl_ev_strt[-1]+margin_spks_plot,
-                       ttl_ev_strt[-1]//bin_size)
+    bins = np.linspace(-margin_spks_plot, margin_spks_plot,
+                       2*margin_spks_plot//bin_size)
     step = np.diff(bins)[0]
     f, ax = plt.subplots(nrows=3, ncols=5)
     ax = ax.flatten()
     for i_cl, cl in enumerate(sel_clltrs):
         spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
         spks_mat = np.tile(spks_cl, (1, len(ttl_ev_strt)))-ttl_ev_strt[None, :]
+        hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
+                          for i in range(spks_mat.shape[1])]))
+        psth = np.mean(hists, axis=0)
         # hist, _ = np.histogram(spks_cl, bins=bins)
         # hist = hist/step
-        ax[i_cl].plot(np.mean(spks_mat, axis=1))
+        ax[i_cl].plot(bins[:-1]+step/2, psth)
+    f.savefig('/home/molano/Dropbox/psths.png')
     # plot_events(ttl_ev_strt, label='ttl-stim', color='m')
     # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from utilsJ.Behavior import ComPipe
 
 plt.close('all')
-main_folder = '/home/molano/fof_data/'
+main_folder = '/home/manuel/fof_data/'
 s_rate = 3e4
 p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
                   parentpath=main_folder,
@@ -26,85 +26,60 @@ df = p.sess
 #                  '/LE113/sessions/LE113_p4_noenv_20210605-123818.csv',
 #                   sep=';', skiprows=6)
 # df['PC-TIME'] = pd.to_datetime(df['PC-TIME'])
-strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
-                        (df.TYPE == 'TRANSITION'), 'PC-TIME']
-
-bnc1_times = df.loc[(df['+INFO'] == 'BNC1High') &
-                    (df.TYPE == 'EVENT'), 'PC-TIME']
-bnc2_high_times = df.loc[(df['+INFO'] == 'BNC2High') &
-                         (df.TYPE == 'EVENT'), 'PC-TIME']
-bnc2_low_times = df.loc[(df['+INFO'] == 'BNC2Low') &
-                        (df.TYPE == 'EVENT'), 'PC-TIME']
-
-sst_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-                    for x in strt_snd_times])
-bnc2H_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-                      for x in bnc2_high_times])
-bnc2L_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-                      for x in bnc2_low_times])
-
+csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+                            (df.TYPE == 'TRANSITION'), 'PC-TIME']
+csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
+                              (df['MSG'] == 'Punish')) &
+                             (df.TYPE == 'TRANSITION'), 'PC-TIME']
+# translate date to seconds
+csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+                       for x in csv_strt_snd_times])
+csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
+csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+                       for x in csv_strt_outc_times])
+csv_so_sec = csv_so_sec-csv_ss_sec[0]
 path = main_folder+'/LE113/electro/LE113_2021-06-05_12-38-09/'
 events = np.load(path+'/events.npz', allow_pickle=1)
-print(len(events['ev_strt'][2]))
-print(len(strt_snd_times))
+print(len(events['outc_starts']))
+print(len(csv_strt_outc_times))
 plt.figure()
-offset = 15000000
+offset = 29550000
 num_secs = 100000
 samples = events['samples'].T/np.max(events['samples'], axis=0)[:, None]
 samples = samples[:, :int(num_secs*s_rate)]
 plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
-         samples[0, :], label='ttl1')
+         samples[0, :], label='ttl1 (ch35)')
 plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
-         samples[1, :], label='ttl2')
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
-#          samples[2, :], label='ttl3')
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
-#          samples[3, :], label='ttl4')
+         samples[1, :], linestyle='--', label='ttl2 (ch36)')
 
-trace1 = samples[0, :]
-trace2 = samples[1, :]
-stim = 1*((trace2-trace1) > 0.9)
-starts_bis = np.where(np.diff(stim) > 0.9)[0]
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate, abv_th1, label='abv_th1')
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate, abv_th2, label='abv_th2')
-# plt.plot((offset+np.arange(samples.shape[1]))/s_rate, stim, label='stim')
+# num_secs = num_secs+offset/s_rate
+# ev_strt = events['stim_starts']/s_rate
+# ev_strt = ev_strt[ev_strt < num_secs]
+# for i in ev_strt:
+#     label = 'ttl-stim' if i == ev_strt[0] else ''
+#     plt.plot(np.array([i, i]), [0, 0.5], 'c', label=label)
+
+# csv_ss_sec -= csv_ss_sec[0]
+# csv_ss_sec += ev_strt[0]
+# csv_ss_sec = csv_ss_sec[csv_ss_sec < num_secs]
+# for i in csv_ss_sec:
+#     label = 'start-sound' if i == csv_ss_sec[0] else ''
+#     plt.plot(np.array([i, i]), [0.5, 1], 'b', label=label)
 
 
 num_secs = num_secs+offset/s_rate
-ev_strt = events['ev_strt'][2]/s_rate
+ev_strt = events['outc_starts']/s_rate
 ev_strt = ev_strt[ev_strt < num_secs]
 for i in ev_strt:
-    label = 'ttl-stim' if i == ev_strt[0] else ''
-    plt.plot(np.array([i, i]), [0, 0.5], 'c', label=label)
+    label = 'ttl-outcome' if i == ev_strt[0] else ''
+    plt.plot(np.array([i, i]), [0, 0.5], '--c', label=label, lw=2)
 
+csv_so_sec -= csv_so_sec[0]
+csv_so_sec += ev_strt[0]
+csv_so_sec = csv_so_sec[csv_so_sec < num_secs]
+for i in csv_so_sec:
+    label = 'CSV outcome' if i == csv_so_sec[0] else ''
+    plt.plot(np.array([i, i]), [0.5, 1], '--b', label=label, lw=2)
 
-sst_sec -= sst_sec[0]
-sst_sec += ev_strt[0]
-sst_sec = sst_sec[sst_sec < num_secs]
-for i in sst_sec:
-    label = 'start-sound' if i == sst_sec[0] else ''
-    plt.plot(np.array([i, i]), [0.5, 1], 'b', label=label)
-
-
-plt.figure()
-diff = ev_strt-sst_sec
-plt.hist(ev_strt-sst_sec, 100)
-print(np.argmax(diff))
-# bnc2H_sec -= bnc2H_sec[0]
-# bnc2H_sec += ev_strt[0]
-# bnc2H_sec = bnc2H_sec[bnc2H_sec < 200]
-# for i in bnc2H_sec:
-#     label = 'bnc2 high' if i == bnc2H_sec[0] else ''
-#     plt.plot(np.array([i, i]), [-0.5, 0], 'g', label=label)
-
-# plt.legend()
-
-# bnc2L_sec -= bnc2L_sec[0]
-# bnc2L_sec += ev_strt[0]
-# bnc2L_sec = bnc2L_sec[bnc2L_sec < 200]
-# for i in bnc2L_sec:
-#     label = 'bnc2 low' if i == bnc2L_sec[0] else ''
-#     plt.plot(np.array([i, i]), [-0.5, 0], 'b', label=label)
 
 plt.legend()
-

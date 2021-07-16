@@ -72,7 +72,7 @@ if __name__ == '__main__':
     # get behavior events
     # XXX: I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
     # seems to be a missmatch between the two that grows throughout the session
-    # StartSound
+    # StartSound. THERE MIGHT BE SOMETHING YOU'RE NOT BE TAKING INTO ACCOUNT
     # csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
     #                             (df.TYPE == 'TRANSITION'), 'PC-TIME']
     # Outcome

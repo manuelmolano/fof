@@ -66,7 +66,7 @@ def get_behavior(main_folder):
 
 if __name__ == '__main__':
     plt.close('all')
-    main_folder = '/home/manuel/fof_data/'
+    main_folder = '/home/molano/fof_data/'
     df = get_behavior(main_folder=main_folder)
 
     # get behavior events
@@ -107,8 +107,8 @@ if __name__ == '__main__':
     # csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
     csv_so_sec = csv_so_sec - csv_ss_sec[0]
     csv_ss_sec = csv_ss_sec - csv_ss_sec[0]
-    import sys
-    sys.exit()
+    # import sys
+    # sys.exit()
     # ELECTRO
     # sampling rate
     s_rate = 3e4

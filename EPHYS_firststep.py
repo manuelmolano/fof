@@ -29,6 +29,28 @@ def plot_events(evs, label='', color='k', lnstl='-'):
                  linestyle=lnstl)
 
 
+def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
+               margin_spks_plot=1, bin_size=.1, name=''):
+    bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
+                       int(2*margin_spks_plot/bin_size))
+    f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))
+    ax = ax.flatten()
+    for i_cl, cl in enumerate(sel_clstrs):
+        spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
+        spks_mat = np.tile(spks_cl, (1, len(events)))-events[None, :]
+        hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
+                          for i in range(spks_mat.shape[1])])
+        hists = hists/bin_size
+        psth = np.mean(hists, axis=0)
+        # hist, _ = np.histogram(spks_cl, bins=bins)
+        # hist = hist/step
+        ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
+        ax[i_cl].set_title(clstrs_qlt[i_cl])
+    ax[10].set_xlabel('Time (s)')
+    ax[10].set_ylabel('Mean firing rate (Hz)')
+    f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
+
+
 if __name__ == '__main__':
     plt.close('all')
     main_folder = '/home/molano/fof_data/'
@@ -124,33 +146,19 @@ if __name__ == '__main__':
     np.savez(path+'/events.npz', **events)
 
     # plot PSTHs
-    margin_spks_plot = 1
-    bin_size = 0.1
-    bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
-                       int(2*margin_spks_plot/bin_size))
-    f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))
-    ax = ax.flatten()
-    for i_cl, cl in enumerate(sel_clstrs):
-        spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
-        spks_mat = np.tile(spks_cl, (1, len(ttl_stim_strt)))-ttl_stim_strt[None, :]
-        hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
-                          for i in range(spks_mat.shape[1])])
-        hists = hists/bin_size
-        psth = np.mean(hists, axis=0)
-        # hist, _ = np.histogram(spks_cl, bins=bins)
-        # hist = hist/step
-        ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
-        ax[i_cl].set_title(clstrs_qlt[i_cl])
-    ax[10].set_xlabel('Time (s)')
-    ax[10].set_ylabel('Mean firing rate (Hz)')
-    f.savefig('/home/molano/Dropbox/psths.png')
+    plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
+               s_rate=s_rate, spikes_offset=spikes_offset, margin_spks_plot=1,
+               bin_size=.1, name='stim')
+    plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
+               s_rate=s_rate, spikes_offset=spikes_offset, margin_spks_plot=1,
+               bin_size=.1, name='outcome')
 
-    f = plt.figure()
-    plot_events(ttl_stim_strt, label='ttl-stim', color='m')
-    plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')
-    f.savefig('/home/molano/Dropbox/stim_check.png')
+    # f = plt.figure()
+    # plot_events(ttl_stim_strt, label='ttl-stim', color='m')
+    # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')
+    # f.savefig('/home/molano/Dropbox/stim_check.png')
 
-    f = plt.figure()
-    plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
-    plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
-    f.savefig('/home/molano/Dropbox/outcome_check.png')
+    # f = plt.figure()
+    # plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
+    # plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
+    # f.savefig('/home/molano/Dropbox/outcome_check.png')

@@ -40,8 +40,8 @@ csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
 csv_so_sec = csv_so_sec-csv_ss_sec[0]
 path = main_folder+'/LE113/electro/LE113_2021-06-05_12-38-09/'
 events = np.load(path+'/events.npz', allow_pickle=1)
-print(len(events['outc_starts']))
-print(len(csv_strt_outc_times))
+print(len(events['stim_starts']))
+print(len(csv_strt_snd_times))
 plt.figure()
 offset = 29550000
 num_secs = 100000
@@ -51,35 +51,43 @@ plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
          samples[0, :], label='ttl1 (ch35)')
 plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
          samples[1, :], linestyle='--', label='ttl2 (ch36)')
-
-# num_secs = num_secs+offset/s_rate
-# ev_strt = events['stim_starts']/s_rate
-# ev_strt = ev_strt[ev_strt < num_secs]
-# for i in ev_strt:
-#     label = 'ttl-stim' if i == ev_strt[0] else ''
-#     plt.plot(np.array([i, i]), [0, 0.5], 'c', label=label)
-
-# csv_ss_sec -= csv_ss_sec[0]
-# csv_ss_sec += ev_strt[0]
-# csv_ss_sec = csv_ss_sec[csv_ss_sec < num_secs]
-# for i in csv_ss_sec:
-#     label = 'start-sound' if i == csv_ss_sec[0] else ''
-#     plt.plot(np.array([i, i]), [0.5, 1], 'b', label=label)
-
+plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
+         samples[2, :], label='stim1 (ch37)')
+plt.plot((offset+np.arange(samples.shape[1]))/s_rate,
+         samples[3, :], linestyle='--', label='stim2 (ch38)')
 
 num_secs = num_secs+offset/s_rate
-ev_strt = events['outc_starts']/s_rate
+ev_strt = events['stim_starts']/s_rate
 ev_strt = ev_strt[ev_strt < num_secs]
 for i in ev_strt:
-    label = 'ttl-outcome' if i == ev_strt[0] else ''
-    plt.plot(np.array([i, i]), [0, 0.5], '--c', label=label, lw=2)
+    label = 'ttl-stim' if i == ev_strt[0] else ''
+    plt.plot(np.array([i, i]), [0, 0.5], 'c', label=label)
 
-csv_so_sec -= csv_so_sec[0]
-csv_so_sec += ev_strt[0]
-csv_so_sec = csv_so_sec[csv_so_sec < num_secs]
-for i in csv_so_sec:
-    label = 'CSV outcome' if i == csv_so_sec[0] else ''
-    plt.plot(np.array([i, i]), [0.5, 1], '--b', label=label, lw=2)
+csv_ss_sec -= csv_ss_sec[0]
+csv_ss_sec += ev_strt[0]
+csv_ss_sec = csv_ss_sec[csv_ss_sec < num_secs]
+for i in csv_ss_sec:
+    label = 'start-sound' if i == csv_ss_sec[0] else ''
+    plt.plot(np.array([i, i]), [0.5, 1], 'b', label=label)
 
+
+# num_secs = num_secs+offset/s_rate
+# ev_strt = events['outc_starts']/s_rate
+# ev_strt = ev_strt[ev_strt < num_secs]
+# for i in ev_strt:
+#     label = 'ttl-outcome' if i == ev_strt[0] else ''
+#     plt.plot(np.array([i, i]), [0, 0.5], '--c', label=label, lw=2)
+
+# csv_so_sec -= csv_so_sec[0]
+# csv_so_sec += ev_strt[0]
+# csv_so_sec = csv_so_sec[csv_so_sec < num_secs]
+# for i in csv_so_sec:
+#     label = 'CSV outcome' if i == csv_so_sec[0] else ''
+#     plt.plot(np.array([i, i]), [0.5, 1], '--b', label=label, lw=2)
+
+plt.figure()
+plt.hist(csv_ss_sec-ev_strt, 100)
+plt.figure()
+plt.plot(csv_ss_sec-ev_strt)
 
 plt.legend()

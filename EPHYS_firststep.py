@@ -31,7 +31,7 @@ def plot_events(evs, label='', color='k', lnstl='-'):
 
 if __name__ == '__main__':
     plt.close('all')
-    main_folder = '/home/manuel/fof_data/'
+    main_folder = '/home/molano/fof_data/'
     # BEHAVIOR
     p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
                      parentpath=main_folder,
@@ -50,11 +50,10 @@ if __name__ == '__main__':
     # translate date to seconds
     csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
                            for x in csv_strt_snd_times])
-    csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
     csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
                            for x in csv_strt_outc_times])
     csv_so_sec = csv_so_sec-csv_ss_sec[0]
-
+    csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
     # ELECTRO
     # sampling rate
     s_rate = 3e4
@@ -112,20 +111,21 @@ if __name__ == '__main__':
     assert len(csv_ss_sec) == len(ttl_stim_strt)
     assert np.max(csv_ss_sec-ttl_stim_strt) < 0.05, print(np.max(csv_ss_sec -
                                                           ttl_stim_strt))
-    assert len(csv_so_sec) == len(ttl_outc_strt)
-    assert np.max(csv_so_sec-ttl_outc_strt) < 0.05, print(np.max(csv_so_sec -
-                                                          ttl_outc_strt))
+    # assert len(csv_so_sec) == len(ttl_outc_strt)
+    # assert np.max(csv_so_sec-ttl_outc_strt) < 0.05, print(np.max(csv_so_sec -
+    #                                                    ttl_outc_strt))
 
-    offset = 52320000
-    num_samples = 100000
-    events = {'stim_starts': stim_starts, 'stim_ends': stim_ends,
-              'samples': samples[offset:offset+300000, 35:39]}
-    print(len(events['ttl_stim_strt']))
+    # import sys
+    # sys.exit()
+    offset = 29550000
+    num_samples = 200000
+    events = {'stim_starts': stim_starts, 'outc_starts': outc_starts,
+              'samples': samples[offset:offset+num_samples, 35:39]}
     np.savez(path+'/events.npz', **events)
 
     # plot PSTHs
     margin_spks_plot = 1
-    bin_size = 0.2
+    bin_size = 0.1
     bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
                        int(2*margin_spks_plot/bin_size))
     f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))

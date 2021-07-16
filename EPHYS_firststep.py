@@ -4,24 +4,12 @@
 # ## EPHYS analysis
 from utilsJ.Behavior import ComPipe
 # Load modules and data
-import statsmodels.api as sm
-from sklearn.linear_model import LogisticRegression
+import scipy.signal as ss
 import glob
 # Import all needed libraries
-from matplotlib.lines import Line2D
-import os
 import pandas as pd
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
-import scipy
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.patches as mpatches
-import itertools
-from scipy import stats
-from ast import literal_eval
-from open_ephys.analysis import Session
-from statsmodels.genmod.bayes_mixed_glm import BinomialBayesMixedGLM
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -43,7 +31,7 @@ def plot_events(evs, label='', color='k', lnstl='-'):
 
 if __name__ == '__main__':
     plt.close('all')
-    main_folder = '/home/molano/fof_data/'
+    main_folder = '/home/manuel/fof_data/'
     # BEHAVIOR
     p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
                      parentpath=main_folder,
@@ -56,9 +44,17 @@ if __name__ == '__main__':
     df = p.sess
     csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
                                 (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
+                                  (df['MSG'] == 'Punish')) &
+                                 (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    # translate date to seconds
     csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
                            for x in csv_strt_snd_times])
     csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
+    csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+                           for x in csv_strt_outc_times])
+    csv_so_sec = csv_so_sec-csv_ss_sec[0]
+
     # ELECTRO
     # sampling rate
     s_rate = 3e4
@@ -91,47 +87,70 @@ if __name__ == '__main__':
     # load and med-filter TTL channels
     trace1 = samples[:, 35]
     trace1 = trace1/np.max(trace1)
+    trace1_filt = ss.medfilt(trace1, 3)
     trace2 = samples[:, 36]
     trace2 = trace2/np.max(trace2)
-    import scipy.signal as ss
     trace2_filt = ss.medfilt(trace2, 3)
     # stimulus corresponds to ch36=high and ch35=low
-    stim = 1*((trace2_filt-trace1) > 0.5)
-    starts = np.where(np.diff(stim) > 0.9)[0]
-    # starts = iti_clean(times=starts, min_ev_dur=min_ev_dur, bef_aft='bef')
-    ends = np.where(np.diff(stim) < -0.9)[0]
-    ttl_ev_strt = starts/s_rate
-    # compute spikes offset
-    spikes_offset = -ttl_ev_strt[0]
-    ttl_ev_strt = ttl_ev_strt+spikes_offset
-    assert len(csv_ss_sec) == len(ttl_ev_strt)
-    assert np.max(csv_ss_sec-ttl_ev_strt) < 0.05, print(np.max(csv_ss_sec -
-                                                               ttl_ev_strt))
+    stim = 1*((trace2_filt-trace1_filt) > 0.5)
+    # stimulus corresponds to ch36=high and ch35=high
+    outcome = 1*((trace2_filt+trace1_filt) > 1.9)
+    assert np.sum(1*(stim+outcome > 1)) == 0
+    # stim starts/ends
+    stim_starts = np.where(np.diff(stim) > 0.9)[0]
+    stim_ends = np.where(np.diff(stim) < -0.9)[0]
+    ttl_stim_strt = stim_starts/s_rate
+    # outcome starts/ends
+    outc_starts = np.where(np.diff(outcome) > 0.9)[0]
+    outc_ends = np.where(np.diff(outcome) < -0.9)[0]
+    ttl_outc_strt = outc_starts/s_rate
+
+    # compute spikes offset from stimulus start
+    spikes_offset = -ttl_stim_strt[0]
+    ttl_stim_strt = ttl_stim_strt+spikes_offset
+    ttl_outc_strt = ttl_outc_strt+spikes_offset
+    assert len(csv_ss_sec) == len(ttl_stim_strt)
+    assert np.max(csv_ss_sec-ttl_stim_strt) < 0.05, print(np.max(csv_ss_sec -
+                                                          ttl_stim_strt))
+    assert len(csv_so_sec) == len(ttl_outc_strt)
+    assert np.max(csv_so_sec-ttl_outc_strt) < 0.05, print(np.max(csv_so_sec -
+                                                          ttl_outc_strt))
+
     offset = 52320000
     num_samples = 100000
-    events = {'ttl_ev_strt': starts, 'ev_end': ends,
+    events = {'stim_starts': stim_starts, 'stim_ends': stim_ends,
               'samples': samples[offset:offset+300000, 35:39]}
-    print(len(events['ttl_ev_strt']))
+    print(len(events['ttl_stim_strt']))
     np.savez(path+'/events.npz', **events)
 
-    # plot stuff
-    margin_spks_plot = 50
+    # plot PSTHs
+    margin_spks_plot = 1
     bin_size = 0.2
-    bins = np.linspace(-margin_spks_plot, margin_spks_plot,
-                       2*margin_spks_plot//bin_size)
-    step = np.diff(bins)[0]
-    f, ax = plt.subplots(nrows=3, ncols=5)
+    bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
+                       int(2*margin_spks_plot/bin_size))
+    f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))
     ax = ax.flatten()
     for i_cl, cl in enumerate(sel_clstrs):
         spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
-        spks_mat = np.tile(spks_cl, (1, len(ttl_ev_strt)))-ttl_ev_strt[None, :]
+        spks_mat = np.tile(spks_cl, (1, len(ttl_stim_strt)))-ttl_stim_strt[None, :]
         hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
                           for i in range(spks_mat.shape[1])])
+        hists = hists/bin_size
         psth = np.mean(hists, axis=0)
         # hist, _ = np.histogram(spks_cl, bins=bins)
         # hist = hist/step
-        ax[i_cl].plot(bins[:-1]+step/2, psth)
+        ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
         ax[i_cl].set_title(clstrs_qlt[i_cl])
+    ax[10].set_xlabel('Time (s)')
+    ax[10].set_ylabel('Mean firing rate (Hz)')
     f.savefig('/home/molano/Dropbox/psths.png')
-    # plot_events(ttl_ev_strt, label='ttl-stim', color='m')
-    # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')
+
+    f = plt.figure()
+    plot_events(ttl_stim_strt, label='ttl-stim', color='m')
+    plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')
+    f.savefig('/home/molano/Dropbox/stim_check.png')
+
+    f = plt.figure()
+    plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
+    plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
+    f.savefig('/home/molano/Dropbox/outcome_check.png')

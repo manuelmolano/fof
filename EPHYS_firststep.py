@@ -51,9 +51,7 @@ def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
     f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
 
 
-if __name__ == '__main__':
-    plt.close('all')
-    main_folder = '/home/molano/fof_data/'
+def get_behavior(main_folder):
     # BEHAVIOR
     p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
                      parentpath=main_folder,
@@ -63,19 +61,54 @@ if __name__ == '__main__':
     p.load(p.available[2])
     p.process()
     p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
-    df = p.sess
-    csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
-                                (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    return p.sess
+
+
+if __name__ == '__main__':
+    plt.close('all')
+    main_folder = '/home/manuel/fof_data/'
+    df = get_behavior(main_folder=main_folder)
+
+    # get behavior events
+    # XXX: I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
+    # seems to be a missmatch between the two that grows throughout the session
+    # StartSound
+    # csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+    #                             (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    # Outcome
     csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
                                   (df['MSG'] == 'Punish')) &
-                                 (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    # translate date to seconds
-    csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-                           for x in csv_strt_snd_times])
-    csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-                           for x in csv_strt_outc_times])
-    csv_so_sec = csv_so_sec-csv_ss_sec[0]
-    csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
+                                 (df.TYPE == 'TRANSITION'),
+                                 'BPOD-INITIAL-TIME'].values
+    # StartSound
+    csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+                                (df.TYPE == 'TRANSITION'),
+                                'BPOD-INITIAL-TIME'].values
+    # Trial start time
+    csv_trial_bpod_time = df.loc[(df['MSG'] == 'TRIAL-BPOD-TIME') &
+                                 (df.TYPE == 'INFO'),
+                                 'BPOD-INITIAL-TIME'].values
+
+    # csv_trial_bpod_pctime = df.loc[(df['MSG'] == 'New trial') &
+    #                                (df.TYPE == 'TRIAL'), 'PC-TIME']
+    # csv_trial_bpod_pctime = np.array([60*60*x.hour+60*x.minute+x.second +
+    #                                   x.microsecond/1e6
+    #                                   for x in csv_trial_bpod_pctime])
+    # csv_trial_bpod_pctime = csv_trial_bpod_pctime - csv_trial_bpod_pctime[0]
+
+    csv_ss_sec = csv_strt_snd_times + csv_trial_bpod_time
+    csv_so_sec = csv_strt_outc_times + csv_trial_bpod_time
+    # Transform date to seconds
+    # csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+    #                        for x in csv_strt_snd_times])
+    # csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+    #                        for x in csv_strt_outc_times])
+    # csv_so_sec = csv_so_sec-csv_ss_sec[0]
+    # csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
+    csv_so_sec = csv_so_sec - csv_ss_sec[0]
+    csv_ss_sec = csv_ss_sec - csv_ss_sec[0]
+    import sys
+    sys.exit()
     # ELECTRO
     # sampling rate
     s_rate = 3e4
@@ -149,7 +182,7 @@ if __name__ == '__main__':
     plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
                s_rate=s_rate, spikes_offset=spikes_offset, margin_spks_plot=1,
                bin_size=.1, name='stim')
-    plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
+    plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_so_sec,
                s_rate=s_rate, spikes_offset=spikes_offset, margin_spks_plot=1,
                bin_size=.1, name='outcome')
 

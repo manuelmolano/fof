@@ -64,6 +64,32 @@ def get_behavior(main_folder):
     return p.sess
 
 
+def date_2_secs(csv_date):
+    csv_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
+                        for x in csv_date])
+    init_time = csv_sec[0]
+    csv_sec = csv_sec - init_time
+    return csv_sec, init_time
+
+
+def find_stim_start(samples, chnls=[35, 36], s_rate=3e4):
+    # load and med-filter TTL channels
+    trace1 = samples[:, chnls[0]]
+    trace1 = trace1/np.max(trace1)
+    trace1_filt = ss.medfilt(trace1, 3)
+    trace2 = samples[:, chnls[1]]
+    trace2 = trace2/np.max(trace2)
+    trace2_filt = ss.medfilt(trace2, 3)
+    # stimulus corresponds to ch36=high and ch35=low
+    stim = 1*((trace2_filt-trace1_filt) > 0.5)
+    # stim starts/ends
+    stim_starts = np.where(np.diff(stim) > 0.9)[0]
+    stim_ends = np.where(np.diff(stim) < -0.9)[0]
+    ttl_stim_strt = stim_starts/s_rate
+    ttl_stim_end = stim_ends/s_rate
+    return ttl_stim_strt, ttl_stim_end
+
+
 if __name__ == '__main__':
     plt.close('all')
     main_folder = '/home/molano/fof_data/'
@@ -72,14 +98,20 @@ if __name__ == '__main__':
     # get behavior events
     # XXX: I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
     # seems to be a missmatch between the two that grows throughout the session
-    # StartSound. THERE MIGHT BE SOMETHING YOU'RE NOT BE TAKING INTO ACCOUNT
-    # csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
-    #                             (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    # Outcome
-    csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
-                                  (df['MSG'] == 'Punish')) &
-                                 (df.TYPE == 'TRANSITION'),
-                                 'BPOD-INITIAL-TIME'].values
+    # StartSound. Apparently, there is a period of time between trials during which
+    # the BPOD is switched off and that produces a missmatch between BPOD and TTL
+    # times
+
+    # STIM INITITAL PC-TIMES
+    csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+                                (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    csv_ss_sec, _ = date_2_secs(csv_date=csv_strt_snd_times)
+    # STIM FINAL PC-TIMES (animal's response)
+    csv_resp_times = df.loc[(df['MSG'] == 'WaitResponse') &
+                            (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    csv_r_sec, ref_time = date_2_secs(csv_date=csv_resp_times)
+
+    # GET ALSO BPOD TIMES
     # StartSound
     csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
                                 (df.TYPE == 'TRANSITION'),
@@ -88,27 +120,27 @@ if __name__ == '__main__':
     csv_trial_bpod_time = df.loc[(df['MSG'] == 'TRIAL-BPOD-TIME') &
                                  (df.TYPE == 'INFO'),
                                  'BPOD-INITIAL-TIME'].values
+    csv_ss_bp_sec = csv_strt_snd_times + csv_trial_bpod_time
 
-    # csv_trial_bpod_pctime = df.loc[(df['MSG'] == 'New trial') &
-    #                                (df.TYPE == 'TRIAL'), 'PC-TIME']
-    # csv_trial_bpod_pctime = np.array([60*60*x.hour+60*x.minute+x.second +
-    #                                   x.microsecond/1e6
-    #                                   for x in csv_trial_bpod_pctime])
+    # csv_trial_pctime = df.loc[(df['MSG'] == 'New trial') &
+    #                           (df.TYPE == 'TRIAL'), 'PC-TIME']
+    # csv_trial_pctime = np.array([60*60*x.hour+60*x.minute+x.second +
+    #                              x.microsecond/1e6 for x in csv_trial_pctime])
     # csv_trial_bpod_pctime = csv_trial_bpod_pctime - csv_trial_bpod_pctime[0]
 
-    csv_ss_sec = csv_strt_snd_times + csv_trial_bpod_time
+    # Outcome
+    csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
+                                  (df['MSG'] == 'Punish')) &
+                                 (df.TYPE == 'TRANSITION'),
+                                 'BPOD-INITIAL-TIME'].values
     csv_so_sec = csv_strt_outc_times + csv_trial_bpod_time
     # Transform date to seconds
-    # csv_ss_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-    #                        for x in csv_strt_snd_times])
     # csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
     #                        for x in csv_strt_outc_times])
     # csv_so_sec = csv_so_sec-csv_ss_sec[0]
     # csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
-    csv_so_sec = csv_so_sec - csv_ss_sec[0]
-    csv_ss_sec = csv_ss_sec - csv_ss_sec[0]
-    # import sys
-    # sys.exit()
+    csv_so_sec = csv_so_sec - csv_ss_bp_sec[0]
+    csv_ss_bp_sec = csv_ss_bp_sec - csv_ss_bp_sec[0]
     # ELECTRO
     # sampling rate
     s_rate = 3e4
@@ -138,34 +170,39 @@ if __name__ == '__main__':
         num_ch = 39
         samples = data.reshape((len(data) // num_ch, num_ch))
         assert len(data) % num_ch+1 != 0
-    # load and med-filter TTL channels
-    trace1 = samples[:, 35]
-    trace1 = trace1/np.max(trace1)
-    trace1_filt = ss.medfilt(trace1, 3)
-    trace2 = samples[:, 36]
-    trace2 = trace2/np.max(trace2)
-    trace2_filt = ss.medfilt(trace2, 3)
-    # stimulus corresponds to ch36=high and ch35=low
-    stim = 1*((trace2_filt-trace1_filt) > 0.5)
-    # stimulus corresponds to ch36=high and ch35=high
-    outcome = 1*((trace2_filt+trace1_filt) > 1.9)
-    assert np.sum(1*(stim+outcome > 1)) == 0
     # stim starts/ends
-    stim_starts = np.where(np.diff(stim) > 0.9)[0]
-    stim_ends = np.where(np.diff(stim) < -0.9)[0]
-    ttl_stim_strt = stim_starts/s_rate
+    ttl_stim_strt, ttl_stim_end = find_stim_start(samples=samples, chnls=[35, 36],
+                                                  s_rate=s_rate)
     # outcome starts/ends
+    # outcome corresponds to ch36=high and ch35=high
+    outcome = 1*((trace2_filt+trace1_filt) > 1.9)
     outc_starts = np.where(np.diff(outcome) > 0.9)[0]
     outc_ends = np.where(np.diff(outcome) < -0.9)[0]
     ttl_outc_strt = outc_starts/s_rate
 
+    ttl_ref = ttl_stim_end
+    csv_ref = csv_r_sec
     # compute spikes offset from stimulus start
-    spikes_offset = -ttl_stim_strt[0]
-    ttl_stim_strt = ttl_stim_strt+spikes_offset
+    spikes_offset = -ttl_ref[0]
+    ttl_ref = ttl_ref+spikes_offset
     ttl_outc_strt = ttl_outc_strt+spikes_offset
-    assert len(csv_ss_sec) == len(ttl_stim_strt)
-    assert np.max(csv_ss_sec-ttl_stim_strt) < 0.05, print(np.max(csv_ss_sec -
-                                                          ttl_stim_strt))
+    assert len(csv_ref) == len(ttl_ref)
+    f, ax = plt.subplots(ncols=2, nrows=2, figsize=(12, 8))
+    ax = ax.flatten()
+    ax[0].plot(csv_ref-ttl_ref)
+    ax[0].set_ylabel('CSV_PC_TIME - TTL (s)')
+    ax[1].hist(csv_ref-ttl_ref, 50)
+    ax[1].set_ylabel('Count')
+    ax[1].set_xlabel('CSV_PC_TIME - TTL (s)')
+    ax[2].plot(csv_ss_bp_sec-ttl_ref)
+    ax[2].set_ylabel('CSV_BPOD_TIME - TTL (s)')
+    ax[2].set_xlabel('Trial number')
+    ax[3].hist(csv_ss_bp_sec-ttl_ref, 50)
+    ax[3].set_ylabel('Count')
+    ax[3].set_xlabel('CSV_BPOD_TIME - TTL (s)')
+    f.savefig('/home/molano/Dropbox/csv_ttl_diff.png')
+    assert np.max(np.abs(csv_ref-ttl_ref)) < 0.05,\
+        np.argmax(np.abs(csv_ref-ttl_ref))
     # assert len(csv_so_sec) == len(ttl_outc_strt)
     # assert np.max(csv_so_sec-ttl_outc_strt) < 0.05, print(np.max(csv_so_sec -
     #                                                    ttl_outc_strt))

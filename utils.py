@@ -68,6 +68,40 @@ def get_behavior(main_folder):
     p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
     return p.sess
 
+def get_startSound_times(df):    
+    # STIM INITITAL PC-TIMES
+    csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+                                (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    csv_ss_sec, ref_time = date_2_secs(csv_date=csv_strt_snd_times)
+    return csv_ss_sec, ref_time
+
+
+    # # STIM FINAL PC-TIMES (animal's response)
+    # csv_resp_times = df.loc[(df['MSG'] == 'WaitResponse') &
+    #                         (df.TYPE == 'TRANSITION'), 'PC-TIME']
+    # csv_r_sec, _ = date_2_secs(csv_date=csv_resp_times)
+
+    # sil_tr_pctime = df.loc[(df['MSG'] == 'silence_trial') &
+    #                        (df.TYPE == 'VAL'), 'PC-TIME']
+    # csv_sltr_sec, _ = date_2_secs(csv_date=sil_tr_pctime)
+    # # GET ALSO BPOD TIMES
+    # # StartSound
+    # csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
+    #                             (df.TYPE == 'TRANSITION'),
+    #                             'BPOD-INITIAL-TIME'].values
+    # # Trial start time
+    # csv_trial_bpod_time = df.loc[(df['MSG'] == 'TRIAL-BPOD-TIME') &
+    #                              (df.TYPE == 'INFO'),
+    #                              'BPOD-INITIAL-TIME'].values
+    # csv_ss_bp_sec = csv_strt_snd_times + csv_trial_bpod_time
+
+    # csv_sltr_sec = csv_sltr_sec-csv_ss_sec[0]
+    # csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
+    # csv_tmplt = get_template(events=csv_ss_sec, factor=tmplt_factor)
+    # csv_ss_bp_sec = csv_ss_bp_sec - csv_ss_bp_sec[0]
+
+    # return csv_ss_sec
+
 
 def date_2_secs(csv_date):
     csv_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
@@ -76,6 +110,29 @@ def date_2_secs(csv_date):
     csv_sec = csv_sec - init_time
     return csv_sec, init_time
 
+
+def get_electro(path, s_rate=3e4, s_rate_eff=2e3):
+    # ELECTRO
+    # sampling rate
+    sampling = int(s_rate/s_rate_eff)
+    # Importing the data from a session
+    # path = main_folder+'/LE113/electro/LE113_2021-06-05_12-38-09/'
+    # load channels (continuous) data
+    data_files = glob.glob(path+'/*.dat')
+    data_files = [f for f in data_files if 'temp' not in f]
+    assert len(data_files) == 1, 'Number of .dat files is different from 0'
+    data = np.memmap(data_files[0], dtype='int16')
+    if len(data) % 40 == 0:
+        num_ch = 40
+        samples = data.reshape((len(data) // num_ch, num_ch))
+        assert len(data) % num_ch-1 != 0
+    elif len(data) % 39 == 0:
+        num_ch = 39
+        samples = data.reshape((len(data) // num_ch, num_ch))
+        assert len(data) % num_ch+1 != 0
+    # subsample data
+    samples = samples[0::sampling, :]
+    return samples
 
 def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
                 fltr_krnl=None):
@@ -113,69 +170,7 @@ def get_template(events, factor=1):
     return tmplt
 
 
-if __name__ == '__main__':
-    plt.close('all')
-    main_folder = '/home/molano/fof_data/'
-    df = get_behavior(main_folder=main_folder)
-
-    # get behavior events
-    # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
-    # seems to be a missmatch between the two that grows throughout the session
-    # StartSound. Apparently, there is a period of time between trials during which
-    # the BPOD is switched off and that produces a missmatch between BPOD and TTL
-    # times
-    tmplt_factor = 10
-    # STIM INITITAL PC-TIMES
-    csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
-                                (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    csv_ss_sec, ref_time = date_2_secs(csv_date=csv_strt_snd_times)
-    # STIM FINAL PC-TIMES (animal's response)
-    csv_resp_times = df.loc[(df['MSG'] == 'WaitResponse') &
-                            (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    csv_r_sec, _ = date_2_secs(csv_date=csv_resp_times)
-
-    sil_tr_pctime = df.loc[(df['MSG'] == 'silence_trial') &
-                           (df.TYPE == 'VAL'), 'PC-TIME']
-    csv_sltr_sec, _ = date_2_secs(csv_date=sil_tr_pctime)
-
-    # GET ALSO BPOD TIMES
-    # StartSound
-    csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
-                                (df.TYPE == 'TRANSITION'),
-                                'BPOD-INITIAL-TIME'].values
-    # Trial start time
-    csv_trial_bpod_time = df.loc[(df['MSG'] == 'TRIAL-BPOD-TIME') &
-                                 (df.TYPE == 'INFO'),
-                                 'BPOD-INITIAL-TIME'].values
-    csv_ss_bp_sec = csv_strt_snd_times + csv_trial_bpod_time
-
-    # csv_trial_pctime = df.loc[(df['MSG'] == 'New trial') &
-    #                           (df.TYPE == 'TRIAL'), 'PC-TIME']
-    # csv_trial_pctime = np.array([60*60*x.hour+60*x.minute+x.second +
-    #                              x.microsecond/1e6 for x in csv_trial_pctime])
-    # csv_trial_bpod_pctime = csv_trial_bpod_pctime - csv_trial_bpod_pctime[0]
-
-    # Outcome
-    # csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
-    #                               (df['MSG'] == 'Punish')) &
-    #                              (df.TYPE == 'TRANSITION'),
-    #                              'BPOD-INITIAL-TIME'].values
-    # csv_so_sec = csv_strt_outc_times + csv_trial_bpod_time
-    # Transform date to seconds
-    # csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
-    #                        for x in csv_strt_outc_times])
-    csv_sltr_sec = csv_sltr_sec-csv_ss_sec[0]
-    csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
-    csv_tmplt = get_template(events=csv_ss_sec, factor=tmplt_factor)
-    # csv_so_sec = csv_so_sec - csv_ss_bp_sec[0]
-    csv_ss_bp_sec = csv_ss_bp_sec - csv_ss_bp_sec[0]
-    # ELECTRO
-    # sampling rate
-    s_rate = 3e4
-    s_rate_eff = 2e3
-    sampling = int(s_rate/s_rate_eff)
-    # Importing the data from a session
-    path = main_folder+'/LE113/electro/LE113_2021-06-05_12-38-09/'
+def get_spikes(path):
     # Load spike sorted data
     # Times of the spikes, array of lists
     spike_times = np.load(path+'spike_times.npy')
@@ -186,21 +181,23 @@ if __name__ == '__main__':
     # sel_clltrs = df_labels.loc[df_labels.group == 'good', 'cluster_id'].values
     sel_clstrs = df_labels['cluster_id'].values
     clstrs_qlt = df_labels['group']
-    # load channels (continuous) data
-    data_files = glob.glob(path+'/*.dat')
-    data_files = [f for f in data_files if 'temp' not in f]
-    assert len(data_files) == 1, 'Number of .dat files is different from 0'
-    data = np.memmap(data_files[0], dtype='int16')
-    if len(data) % 40 == 0:
-        num_ch = 40
-        samples = data.reshape((len(data) // num_ch, num_ch))
-        assert len(data) % num_ch-1 != 0
-    elif len(data) % 39 == 0:
-        num_ch = 39
-        samples = data.reshape((len(data) // num_ch, num_ch))
-        assert len(data) % num_ch+1 != 0
-    # subsample data
-    samples = samples[0::sampling, :]
+
+
+if __name__ == '__main__':
+    plt.close('all')
+    s_rate = 3e4
+    s_rate_eff = 2e3
+    main_folder = '/home/molano/fof_data/'
+    df = get_behavior(main_folder=main_folder)
+    csv_ss_sec = get_startSound_times(df=df)
+    # get behavior events
+    # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
+    # seems to be a missmatch between the two that grows throughout the session
+    # StartSound. Apparently, there is a period of time between trials during which
+    # the BPOD is switched off and that produces a missmatch between BPOD and TTL
+    # times
+    tmplt_factor = 10
+    samples = get_electro(s_rate=s_rate, s_rate_eff=s_rate_eff)
     # get stim ttl starts/ends
     ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
                                                       chnls=[35, 36],
@@ -215,16 +212,16 @@ if __name__ == '__main__':
                                                          events='stim_ori')
     ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
 
-    conv_w = 200*tmplt_factor
-    conv = np.convolve(csv_tmplt, np.flip(ttl_ori_tmplt[:conv_w]), mode='same')
-    offset = np.argmax(conv)-conv_w/2
-    plt.figure()
-    plt.plot(conv)
-    plt.figure()
-    plt.plot(ttl_ori_tmplt)
-    plt.plot(ttl_tmplt, '--')
-    plt.plot(np.arange(len(csv_tmplt))-offset, csv_tmplt-0.1)
-    asdasd
+    # conv_w = 200*tmplt_factor
+    # conv = np.convolve(csv_tmplt, np.flip(ttl_ori_tmplt[:conv_w]), mode='same')
+    # offset = np.argmax(conv)-conv_w/2
+    # plt.figure()
+    # plt.plot(conv)
+    # plt.figure()
+    # plt.plot(ttl_ori_tmplt)
+    # plt.plot(ttl_tmplt, '--')
+    # plt.plot(np.arange(len(csv_tmplt))-offset, csv_tmplt-0.1)
+    # asdasd
     plt.figure()
     strt = 0
     end = 1e10

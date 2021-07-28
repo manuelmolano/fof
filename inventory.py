@@ -8,7 +8,7 @@ Created on Wed Jul 28 09:16:43 2021
 
 import glob
 import os
-
+import utils
 
 def order_by_sufix(file_list):
     file_list = [os.path.basename(x) for x in file_list]
@@ -37,6 +37,7 @@ for r in rats:
         if len(b_f) == 0:
             print('---')
             print(date+' behavioral file not found')
+            continue
         elif len(b_f) > 1:
             print('---')
             print(date+': several behavioral files found')
@@ -45,3 +46,6 @@ for r in rats:
             print('Files:')
             print(sorted_files)
             print('Used file: ', sorted_files[-1])
+            b_f = b_f[-1:]
+        df = utils.get_behavior(main_folder=b_f[0])
+        samples = utils.get_behavior(path=e_f)

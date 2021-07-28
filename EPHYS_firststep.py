@@ -22,15 +22,20 @@ def iti_clean(times, min_ev_dur, bef_aft):
     return times
 
 
-def plot_events(evs, label='', color='k', lnstl='-'):
-    for i in evs:
-        label = label if i == evs[0] else ''
+def plot_events(evs, ev_strt=0, ev_end=1e6, s_rate=3e4, label='', color='k',
+                lnstl='-'):
+    evs_plt = s_rate*evs.copy()
+    evs_plt = evs_plt[evs_plt < ev_end]
+    evs_plt = evs_plt[evs_plt > ev_strt]
+    for i in evs_plt:
+        label = label if i == evs_plt[0] else ''
         plt.plot(np.array([i, i]), [0, 1], color=color, label=label,
                  linestyle=lnstl)
 
 
 def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
-               margin_spks_plot=1, bin_size=.1, name=''):
+               clstrs_qlt, spike_clusters, margin_spks_plot=1, bin_size=.1,
+               name=''):
     bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
                        int(2*margin_spks_plot/bin_size))
     f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))
@@ -45,7 +50,7 @@ def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
         # hist, _ = np.histogram(spks_cl, bins=bins)
         # hist = hist/step
         ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
-        ax[i_cl].set_title(clstrs_qlt[i_cl])
+        ax[i_cl].set_title(clstrs_qlt[i_cl])  #
     ax[10].set_xlabel('Time (s)')
     ax[10].set_ylabel('Mean firing rate (Hz)')
     f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
@@ -72,22 +77,40 @@ def date_2_secs(csv_date):
     return csv_sec, init_time
 
 
-def find_stim_start(samples, chnls=[35, 36], s_rate=3e4):
+def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
+                fltr_krnl=None):
     # load and med-filter TTL channels
     trace1 = samples[:, chnls[0]]
     trace1 = trace1/np.max(trace1)
-    trace1_filt = ss.medfilt(trace1, 3)
+    trace1_filt = ss.medfilt(trace1, 3) if fltr_krnl is not None else trace1
     trace2 = samples[:, chnls[1]]
     trace2 = trace2/np.max(trace2)
-    trace2_filt = ss.medfilt(trace2, 3)
-    # stimulus corresponds to ch36=high and ch35=low
-    stim = 1*((trace2_filt-trace1_filt) > 0.5)
+    trace2_filt = ss.medfilt(trace2, 3) if fltr_krnl is not None else trace2
+
+    if events == 'stim_ttl':
+        # stimulus corresponds to ch36=high and ch35=low
+        assert chnls[0] == 35 and chnls[1] == 36
+        signal = 1*((trace2_filt-trace1_filt) > 0.5)
+    elif events == 'outcome':
+        # outcome corresponds to ch36=high and ch35=high
+        assert chnls[0] == 35 and chnls[1] == 36
+        signal = 1*((trace2_filt+trace1_filt) > 1.9)
+    elif events == 'stim_ori':
+        assert chnls[0] == 37 and chnls[1] == 38
+        signal = 1*((trace2_filt+trace1_filt) > .5)
     # stim starts/ends
-    stim_starts = np.where(np.diff(stim) > 0.9)[0]
-    stim_ends = np.where(np.diff(stim) < -0.9)[0]
+    stim_starts = np.where(np.diff(signal) > 0.9)[0]
+    stim_ends = np.where(np.diff(signal) < -0.9)[0]
     ttl_stim_strt = stim_starts/s_rate
     ttl_stim_end = stim_ends/s_rate
-    return ttl_stim_strt, ttl_stim_end
+    return ttl_stim_strt, ttl_stim_end, signal
+
+
+def get_template(events, factor=1):
+    tmplt = np.zeros((int(factor*events[-1])+1,))
+    tmplt[np.round(factor*events.astype(int))] = 1
+    tmplt -= np.mean(tmplt)
+    return tmplt
 
 
 if __name__ == '__main__':
@@ -96,20 +119,24 @@ if __name__ == '__main__':
     df = get_behavior(main_folder=main_folder)
 
     # get behavior events
-    # XXX: I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
+    # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
     # seems to be a missmatch between the two that grows throughout the session
     # StartSound. Apparently, there is a period of time between trials during which
     # the BPOD is switched off and that produces a missmatch between BPOD and TTL
     # times
-
+    tmplt_factor = 10
     # STIM INITITAL PC-TIMES
     csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
                                 (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    csv_ss_sec, _ = date_2_secs(csv_date=csv_strt_snd_times)
+    csv_ss_sec, ref_time = date_2_secs(csv_date=csv_strt_snd_times)
     # STIM FINAL PC-TIMES (animal's response)
     csv_resp_times = df.loc[(df['MSG'] == 'WaitResponse') &
                             (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    csv_r_sec, ref_time = date_2_secs(csv_date=csv_resp_times)
+    csv_r_sec, _ = date_2_secs(csv_date=csv_resp_times)
+
+    sil_tr_pctime = df.loc[(df['MSG'] == 'silence_trial') &
+                           (df.TYPE == 'VAL'), 'PC-TIME']
+    csv_sltr_sec, _ = date_2_secs(csv_date=sil_tr_pctime)
 
     # GET ALSO BPOD TIMES
     # StartSound
@@ -129,22 +156,24 @@ if __name__ == '__main__':
     # csv_trial_bpod_pctime = csv_trial_bpod_pctime - csv_trial_bpod_pctime[0]
 
     # Outcome
-    csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
-                                  (df['MSG'] == 'Punish')) &
-                                 (df.TYPE == 'TRANSITION'),
-                                 'BPOD-INITIAL-TIME'].values
-    csv_so_sec = csv_strt_outc_times + csv_trial_bpod_time
+    # csv_strt_outc_times = df.loc[((df['MSG'] == 'Reward') |
+    #                               (df['MSG'] == 'Punish')) &
+    #                              (df.TYPE == 'TRANSITION'),
+    #                              'BPOD-INITIAL-TIME'].values
+    # csv_so_sec = csv_strt_outc_times + csv_trial_bpod_time
     # Transform date to seconds
     # csv_so_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
     #                        for x in csv_strt_outc_times])
-    # csv_so_sec = csv_so_sec-csv_ss_sec[0]
-    # csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
-    csv_so_sec = csv_so_sec - csv_ss_bp_sec[0]
+    csv_sltr_sec = csv_sltr_sec-csv_ss_sec[0]
+    csv_ss_sec = csv_ss_sec-csv_ss_sec[0]
+    csv_tmplt = get_template(events=csv_ss_sec, factor=tmplt_factor)
+    # csv_so_sec = csv_so_sec - csv_ss_bp_sec[0]
     csv_ss_bp_sec = csv_ss_bp_sec - csv_ss_bp_sec[0]
     # ELECTRO
     # sampling rate
     s_rate = 3e4
-    min_ev_dur = 0.01*s_rate  # 50ms
+    s_rate_eff = 2e3
+    sampling = int(s_rate/s_rate_eff)
     # Importing the data from a session
     path = main_folder+'/LE113/electro/LE113_2021-06-05_12-38-09/'
     # Load spike sorted data
@@ -170,15 +199,69 @@ if __name__ == '__main__':
         num_ch = 39
         samples = data.reshape((len(data) // num_ch, num_ch))
         assert len(data) % num_ch+1 != 0
-    # stim starts/ends
-    ttl_stim_strt, ttl_stim_end = find_stim_start(samples=samples, chnls=[35, 36],
-                                                  s_rate=s_rate)
+    # subsample data
+    samples = samples[0::sampling, :]
+    # get stim ttl starts/ends
+    ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
+                                                      chnls=[35, 36],
+                                                      s_rate=s_rate_eff,
+                                                      events='stim_ttl')
+    ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
+
+    # get original stim starts/ends
+    ttl_stim_ori_strt, ttl_stim_ori_end, _ = find_events(samples=samples,
+                                                         chnls=[37, 38],
+                                                         s_rate=s_rate_eff,
+                                                         events='stim_ori')
+    ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
+
+    conv_w = 200*tmplt_factor
+    conv = np.convolve(csv_tmplt, np.flip(ttl_ori_tmplt[:conv_w]), mode='same')
+    offset = np.argmax(conv)-conv_w/2
+    plt.figure()
+    plt.plot(conv)
+    plt.figure()
+    plt.plot(ttl_ori_tmplt)
+    plt.plot(ttl_tmplt, '--')
+    plt.plot(np.arange(len(csv_tmplt))-offset, csv_tmplt-0.1)
+    asdasd
+    plt.figure()
+    strt = 0
+    end = 1e10
+    analog_stim1 = samples[:, 37]
+    analog_stim1 = analog_stim1/np.max(analog_stim1)
+    analog_stim2 = samples[:, 38]
+    analog_stim2 = analog_stim2/np.max(analog_stim2)
+    aux = signal - (analog_stim1+analog_stim2)/2
+    krnl = np.zeros((1000,))
+    krnl[-10:] = -1
+    krnl = krnl - np.mean(krnl)
+    aux = aux - np.mean(aux)
+    plt.plot(aux)
+    plt.plot(np.convolve(aux, np.flip(krnl), mode='same'))
+    plt.plot(samples[int(strt*3e4):int(end*3e4), 35], label='35')
+    plt.plot(samples[int(strt*3e4):int(end*3e4), 36], label='36')
+    plt.plot(samples[int(strt*3e4):int(end*3e4), 37]-10, label='37')
+    plt.plot(samples[int(strt*3e4):int(end*3e4), 38]-10, label='38')
+    plt.legend()
+    ttl_ref = ttl_stim_ori_strt[0]
+    plt.figure()
+    ttl_stim_ori_strt = ttl_stim_ori_strt - ttl_ref
+    ev_strt = 12500000
+    ev_end = 13500000
+    plt.plot(np.arange(ev_strt, ev_end)-ttl_ref*s_rate_eff, signal[ev_strt:ev_end],
+             label='signal')
+    plot_events(evs=ttl_stim_ori_strt, ev_strt=ev_strt, ev_end=ev_end, label='ori',
+                s_rate=s_rate_eff)
+    plot_events(evs=csv_ss_sec, ev_strt=ev_strt, ev_end=ev_end, color='m',
+                label='csv-stim', s_rate=s_rate_eff)
+    plot_events(evs=csv_sltr_sec, ev_strt=ev_strt, ev_end=ev_end, color='c',
+                label='sil-tr', s_rate=s_rate_eff)
+    plt.legend()
     # outcome starts/ends
-    # outcome corresponds to ch36=high and ch35=high
-    outcome = 1*((trace2_filt+trace1_filt) > 1.9)
-    outc_starts = np.where(np.diff(outcome) > 0.9)[0]
-    outc_ends = np.where(np.diff(outcome) < -0.9)[0]
-    ttl_outc_strt = outc_starts/s_rate
+    ttl_outc_strt, ttl_outc_end, _ = find_events(samples=samples, chnls=[35, 36],
+                                                 s_rate=s_rate_eff,
+                                                 events='outcome')
 
     ttl_ref = ttl_stim_end
     csv_ref = csv_r_sec
@@ -211,17 +294,17 @@ if __name__ == '__main__':
     # sys.exit()
     offset = 29550000
     num_samples = 200000
-    events = {'stim_starts': stim_starts, 'outc_starts': outc_starts,
+    events = {'stim_starts': ttl_stim_strt, 'outc_starts': ttl_outc_strt,
               'samples': samples[offset:offset+num_samples, 35:39]}
     np.savez(path+'/events.npz', **events)
 
     # plot PSTHs
     plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
-               s_rate=s_rate, spikes_offset=spikes_offset, margin_spks_plot=1,
+               s_rate=s_rate_eff, spikes_offset=spikes_offset, margin_spks_plot=1,
                bin_size=.1, name='stim')
-    plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_so_sec,
-               s_rate=s_rate, spikes_offset=spikes_offset, margin_spks_plot=1,
-               bin_size=.1, name='outcome')
+    # plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_so_sec,
+    #             s_rate=s_rate_eff, spikes_offset=spikes_offset,
+    #             margin_spks_plot=1, bin_size=.1, name='outcome')
 
     # f = plt.figure()
     # plot_events(ttl_stim_strt, label='ttl-stim', color='m')

@@ -61,12 +61,7 @@ def get_behavior(main_folder, subject):
     p = ComPipe.chom(subject,  # sujeto (nombre de la carpeta under parentpath)
                      parentpath=main_folder,
                      analyze_trajectories=False)  # precarga sesiones disponibles
-    p.load_available()  # just in case, refresh
-    print(p.available[2])  # exmpl target sess / filename string is the actual arg
-    p.load(p.available[2])
-    p.process()
-    p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
-    return p.sess
+    return p
 
 def get_startSound_times(df):    
     # STIM INITITAL PC-TIMES

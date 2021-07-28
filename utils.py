@@ -56,9 +56,9 @@ def iti_clean(times, min_ev_dur, bef_aft):
 #     f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
 
 
-def get_behavior(main_folder):
+def get_behavior(main_folder, subject):
     # BEHAVIOR
-    p = ComPipe.chom('LE113',  # sujeto (nombre de la carpeta under parentpath)
+    p = ComPipe.chom(subject,  # sujeto (nombre de la carpeta under parentpath)
                      parentpath=main_folder,
                      analyze_trajectories=False)  # precarga sesiones disponibles
     p.load_available()  # just in case, refresh

@@ -32,7 +32,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
         b_f = glob.glob(behav_folder+'*'+str(rat_num))
         assert len(b_f) == 1
         path, name = os.path.split(b_f[0])
-        p = utils.get_behavior(main_folder=path, subject=name)
+        p = utils.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:
             dt_indx = e_f.find(rat_num+'_20')+len(rat_num)+1
             date = e_f[dt_indx:dt_indx+10]

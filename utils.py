@@ -9,7 +9,7 @@ import glob
 # Import all needed libraries
 import pandas as pd
 import numpy as np
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -130,14 +130,14 @@ def get_electro(path, s_rate=3e4, s_rate_eff=2e3):
     return samples
 
 def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
-                fltr_krnl=None):
+                fltr_k=None):
     # load and med-filter TTL channels
     trace1 = samples[:, chnls[0]]
     trace1 = trace1/np.max(trace1)
-    trace1_filt = ss.medfilt(trace1, 3) if fltr_krnl is not None else trace1
+    trace1_filt = ss.medfilt(trace1, fltr_k) if fltr_k is not None else trace1
     trace2 = samples[:, chnls[1]]
     trace2 = trace2/np.max(trace2)
-    trace2_filt = ss.medfilt(trace2, 3) if fltr_krnl is not None else trace2
+    trace2_filt = ss.medfilt(trace2, fltr_k) if fltr_k is not None else trace2
 
     if events == 'stim_ttl':
         # stimulus corresponds to ch36=high and ch35=low
@@ -178,133 +178,147 @@ def get_spikes(path):
     clstrs_qlt = df_labels['group']
 
 
-# if __name__ == '__main__':
-#     plt.close('all')
-#     s_rate = 3e4
-#     s_rate_eff = 2e3
-#     main_folder = '/home/molano/fof_data/'
-#     df = get_behavior(main_folder=main_folder)
-#     csv_ss_sec = get_startSound_times(df=df)
-#     # get behavior events
-#     # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
-#     # seems to be a missmatch between the two that grows throughout the session
-#     # StartSound. Apparently, there is a period of time between trials during which
-#     # the BPOD is switched off and that produces a missmatch between BPOD and TTL
-#     # times
-#     tmplt_factor = 10
-#     samples = get_electro(s_rate=s_rate, s_rate_eff=s_rate_eff)
-#     # get stim ttl starts/ends
-#     ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
-#                                                       chnls=[35, 36],
-#                                                       s_rate=s_rate_eff,
-#                                                       events='stim_ttl')
-#     ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
+if __name__ == '__main__':
+    # plt.close('all')
+    s_rate = 3e4
+    s_rate_eff = 3e4
+    main_folder = '/home/molano/fof_data/'
+    p = get_behavior(main_folder=main_folder, subject='LE113')
+    p.load(p.available[0])
+    p.process()
+    p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
+    df = p.sess
+    csv_ss_sec, initial_time = get_startSound_times(df=df)
+    csv_ss_sec -= csv_ss_sec[0]
+    # get behavior events
+    # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
+    # seems to be a missmatch between the two that grows throughout the session
+    # StartSound. Apparently, there is a period of time between trials during which
+    # the BPOD is switched off and that produces a missmatch between BPOD and TTL
+    # times
+    tmplt_factor = 10
+    path = '/home/molano/fof_data/LE113/electro/LE113_2021-06-05_12-38-09/'
+    samples = get_electro(path=path, s_rate=s_rate, s_rate_eff=s_rate_eff)
+    # get stim ttl starts/ends
+    ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
+                                                      chnls=[35, 36],
+                                                      s_rate=s_rate_eff,
+                                                      events='stim_ttl',
+                                                      fltr_k=3)
+    ttl_stim_strt -= ttl_stim_strt[0]
+    # ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
 
-#     # get original stim starts/ends
-#     ttl_stim_ori_strt, ttl_stim_ori_end, _ = find_events(samples=samples,
-#                                                          chnls=[37, 38],
-#                                                          s_rate=s_rate_eff,
-#                                                          events='stim_ori')
-#     ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
+    # get original stim starts/ends
+    # ttl_stim_ori_strt, ttl_stim_ori_end, _ = find_events(samples=samples,
+    #                                                      chnls=[37, 38],
+    #                                                      s_rate=s_rate_eff,
+    #                                                      events='stim_ori')
+    aux = np.array([(np.min(np.abs(csv_ss_sec-ttl_ss)),
+                     np.argmin(np.abs(csv_ss_sec-ttl_ss)))
+                    for ttl_ss in ttl_stim_strt])
+    plt.figure()
+    plt.hist(aux[:, 0])
+    ttl_ref = ttl_stim_strt
+    csv_ref = csv_ss_sec
+    assert len(csv_ref) == len(ttl_ref), str(len(csv_ref))+'  '+str(len(ttl_ref))
+    asdasd
+    # ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
 
-#     # conv_w = 200*tmplt_factor
-#     # conv = np.convolve(csv_tmplt, np.flip(ttl_ori_tmplt[:conv_w]), mode='same')
-#     # offset = np.argmax(conv)-conv_w/2
-#     # plt.figure()
-#     # plt.plot(conv)
-#     # plt.figure()
-#     # plt.plot(ttl_ori_tmplt)
-#     # plt.plot(ttl_tmplt, '--')
-#     # plt.plot(np.arange(len(csv_tmplt))-offset, csv_tmplt-0.1)
-#     # asdasd
-#     plt.figure()
-#     strt = 0
-#     end = 1e10
-#     analog_stim1 = samples[:, 37]
-#     analog_stim1 = analog_stim1/np.max(analog_stim1)
-#     analog_stim2 = samples[:, 38]
-#     analog_stim2 = analog_stim2/np.max(analog_stim2)
-#     aux = signal - (analog_stim1+analog_stim2)/2
-#     krnl = np.zeros((1000,))
-#     krnl[-10:] = -1
-#     krnl = krnl - np.mean(krnl)
-#     aux = aux - np.mean(aux)
-#     plt.plot(aux)
-#     plt.plot(np.convolve(aux, np.flip(krnl), mode='same'))
-#     plt.plot(samples[int(strt*3e4):int(end*3e4), 35], label='35')
-#     plt.plot(samples[int(strt*3e4):int(end*3e4), 36], label='36')
-#     plt.plot(samples[int(strt*3e4):int(end*3e4), 37]-10, label='37')
-#     plt.plot(samples[int(strt*3e4):int(end*3e4), 38]-10, label='38')
-#     plt.legend()
-#     ttl_ref = ttl_stim_ori_strt[0]
-#     plt.figure()
-#     ttl_stim_ori_strt = ttl_stim_ori_strt - ttl_ref
-#     ev_strt = 12500000
-#     ev_end = 13500000
-#     plt.plot(np.arange(ev_strt, ev_end)-ttl_ref*s_rate_eff, signal[ev_strt:ev_end],
-#              label='signal')
-#     plot_events(evs=ttl_stim_ori_strt, ev_strt=ev_strt, ev_end=ev_end, label='ori',
-#                 s_rate=s_rate_eff)
-#     plot_events(evs=csv_ss_sec, ev_strt=ev_strt, ev_end=ev_end, color='m',
-#                 label='csv-stim', s_rate=s_rate_eff)
-#     plot_events(evs=csv_sltr_sec, ev_strt=ev_strt, ev_end=ev_end, color='c',
-#                 label='sil-tr', s_rate=s_rate_eff)
-#     plt.legend()
-#     # outcome starts/ends
-#     ttl_outc_strt, ttl_outc_end, _ = find_events(samples=samples, chnls=[35, 36],
-#                                                  s_rate=s_rate_eff,
-#                                                  events='outcome')
+    # conv_w = 200*tmplt_factor
+    # conv = np.convolve(csv_tmplt, np.flip(ttl_ori_tmplt[:conv_w]), mode='same')
+    # offset = np.argmax(conv)-conv_w/2
+    # plt.figure()
+    # plt.plot(conv)
+    # plt.figure()
+    # plt.plot(ttl_ori_tmplt)
+    # plt.plot(ttl_tmplt, '--')
+    # plt.plot(np.arange(len(csv_tmplt))-offset, csv_tmplt-0.1)
+    # asdasd
+    # plt.figure()
+    # strt = 0
+    # end = 1e10
+    # analog_stim1 = samples[:, 37]
+    # analog_stim1 = analog_stim1/np.max(analog_stim1)
+    # analog_stim2 = samples[:, 38]
+    # analog_stim2 = analog_stim2/np.max(analog_stim2)
+    # aux = signal - (analog_stim1+analog_stim2)/2
+    # krnl = np.zeros((1000,))
+    # krnl[-10:] = -1
+    # krnl = krnl - np.mean(krnl)
+    # aux = aux - np.mean(aux)
+    # plt.plot(aux)
+    # plt.plot(np.convolve(aux, np.flip(krnl), mode='same'))
+    # plt.plot(samples[int(strt*3e4):int(end*3e4), 35], label='35')
+    # plt.plot(samples[int(strt*3e4):int(end*3e4), 36], label='36')
+    # plt.plot(samples[int(strt*3e4):int(end*3e4), 37]-10, label='37')
+    # plt.plot(samples[int(strt*3e4):int(end*3e4), 38]-10, label='38')
+    # plt.legend()
+    # ttl_ref = ttl_stim_ori_strt[0]
+    # plt.figure()
+    # ttl_stim_ori_strt = ttl_stim_ori_strt - ttl_ref
+    # ev_strt = 12500000
+    # ev_end = 13500000
+    # plt.plot(np.arange(ev_strt, ev_end)-ttl_ref*s_rate_eff,
+    #          signal[ev_strt:ev_end], label='signal')
+    # plot_events(evs=ttl_stim_ori_strt, ev_strt=ev_strt, ev_end=ev_end,
+    #             label='ori', s_rate=s_rate_eff)
+    # plot_events(evs=csv_ss_sec, ev_strt=ev_strt, ev_end=ev_end, color='m',
+    #             label='csv-stim', s_rate=s_rate_eff)
+    # plot_events(evs=csv_sltr_sec, ev_strt=ev_strt, ev_end=ev_end, color='c',
+    #             label='sil-tr', s_rate=s_rate_eff)
+    # plt.legend()
+    # outcome starts/ends
+    # ttl_outc_strt, ttl_outc_end, _ = find_events(samples=samples, chnls=[35, 36],
+    #                                              s_rate=s_rate_eff,
+    #                                              events='outcome')
 
-#     ttl_ref = ttl_stim_end
-#     csv_ref = csv_r_sec
-#     # compute spikes offset from stimulus start
-#     spikes_offset = -ttl_ref[0]
-#     ttl_ref = ttl_ref+spikes_offset
-#     ttl_outc_strt = ttl_outc_strt+spikes_offset
-#     assert len(csv_ref) == len(ttl_ref)
-#     f, ax = plt.subplots(ncols=2, nrows=2, figsize=(12, 8))
-#     ax = ax.flatten()
-#     ax[0].plot(csv_ref-ttl_ref)
-#     ax[0].set_ylabel('CSV_PC_TIME - TTL (s)')
-#     ax[1].hist(csv_ref-ttl_ref, 50)
-#     ax[1].set_ylabel('Count')
-#     ax[1].set_xlabel('CSV_PC_TIME - TTL (s)')
-#     ax[2].plot(csv_ss_bp_sec-ttl_ref)
-#     ax[2].set_ylabel('CSV_BPOD_TIME - TTL (s)')
-#     ax[2].set_xlabel('Trial number')
-#     ax[3].hist(csv_ss_bp_sec-ttl_ref, 50)
-#     ax[3].set_ylabel('Count')
-#     ax[3].set_xlabel('CSV_BPOD_TIME - TTL (s)')
-#     f.savefig('/home/molano/Dropbox/csv_ttl_diff.png')
-#     assert np.max(np.abs(csv_ref-ttl_ref)) < 0.05,\
-#         np.argmax(np.abs(csv_ref-ttl_ref))
-#     # assert len(csv_so_sec) == len(ttl_outc_strt)
-#     # assert np.max(csv_so_sec-ttl_outc_strt) < 0.05, print(np.max(csv_so_sec -
-#     #                                                    ttl_outc_strt))
+    # compute spikes offset from stimulus start
+    spikes_offset = -ttl_ref[0]
+    ttl_ref = ttl_ref+spikes_offset
+    # ttl_outc_strt = ttl_outc_strt+spikes_offset
+    # f, ax = plt.subplots(ncols=2, nrows=2, figsize=(12, 8))
+    # ax = ax.flatten()
+    # ax[0].plot(csv_ref-ttl_ref)
+    # ax[0].set_ylabel('CSV_PC_TIME - TTL (s)')
+    # ax[1].hist(csv_ref-ttl_ref, 50)
+    # ax[1].set_ylabel('Count')
+    # ax[1].set_xlabel('CSV_PC_TIME - TTL (s)')
+    # ax[2].plot(csv_ss_bp_sec-ttl_ref)
+    # ax[2].set_ylabel('CSV_BPOD_TIME - TTL (s)')
+    # ax[2].set_xlabel('Trial number')
+    # ax[3].hist(csv_ss_bp_sec-ttl_ref, 50)
+    # ax[3].set_ylabel('Count')
+    # ax[3].set_xlabel('CSV_BPOD_TIME - TTL (s)')
+    # f.savefig('/home/molano/Dropbox/csv_ttl_diff.png')
+    assert np.max(np.abs(csv_ref-ttl_ref)) < 0.05,\
+        np.argmax(np.abs(csv_ref-ttl_ref))
+    # assert len(csv_so_sec) == len(ttl_outc_strt)
+    # assert np.max(csv_so_sec-ttl_outc_strt) < 0.05, print(np.max(csv_so_sec -
+    #                                                    ttl_outc_strt))
 
-#     # import sys
-#     # sys.exit()
-#     offset = 29550000
-#     num_samples = 200000
-#     events = {'stim_starts': ttl_stim_strt, 'outc_starts': ttl_outc_strt,
-#               'samples': samples[offset:offset+num_samples, 35:39]}
-#     np.savez(path+'/events.npz', **events)
+    # import sys
+    # sys.exit()
+    # offset = 29550000
+    # num_samples = 200000
+    # events = {'stim_starts': ttl_stim_strt, 'outc_starts': ttl_outc_strt,
+    #           'samples': samples[offset:offset+num_samples, 35:39]}
+    # np.savez(path+'/events.npz', **events)
 
-#     # plot PSTHs
-#     plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
-#                s_rate=s_rate_eff, spikes_offset=spikes_offset, margin_spks_plot=1,
-#                bin_size=.1, name='stim')
-#     plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_so_sec,
-#                 s_rate=s_rate_eff, spikes_offset=spikes_offset,
-#                 margin_spks_plot=1, bin_size=.1, name='outcome')
+    # plot PSTHs
+    # plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
+    #             s_rate=s_rate_eff, spikes_offset=spikes_offset,
+    #             margin_spks_plot=1, bin_size=.1, name='stim')
+    # plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs,
+    #            events=csv_so_sec, s_rate=s_rate_eff, spikes_offset=spikes_offset,
+    #             margin_spks_plot=1, bin_size=.1, name='outcome')
 
-#     # f = plt.figure()
-#     # plot_events(ttl_stim_strt, label='ttl-stim', color='m')
-#     # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')
-#     # f.savefig('/home/molano/Dropbox/stim_check.png')
+    # f = plt.figure()
+    # plot_events(ttl_stim_strt, label='ttl-stim', color='m')
+    # plot_events(csv_ss_sec, label='start-sound', color='c', lnstl='--')
+    # f.savefig('/home/molano/Dropbox/stim_check.png')
 
-#     # f = plt.figure()
-#     # plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
-#     # plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
-#     # f.savefig('/home/molano/Dropbox/outcome_check.png')
+    # f = plt.figure()
+    # plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
+    # plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
+    # f.savefig('/home/molano/Dropbox/outcome_check.png')
 

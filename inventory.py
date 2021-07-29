@@ -54,8 +54,18 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
             p.load(b_f[0])
             p.process()
             p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
+            df = p.sess
+            bhv_strt_stim_sec = utils.get_startSound_times(df=df)
             samples = utils.get_electro(path=e_f, s_rate=s_rate,
                                         s_rate_eff=s_rate_eff)
+            # get stim ttl starts/ends
+            ttl_stim_strt, ttl_stim_end, _ =\
+                utils.find_events(samples=samples, chnls=[35, 36],
+                                  s_rate=s_rate_eff, events='stim_ttl')
+            # get original stim starts/ends
+            ttl_stim_ori_strt, ttl_stim_ori_end, _ =\
+                utils.find_events(samples=samples, chnls=[37, 38],
+                                  s_rate=s_rate_eff, events='stim_ori')
 
 
 if __name__ == '__main__':

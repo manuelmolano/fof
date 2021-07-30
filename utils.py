@@ -115,7 +115,7 @@ def get_electro(path, s_rate=3e4, s_rate_eff=2e3):
     # load channels (continuous) data
     data_files = glob.glob(path+'/*.dat')
     data_files = [f for f in data_files if 'temp' not in f]
-    assert len(data_files) == 1, 'Number of .dat files is '+str(len(data_files))
+    # assert len(data_files) == 1, 'Number of .dat files is '+str(len(data_files))
     data = np.memmap(data_files[0], dtype='int16')
     if len(data) % 40 == 0:
         num_ch = 40

@@ -29,6 +29,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
         rat_num = r[r.find('/LE')+3:]
         print('Rat LE'+rat_num)
         e_fs = glob.glob(electro_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
+        e_fs_bis = glob.glob(spks_sorting_folder+'*'+str(rat_num)+'/*'+
+                             str(rat_num)+'*')
         print('Number of electro sessions:', str(len(e_fs)))
         b_f = glob.glob(behav_folder+'*'+str(rat_num))
         assert len(b_f) == 1
@@ -39,6 +41,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
             print(e_f)
             dt_indx = e_f.find(rat_num+'_20')+len(rat_num)+1
             date = e_f[dt_indx:dt_indx+10]
+            e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
             date = date.replace('-', '')
             b_f = [f for f in p.available if f.find(date) != -1]
             if len(b_f) == 0:
@@ -60,8 +63,14 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
             df = p.sess
             bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
             bhv_strt_stim_sec -= bhv_strt_stim_sec[0]
-            samples = utils.get_electro(path=e_f, s_rate=s_rate,
-                                        s_rate_eff=s_rate_eff)
+            try:
+                samples = utils.get_electro(path=e_f, s_rate=s_rate,
+                                            s_rate_eff=s_rate_eff)
+            except IndexError:
+                print('Electro file .dat not found in '+e_f)
+                print('Trying folder '+e_f_bis[0])
+                samples = utils.get_electro(path=e_f_bis[0], s_rate=s_rate,
+                                            s_rate_eff=s_rate_eff)
             # get stim ttl starts/ends
             ttl_stim_strt, ttl_stim_end, _ =\
                 utils.find_events(samples=samples, chnls=[35, 36],

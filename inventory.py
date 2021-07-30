@@ -68,9 +68,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                                             s_rate_eff=s_rate_eff)
             except IndexError:
                 print('Electro file .dat not found in '+e_f)
-                print('Trying folder '+e_f_bis[0])
-                samples = utils.get_electro(path=e_f_bis[0], s_rate=s_rate,
-                                            s_rate_eff=s_rate_eff)
+                if len(e_f_bis):
+                    print('Trying folder '+e_f_bis[0])
+                    samples = utils.get_electro(path=e_f_bis[0], s_rate=s_rate,
+                                                s_rate_eff=s_rate_eff)
+                else:
+                    continue
             # get stim ttl starts/ends
             ttl_stim_strt, ttl_stim_end, _ =\
                 utils.find_events(samples=samples, chnls=[35, 36],
@@ -82,9 +85,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                 print('TTL times', len(ttl_stim_strt))
             else:
                 print('Median difference between start sounds')
-                np.median(bhv_strt_stim_sec-ttl_stim_strt)
+                print(np.median(bhv_strt_stim_sec-ttl_stim_strt))
                 print('Max difference between start sounds')
-                np.max(bhv_strt_stim_sec-ttl_stim_strt)
+                print(np.max(bhv_strt_stim_sec-ttl_stim_strt))
 
 
 if __name__ == '__main__':

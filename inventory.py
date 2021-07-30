@@ -58,7 +58,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
             p.process()
             p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
             df = p.sess
-            bhv_strt_stim_sec = utils.get_startSound_times(df=df)
+            bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
             bhv_strt_stim_sec -= bhv_strt_stim_sec[0]
             samples = utils.get_electro(path=e_f, s_rate=s_rate,
                                         s_rate_eff=s_rate_eff)

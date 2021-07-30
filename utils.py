@@ -9,7 +9,7 @@ import glob
 # Import all needed libraries
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -216,12 +216,12 @@ if __name__ == '__main__':
     aux = np.array([(np.min(np.abs(csv_ss_sec-ttl_ss)),
                      np.argmin(np.abs(csv_ss_sec-ttl_ss)))
                     for ttl_ss in ttl_stim_strt])
-    plt.figure()
-    plt.hist(aux[:, 0])
+    # plt.figure()
+    # plt.hist(aux[:, 0])
     ttl_ref = ttl_stim_strt
     csv_ref = csv_ss_sec
     assert len(csv_ref) == len(ttl_ref), str(len(csv_ref))+'  '+str(len(ttl_ref))
-    asdasd
+    # asdasd
     # ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
 
     # conv_w = 200*tmplt_factor

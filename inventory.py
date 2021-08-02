@@ -51,16 +51,17 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
     behav_folder = '/archive/rat/behavioral_data/'
     rats = glob.glob(spks_sort_folder+'LE*')
     try:
-        inventory = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+        invtry_ref = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+        inventory = {}
+        for k in invtry_ref.keys():
+            inventory[k] = invtry_ref[k].item()
     except FileNotFoundError:
         inventory = {}
     for r in rats:
         rat_name = os.path.basename(r)
         if rat_name not in inventory.keys():
-            inventory_rat = {'ok': [], 'no_behavior': [], 'no_electro': [],
-                             'diff_num_events': [], 'too_much_diff': []}
-        else:
-            inventory_rat = inventory[rat_name].item()
+            inventory[rat_name] = {'ok': [], 'no_behavior': [], 'no_electro': [],
+                                   'diff_num_events': [], 'too_much_diff': []}
         print('---------------')
         rat_num = r[r.find('/LE')+3:]
         print(rat_name)
@@ -78,12 +79,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
             date = e_f[dt_indx:dt_indx+10]
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
             date = date.replace('-', '')
-            if not checked(dic=inventory_rat, date=date):
+            if not checked(dic=inventory[rat_name], date=date):
                 b_f = [f for f in p.available if f.find(date) != -1]
                 if len(b_f) == 0:
                     print('---')
                     print(date+' behavioral file not found')
-                    inventory_rat['no_behavior'].append(date)
+                    inventory[rat_name]['no_behavior'].append(date)
                     continue
                 elif len(b_f) > 1:
                     print('---')
@@ -101,7 +102,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                     p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
                 except KeyError:
                     print('Could not load behavioral data')
-                    inventory_rat['no_behavior'].append(date)
+                    inventory[rat_name]['no_behavior'].append(date)
                     continue
                 df = p.sess
                 bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
@@ -117,15 +118,14 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                                                     s_rate=s_rate,
                                                     s_rate_eff=s_rate_eff)
                     else:
-                        inventory_rat['no_electro'].append(date)
+                        inventory[rat_name]['no_electro'].append(date)
                         continue
                 # get stim ttl starts/ends
                 check_stim_starts(samples=samples, chnls=[35, 36],  date=date,
                                   s_rate=s_rate_eff, events='stim_ttl',
                                   evnts_compare=bhv_strt_stim_sec,
-                                  inventory=inventory_rat)
-        inventory[rat_name] = inventory_rat
-    np.savez('/home/molano/fof/inventory.npz', **inventory)
+                                  inventory=inventory[rat_name])
+        np.savez('/home/molano/fof/inventory.npz', **inventory)
 
 
 if __name__ == '__main__':

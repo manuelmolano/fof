@@ -22,14 +22,14 @@ def order_by_sufix(file_list):
 def check_stim_starts(samples, chnls, s_rate, events, evnts_compare, inventory,
                       date):
     stim_strt, _, _ = utils.find_events(samples=samples, chnls=chnls,
-                                            s_rate=s_rate, events=events)
-    stim_strt -= stim_strt[0]
+                                        s_rate=s_rate, events=events)
     if len(evnts_compare) != len(stim_strt):
         print('Different number of start sounds')
         print('CSV times', len(evnts_compare))
         print('TTL times', len(stim_strt))
         inventory['diff_num_events'].append(date)
     else:
+        stim_strt -= stim_strt[0]
         print('Median difference between start sounds')
         print(np.median(evnts_compare-stim_strt))
         print('Max difference between start sounds')
@@ -45,7 +45,7 @@ def checked(dic, date):
                      if len(v) > 0]).any()
 
 
-def inventory(s_rate=3e4, s_rate_eff=2e3):        
+def inventory(s_rate=3e4, s_rate_eff=2e3):
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
     electro_folder = '/archive/rat/electrophysiology_recordings/'
     behav_folder = '/archive/rat/behavioral_data/'
@@ -58,7 +58,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
         rat_name = os.path.basename(r)
         if rat_name not in inventory.keys():
             inventory[rat_name] = {'ok': [], 'no_behavior': [], 'no_electro': [],
-                            'diff_num_events': [], 'too_much_diff': []}
+                                   'diff_num_events': [], 'too_much_diff': []}
         else:
             inventory[rat_name] = inventory[rat_name].item()
         print('---------------')
@@ -94,7 +94,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                     print(sorted_files)
                     print('Used file: ', sorted_files[-1])
                     b_f = [sorted_files[-1]]
-                # Load behavioral data                    
+                # Load behavioral data
                 try:
                     p.load(b_f[0])
                     p.process()

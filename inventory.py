@@ -19,6 +19,27 @@ def order_by_sufix(file_list):
     return sorted_list
 
 
+def check_stim_starts(samples, chnls, s_rate, events, evnts_compare, inventory,
+                      date):
+    stim_strt, _, _ = utils.find_events(samples=samples, chnls=chnls,
+                                            s_rate=s_rate, events=events)
+    stim_strt -= stim_strt[0]
+    if len(evnts_compare) != len(stim_strt):
+        print('Different number of start sounds')
+        print('CSV times', len(evnts_compare))
+        print('TTL times', len(stim_strt))
+        inventory['diff_num_events'].append(date)
+    else:
+        print('Median difference between start sounds')
+        print(np.median(evnts_compare-stim_strt))
+        print('Max difference between start sounds')
+        print(np.max(evnts_compare-stim_strt))
+        if np.max(evnts_compare-stim_strt) > 0.1:
+            inventory['too_much_diff'].append(date)
+        else:
+            inventory['ok'].append(date)
+
+
 def inventory(s_rate=3e4, s_rate_eff=2e3):
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
     electro_folder = '/archive/rat/electrophysiology_recordings/'
@@ -79,24 +100,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                     inventory[r]['no_electro'].append(date)
                     continue
             # get stim ttl starts/ends
-            ttl_stim_strt, ttl_stim_end, _ =\
-                utils.find_events(samples=samples, chnls=[35, 36],
-                                  s_rate=s_rate_eff, events='stim_ttl')
-            ttl_stim_strt -= ttl_stim_strt[0]
-            if len(bhv_strt_stim_sec) != len(ttl_stim_strt):
-                print('Different number of start sounds')
-                print('CSV times', len(bhv_strt_stim_sec))
-                print('TTL times', len(ttl_stim_strt))
-                inventory[r]['diff_num_events'].append(date)
-            else:
-                print('Median difference between start sounds')
-                print(np.median(bhv_strt_stim_sec-ttl_stim_strt))
-                print('Max difference between start sounds')
-                print(np.max(bhv_strt_stim_sec-ttl_stim_strt))
-                if np.max(bhv_strt_stim_sec-ttl_stim_strt) > 0.1:
-                    inventory[r]['too_much_diff'].append(date)
-                else:
-                    inventory[r]['ok'].append(date)
+            check_stim_starts(samples=samples, chnls=[35, 36], s_rate=s_rate_eff,
+                              events='stim_ttl', date=date, inventory=inventory[r],
+                              evnts_compare=bhv_strt_stim_sec)
+
             np.savez(spks_sort_folder+'/inventory.npz', **inventory)
 
 

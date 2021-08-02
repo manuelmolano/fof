@@ -104,7 +104,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                               events='stim_ttl', date=date, inventory=inventory[r],
                               evnts_compare=bhv_strt_stim_sec)
 
-            np.savez(spks_sort_folder+'/inventory.npz', **inventory)
+            np.savez('/inventory.npz', **inventory)
 
 
 if __name__ == '__main__':

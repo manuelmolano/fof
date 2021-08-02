@@ -49,7 +49,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
     electro_folder = '/archive/rat/electrophysiology_recordings/'
     behav_folder = '/archive/rat/behavioral_data/'
     rats = glob.glob(spks_sort_folder+'LE*')
-    inventory = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+    try:
+        inventory = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+    except FileNotFoundError:
+        inventory = {}
     for r in rats:
         rat_name = os.path.basename(r)
         if rat_name not in inventory.keys():

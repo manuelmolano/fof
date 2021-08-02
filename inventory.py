@@ -97,7 +97,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                     inventory[r]['too_much_diff'].append(date)
                 else:
                     inventory[r]['ok'].append(date)
-    np.savez(spks_sort_folder+'/inventory.npz', **inventory)
+            np.savez(spks_sort_folder+'/inventory.npz', **inventory)
 
 
 if __name__ == '__main__':

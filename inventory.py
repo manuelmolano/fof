@@ -80,7 +80,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                 print('Files:')
                 print(sorted_files)
                 print('Used file: ', sorted_files[-1])
-                b_f = [b_f[-1]]
+                b_f = [sorted_files[-1]]
             p.load(b_f[0])
             p.process()
             p.trial_sess.head()  # preprocessed df stored in attr. trial_sess

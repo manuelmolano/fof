@@ -41,7 +41,8 @@ def check_stim_starts(samples, chnls, s_rate, events, evnts_compare, inventory,
 
 
 def checked(dic, date):
-    return np.array([(np.array(v) == date).any() for v in dic.values()]).any()
+    return np.array([(np.array(v) == date).any() for v in dic.values()
+                     if len(v) > 0]).any()
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3):        

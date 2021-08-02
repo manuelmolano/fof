@@ -87,9 +87,15 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                     print(sorted_files)
                     print('Used file: ', sorted_files[-1])
                     b_f = [sorted_files[-1]]
-                p.load(b_f[0])
-                p.process()
-                p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
+                # Load behavioral data                    
+                try:
+                    p.load(b_f[0])
+                    p.process()
+                    p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
+                except KeyError:
+                    print('Could not load behavioral data')
+                    inventory[r]['no_behavior'].append(date)
+                    continue
                 df = p.sess
                 bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
                 bhv_strt_stim_sec -= bhv_strt_stim_sec[0]

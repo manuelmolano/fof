@@ -29,7 +29,7 @@ def plot_events(evs, ev_strt=0, ev_end=1e6, s_rate=3e4, label='', color='k',
     evs_plt = evs_plt[evs_plt > ev_strt]
     for i in evs_plt:
         label = label if i == evs_plt[0] else ''
-        plt.plot(np.array([i, i]), [0, 1], color=color, label=label,
+        plt.plot(np.array([i, i]), [0, 1.1], color=color, label=label,
                  linestyle=lnstl)
 
 
@@ -187,15 +187,18 @@ if __name__ == '__main__':
         import matplotlib.pyplot as plt
         plt.close('all')
     s_rate = 3e4
-    s_rate_eff = 3e4
+    s_rate_eff = 2e3
+    tmplt_factor = 10
     main_folder = '/home/molano/fof_data/'
-    sbj = 'LE101'  # 'LE113'
+    # sbj = 'LE101'
+    sbj = 'LE113'
     p = get_behavior(main_folder=main_folder, subject=sbj)
     p.load(p.available[0])
     p.process()
     p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
     df = p.sess
     csv_ss_sec, initial_time = get_startSound_times(df=df)
+    csv_tmplt = get_template(events=csv_ss_sec, factor=tmplt_factor)
     csv_ss_sec -= csv_ss_sec[0]
     # get behavior events
     # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
@@ -203,9 +206,8 @@ if __name__ == '__main__':
     # StartSound. Apparently, there is a period of time between trials during which
     # the BPOD is switched off and that produces a missmatch between BPOD and TTL
     # times
-    tmplt_factor = 10
-    # path = '/home/molano/fof_data/LE113/electro/LE113_2021-06-05_12-38-09/'
-    path = '/home/molano/fof_data/LE101/electro/LE101_2021-06-08_10-50-06/'
+    path = '/home/molano/fof_data/LE113/electro/LE113_2021-06-05_12-38-09/'
+    # path = '/home/molano/fof_data/LE101/electro/LE101_2021-06-08_10-50-06/'
     samples = get_electro(path=path, s_rate=s_rate, s_rate_eff=s_rate_eff)
     # get stim ttl starts/ends
     ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
@@ -213,8 +215,9 @@ if __name__ == '__main__':
                                                       s_rate=s_rate_eff,
                                                       events='stim_ttl',
                                                       fltr_k=3)
-    ttl_stim_strt -= ttl_stim_strt[0]
-    # ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
+    ttl_offset = ttl_stim_strt[0]
+    ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
+    ttl_stim_strt -= ttl_offset
 
     # get original stim starts/ends
     # ttl_stim_ori_strt, ttl_stim_ori_end, _ = find_events(samples=samples,
@@ -230,24 +233,44 @@ if __name__ == '__main__':
         plt.figure()
         plt.hist(aux[:, 0])
         plt.figure()
-        ttl_stim_ori_strt = ttl_stim_strt - ttl_ref
-        ev_strt = 12500000
-        ev_end = 13500000
-        plt.plot(np.arange(ev_strt, ev_end)-ttl_ref*s_rate_eff,
+        ev_strt = int(12500000*s_rate_eff/s_rate)
+        ev_end = int(13500000*s_rate_eff/s_rate)
+        samples_plt = samples[ev_strt:ev_end, :]
+        max_samples = np.max(samples_plt, axis=0)
+        samples_plt = samples_plt/max_samples
+        plt.figure()
+        plt.plot(samples_plt)
+        plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
                  signal[ev_strt:ev_end], label='signal')
+        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        #          samples[ev_strt:ev_end, 35]/3e4, label='35')
+        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        #          samples[ev_strt:ev_end, 36]/3e4, label='36', linestyle='--')
+        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        #          samples[ev_strt:ev_end, 37]/3e4, label='37')
+        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        #          samples[ev_strt:ev_end, 38]/3e4, label='38', linestyle='--')
+
+        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        #          samples[ev_strt:ev_end, 20]/1e4, label='20', linestyle='--')
+        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        #          samples[ev_strt:ev_end, 21]/1e4, label='21', linestyle='--')
+
+        ev_strt = ev_strt-ttl_offset*s_rate_eff
+        ev_end = ev_end-ttl_offset*s_rate_eff
         plot_events(evs=ttl_stim_strt, ev_strt=ev_strt, ev_end=ev_end,
                     label='ttl', s_rate=s_rate_eff)
         plot_events(evs=csv_ss_sec, ev_strt=ev_strt, ev_end=ev_end, color='m',
                     label='csv-stim', s_rate=s_rate_eff)
         plt.legend()
 
-    assert len(csv_ref) == len(ttl_ref), str(len(csv_ref))+'  '+str(len(ttl_ref))
     # asdasd
     # ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
+    conv_w = 200*tmplt_factor
+    conv = np.convolve(csv_tmplt, np.flip(ttl_tmplt[:conv_w]), mode='same')
+    offset = np.argmax(conv)-conv_w/2
+    assert len(csv_ref) == len(ttl_ref), str(len(csv_ref))+'  '+str(len(ttl_ref))
 
-    # conv_w = 200*tmplt_factor
-    # conv = np.convolve(csv_tmplt, np.flip(ttl_ori_tmplt[:conv_w]), mode='same')
-    # offset = np.argmax(conv)-conv_w/2
     # plt.figure()
     # plt.plot(conv)
     # plt.figure()

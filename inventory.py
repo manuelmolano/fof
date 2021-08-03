@@ -8,7 +8,7 @@ Created on Wed Jul 28 09:16:43 2021
 
 import glob
 import os
-import utils
+import utils as ut
 import numpy as np
 
 
@@ -21,8 +21,8 @@ def order_by_sufix(file_list):
 
 def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
                       date):
-    stim_strt, _, _ = utils.find_events(samples=samples, chnls=chnls,
-                                        s_rate=s_rate, events=events)
+    stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
+                                     s_rate=s_rate, events=events)
     if len(stim_strt) > 0:
         inventory['offset'].append(stim_strt[0])
         stim_strt -= stim_strt[0]
@@ -43,6 +43,7 @@ def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
         print(inventory['offset'][-1])
     else:
         inventory['state'].append('no_ttls')
+    inventory[events][-1] = stim_strt
 
 
 def checked(dic, date):
@@ -62,7 +63,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     else:
         inventory = {'sil_per': [], 'rat': [], 'session': [], 'bhv_session': [],
                      'state': [], 'date': [], 'num_events': [], 'evs_dists': [],
-                     'offset': []}
+                     'offset': [], 'stim_ttl': [], 'analogue_times': []}
     for r in rats:
         rat_name = os.path.basename(r)
         print('---------------')
@@ -82,7 +83,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             b_f = np.array(b_f)[np.where(np.array(oks))[0]]
             print('Used file: ', b_f[0])
         path, name = os.path.split(b_f[0])
-        p = utils.get_behavior(main_folder=path+'/', subject=name)
+        p = ut.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:
             print('-----------')
             print(e_f)
@@ -94,11 +95,13 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['rat'].append(rat_name)
                 inventory['session'].append(e_f)
                 inventory['date'].append(date)
-                inventory['bhv_session'].append(np.nan)
+                inventory['bhv_session'].append('')
                 inventory['num_events'].append([np.nan, np.nan])
                 inventory['evs_dists'].append([np.nan, np.nan])
                 inventory['sil_per'].append(np.nan)
                 inventory['offset'].append(np.nan)
+                inventory['stim_ttl'].append([])
+                inventory['analogue_times'].append([])
                 b_f = [f for f in p.available if f.find(date) != -1]
                 if len(b_f) == 0:
                     print('---')
@@ -125,18 +128,18 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     continue
                 inventory['bhv_session'][-1] = b_f[0]
                 df = p.sess
-                bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
+                bhv_strt_stim_sec, _ = ut.get_startSound_times(df=df)
                 bhv_strt_stim_sec -= bhv_strt_stim_sec[0]
                 try:
-                    samples = utils.get_electro(path=e_f, s_rate=s_rate,
-                                                s_rate_eff=s_rate_eff)
+                    samples = ut.get_electro(path=e_f, s_rate=s_rate,
+                                             s_rate_eff=s_rate_eff)
                 except IndexError:
                     print('Electro file .dat not found in '+e_f)
                     if len(e_f_bis):
                         print('Trying folder '+e_f_bis[0])
-                        samples = utils.get_electro(path=e_f_bis[0],
-                                                    s_rate=s_rate,
-                                                    s_rate_eff=s_rate_eff)
+                        samples = ut.get_electro(path=e_f_bis[0],
+                                                 s_rate=s_rate,
+                                                 s_rate_eff=s_rate_eff)
                     else:
                         inventory['state'].append('no_electro')
                         continue
@@ -147,6 +150,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                   s_rate=s_rate_eff, events='stim_ttl',
                                   evs_comp=bhv_strt_stim_sec,
                                   inventory=inventory)
+                stim_analogue_strt, _, _ = ut.find_events(samples=samples,
+                                                          chnls=[37, 38],
+                                                          s_rate=s_rate,
+                                                          events='stim_analogue')
+                inventory['stim_analogue'][-1] = stim_analogue_strt
                 np.savez('/home/molano/fof/inventory.npz', **inventory)
 
 
@@ -155,5 +163,5 @@ if __name__ == '__main__':
 
     # # get original stim starts/ends
     # ttl_stim_ori_strt, ttl_stim_ori_end, _ =\
-    #     utils.find_events(samples=samples, chnls=[37, 38],
+    #     ut.find_events(samples=samples, chnls=[37, 38],
     #                       s_rate=s_rate_eff, events='stim_ori')

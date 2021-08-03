@@ -150,7 +150,7 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
         # outcome corresponds to ch36=high and ch35=high
         assert chnls[0] == 35 and chnls[1] == 36
         signal = 1*((trace2_filt+trace1_filt) > 1.9)
-    elif events == 'stim_ori':
+    elif events == 'stim_analogue':
         assert chnls[0] == 37 and chnls[1] == 38
         signal = 1*((trace2_filt+trace1_filt) > .5)
     # stim starts/ends
@@ -220,10 +220,9 @@ if __name__ == '__main__':
     ttl_stim_strt -= ttl_offset
 
     # get original stim starts/ends
-    # ttl_stim_ori_strt, ttl_stim_ori_end, _ = find_events(samples=samples,
-    #                                                      chnls=[37, 38],
-    #                                                      s_rate=s_rate_eff,
-    #                                                      events='stim_ori')
+    # ttl_stim_analogue_strt, ttl_stim_analogue_end, _ =\
+    #     find_events(samples=samples, chnls=[37, 38], s_rate=s_rate_eff,
+    #                 events='stim_analogue')
     aux = np.array([(np.min(np.abs(csv_ss_sec-ttl_ss)),
                      np.argmin(np.abs(csv_ss_sec-ttl_ss)))
                     for ttl_ss in ttl_stim_strt])
@@ -265,7 +264,8 @@ if __name__ == '__main__':
         plt.legend()
 
     # asdasd
-    # ttl_ori_tmplt = get_template(events=ttl_stim_ori_strt, factor=tmplt_factor)
+    # ttl_ori_tmplt = get_template(events=ttl_stim_analogue_strt,
+    #                              factor=tmplt_factor)
     conv_w = 200*tmplt_factor
     conv = np.convolve(csv_tmplt, np.flip(ttl_tmplt[:conv_w]), mode='same')
     offset = np.argmax(conv)-conv_w/2
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     # plt.plot(samples[int(strt*3e4):int(end*3e4), 37]-10, label='37')
     # plt.plot(samples[int(strt*3e4):int(end*3e4), 38]-10, label='38')
     # plt.legend()
-    # ttl_ref = ttl_stim_ori_strt[0]
+    # ttl_ref = ttl_stim_analogue_strt[0]
     # outcome starts/ends
     # ttl_outc_strt, ttl_outc_end, _ = find_events(samples=samples, chnls=[35, 36],
     #                                              s_rate=s_rate_eff,
@@ -352,4 +352,3 @@ if __name__ == '__main__':
     # plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
     # plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
     # f.savefig('/home/molano/Dropbox/outcome_check.png')
-

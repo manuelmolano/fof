@@ -139,7 +139,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                   s_rate=s_rate_eff, events='stim_ttl',
                                   evnts_compare=bhv_strt_stim_sec,
                                   inventory=inventory)
-        np.savez('/home/molano/fof/inventory.npz', **inventory)
+                np.savez('/home/molano/fof/inventory.npz', **inventory)
 
 
 if __name__ == '__main__':

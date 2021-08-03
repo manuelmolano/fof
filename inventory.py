@@ -28,25 +28,24 @@ def check_stim_starts(samples, chnls, s_rate, events, evnts_compare, inventory,
         print('Different number of start sounds')
         print('CSV times', len(evnts_compare))
         print('TTL times', len(stim_strt))
-        inventory['diff_num_events'].append(date)
+        inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
+        inventory['offset'][-1] = [np.nan, np.nan]
     else:
         stim_strt -= stim_strt[0]
         print('Median difference between start sounds')
         print(np.median(evnts_compare-stim_strt))
         print('Max difference between start sounds')
         print(np.max(evnts_compare-stim_strt))
-        if np.max(evnts_compare-stim_strt) > 0.1:
-            inventory['too_much_diff'].append(date)
-        else:
-            inventory['ok'].append(date)
+        inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
+        inventory['offset'][-1] = [np.median(evnts_compare-stim_strt),
+                                   np.max(evnts_compare-stim_strt)]
 
 
 def checked(dic, date):
-    return np.array([(np.array(v) == date).any() for v in dic.values()
-                     if len(v) > 0]).any()
+    return (np.array(dic['date']) == date).any()
 
 
-def inventory(s_rate=3e4, s_rate_eff=2e3):
+def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
     electro_folder = '/archive/rat/electrophysiology_recordings/'
     behav_folder = '/archive/rat/behavioral_data/'
@@ -57,12 +56,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].item()
     except FileNotFoundError:
-        inventory = {}
+        inventory = {'sil_pers': [], 'rat': [], 'session': [], 'state': [],
+                     'date': [], 'num_events': [], 'offset': []}
     for r in rats:
         rat_name = os.path.basename(r)
-        if rat_name not in inventory.keys():
-            inventory[rat_name] = {'ok': [], 'no_behavior': [], 'no_electro': [],
-                                   'diff_num_events': [], 'too_much_diff': []}
         print('---------------')
         rat_num = r[r.find('/LE')+3:]
         print(rat_name)
@@ -80,12 +77,18 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
             date = e_f[dt_indx:dt_indx+10]
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
             date = date.replace('-', '')
-            if not checked(dic=inventory[rat_name], date=date):
+            if not checked(dic=inventory, date=date) or redo:
+                inventory['rat'].append(rat_name)
+                inventory['session'].append(e_f)
+                inventory['date'].append(date)
+                inventory['num_events'].append([np.nan, np.nan])
+                inventory['offset'].append([np.nan, np.nan])
+                inventory['sil_per'].append(np.nan)
                 b_f = [f for f in p.available if f.find(date) != -1]
                 if len(b_f) == 0:
                     print('---')
                     print(date+' behavioral file not found')
-                    inventory[rat_name]['no_behavior'].append(date)
+                    inventory['state'].append('no_behavior')
                     continue
                 elif len(b_f) > 1:
                     print('---')
@@ -103,7 +106,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                     p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
                 except KeyError:
                     print('Could not load behavioral data')
-                    inventory[rat_name]['no_behavior'].append(date)
+                    inventory['state'].append('no_behavior')
                     continue
                 df = p.sess
                 bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
@@ -119,18 +122,20 @@ def inventory(s_rate=3e4, s_rate_eff=2e3):
                                                     s_rate=s_rate,
                                                     s_rate_eff=s_rate_eff)
                     else:
-                        inventory[rat_name]['no_electro'].append(date)
+                        inventory['state'].append('no_electro')
                         continue
+                sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
+                inventory['sil_per'][-1] = sil_per
                 # get stim ttl starts/ends
                 check_stim_starts(samples=samples, chnls=[35, 36],  date=date,
                                   s_rate=s_rate_eff, events='stim_ttl',
                                   evnts_compare=bhv_strt_stim_sec,
-                                  inventory=inventory[rat_name])
+                                  inventory=inventory)
         np.savez('/home/molano/fof/inventory.npz', **inventory)
 
 
 if __name__ == '__main__':
-    inventory()
+    inventory(redo=True)
 
     # # get original stim starts/ends
     # ttl_stim_ori_strt, ttl_stim_ori_end, _ =\

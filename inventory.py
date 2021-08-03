@@ -34,12 +34,15 @@ def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
         else:
             dists = np.abs(evs_comp-stim_strt)
         inventory['evs_dists'][-1] = [np.median(dists), np.max(dists)]
+        inventory['state'].append('ok')
         print('Median difference between start sounds')
         print(np.median(dists))
         print('Max difference between start sounds')
         print(np.max(dists))
         print('Offset')
         print(inventory['offset'][-1])
+    else:
+        inventory['state'].append('no_ttls')
 
 
 def checked(dic, date):

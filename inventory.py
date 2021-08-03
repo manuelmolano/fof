@@ -56,7 +56,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].item()
     except FileNotFoundError:
-        inventory = {'sil_pers': [], 'rat': [], 'session': [], 'state': [],
+        inventory = {'sil_per': [], 'rat': [], 'session': [], 'state': [],
                      'date': [], 'num_events': [], 'offset': []}
     for r in rats:
         rat_name = os.path.basename(r)
@@ -67,7 +67,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         e_fs_bis = glob.glob(electro_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
         print('Number of electro sessions:', str(len(e_fs)))
         b_f = glob.glob(behav_folder+'*'+str(rat_num))
-        assert len(b_f) == 1
+        assert len(b_f) == 1, str(b_f)
         path, name = os.path.split(b_f[0])
         p = utils.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:

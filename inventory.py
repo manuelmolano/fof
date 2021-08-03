@@ -67,7 +67,15 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         e_fs_bis = glob.glob(electro_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
         print('Number of electro sessions:', str(len(e_fs)))
         b_f = glob.glob(behav_folder+'*'+str(rat_num))
-        assert len(b_f) == 1, str(b_f)
+        assert len(b_f) > 0
+        if len(b_f) > 1:
+            print(rat_name+': several behavioral files found')
+            oks = []
+            for f in b_f:
+                oks.append(os.path.exists(f+'/sessions'))
+            assert np.sum(oks) == 1
+            b_f = [b_f[np.where(oks)[0]]]
+            print('Used file: ', b_f[0])
         path, name = os.path.split(b_f[0])
         p = utils.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:

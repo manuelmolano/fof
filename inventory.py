@@ -63,7 +63,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     else:
         inventory = {'sil_per': [], 'rat': [], 'session': [], 'bhv_session': [],
                      'state': [], 'date': [], 'num_events': [], 'evs_dists': [],
-                     'offset': [], 'stim_ttl': [], 'analogue_times': []}
+                     'offset': [], 'stim_ttl': [], 'stim_analogue': []}
     for r in rats:
         rat_name = os.path.basename(r)
         print('---------------')
@@ -101,7 +101,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['sil_per'].append(np.nan)
                 inventory['offset'].append(np.nan)
                 inventory['stim_ttl'].append([])
-                inventory['analogue_times'].append([])
+                inventory['stim_analogue'].append([])
                 b_f = [f for f in p.available if f.find(date) != -1]
                 if len(b_f) == 0:
                     print('---')

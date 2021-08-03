@@ -55,8 +55,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
     else:
-        inventory = {'sil_per': [], 'rat': [], 'session': [], 'state': [],
-                     'date': [], 'num_events': [], 'evs_dists': [], 'offset': []}
+        inventory = {'sil_per': [], 'rat': [], 'session': [], 'bhv_session': [],
+                     'state': [], 'date': [], 'num_events': [], 'evs_dists': [],
+                     'offset': []}
     for r in rats:
         rat_name = os.path.basename(r)
         print('---------------')
@@ -88,6 +89,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['rat'].append(rat_name)
                 inventory['session'].append(e_f)
                 inventory['date'].append(date)
+                inventory['bhv_session'].append(np.nan)
                 inventory['num_events'].append([np.nan, np.nan])
                 inventory['evs_dists'].append([np.nan, np.nan])
                 inventory['sil_per'].append(np.nan)
@@ -116,6 +118,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     print('Could not load behavioral data')
                     inventory['state'].append('no_behavior')
                     continue
+                inventory['bhv_session'][-1] = b_f[0]
                 df = p.sess
                 bhv_strt_stim_sec, _ = utils.get_startSound_times(df=df)
                 bhv_strt_stim_sec -= bhv_strt_stim_sec[0]

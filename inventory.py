@@ -33,7 +33,7 @@ def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
             dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evs_comp])
         else:
             dists = np.abs(evs_comp-stim_strt)
-        inventory['evs_dists'][-1] = [np.median(dists), np.nan(dists)]
+        inventory['evs_dists'][-1] = [np.median(dists), np.max(dists)]
         print('Median difference between start sounds')
         print(np.median(dists))
         print('Max difference between start sounds')

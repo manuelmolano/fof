@@ -19,39 +19,25 @@ def order_by_sufix(file_list):
     return sorted_list
 
 
-def check_stim_starts(samples, chnls, s_rate, events, evnts_compare, inventory,
+def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
                       date):
     stim_strt, _, _ = utils.find_events(samples=samples, chnls=chnls,
                                         s_rate=s_rate, events=events)
-    if len(evnts_compare) > len(stim_strt):
-        print('Different number of start sounds')
-        print('CSV times', len(evnts_compare))
-        print('TTL times', len(stim_strt))
-        inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
-        if len(stim_strt) > 0:
-            stim_strt -= stim_strt[0]
-            dists = np.array([np.min(np.abs(evnts_compare-ttl_ss))
-                              for ttl_ss in stim_strt])
-            inventory['offset'][-1] = [np.median(dists), np.max(dists)]
+    if len(stim_strt) > 0:
+        inventory['offset'] = stim_strt[0]
+        stim_strt -= inventory['offset']
+        inventory['num_events'][-1] = [len(evs_comp), len(stim_strt)]
+        if len(evs_comp) > len(stim_strt):
+            dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
+        elif len(evs_comp) < len(stim_strt):
+            dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evs_comp])
         else:
-            inventory['offset'][-1] = [np.nan(), np.nan()]
-    elif len(evnts_compare) < len(stim_strt):
-        stim_strt -= stim_strt[0]
-        print('Different number of start sounds')
-        print('CSV times', len(evnts_compare))
-        print('TTL times', len(stim_strt))
-        inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
-        dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evnts_compare])
-        inventory['offset'][-1] = [np.median(dists), np.nan(dists)]
-    else:
-        stim_strt -= stim_strt[0]
+            dists = np.abs(evs_comp-stim_strt)
+        inventory['evs_dists'][-1] = [np.median(dists), np.nan(dists)]
         print('Median difference between start sounds')
-        print(np.median(evnts_compare-stim_strt))
+        print(np.median(dists))
         print('Max difference between start sounds')
-        print(np.max(evnts_compare-stim_strt))
-        inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
-        inventory['offset'][-1] = [np.median(evnts_compare-stim_strt),
-                                   np.max(evnts_compare-stim_strt)]
+        print(np.max(dists))
 
 
 def checked(dic, date):
@@ -70,7 +56,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             inventory[k] = invtry_ref[k].tolist()
     else:
         inventory = {'sil_per': [], 'rat': [], 'session': [], 'state': [],
-                     'date': [], 'num_events': [], 'offset': []}
+                     'date': [], 'num_events': [], 'evs_dists': [], 'offset': []}
     for r in rats:
         rat_name = os.path.basename(r)
         print('---------------')
@@ -103,8 +89,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['session'].append(e_f)
                 inventory['date'].append(date)
                 inventory['num_events'].append([np.nan, np.nan])
-                inventory['offset'].append([np.nan, np.nan])
+                inventory['evs_dists'].append([np.nan, np.nan])
                 inventory['sil_per'].append(np.nan)
+                inventory['offset'].append(np.nan)
                 b_f = [f for f in p.available if f.find(date) != -1]
                 if len(b_f) == 0:
                     print('---')
@@ -150,7 +137,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 # get stim ttl starts/ends
                 check_stim_starts(samples=samples, chnls=[35, 36],  date=date,
                                   s_rate=s_rate_eff, events='stim_ttl',
-                                  evnts_compare=bhv_strt_stim_sec,
+                                  evs_comp=bhv_strt_stim_sec,
                                   inventory=inventory)
                 np.savez('/home/molano/fof/inventory.npz', **inventory)
 

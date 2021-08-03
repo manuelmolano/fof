@@ -12,7 +12,6 @@ import utils
 import numpy as np
 
 
-
 def order_by_sufix(file_list):
     file_list = [os.path.basename(x) for x in file_list]
     sfx = [int(x[-6:]) for x in file_list]
@@ -64,12 +63,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     electro_folder = '/archive/rat/electrophysiology_recordings/'
     behav_folder = '/archive/rat/behavioral_data/'
     rats = glob.glob(spks_sort_folder+'LE*')
-    try:
+    if os.path.exists('/home/molano/fof/inventory.npz') and not redo:
         invtry_ref = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
         inventory = {}
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
-    except FileNotFoundError:
+    else:
         inventory = {'sil_per': [], 'rat': [], 'session': [], 'state': [],
                      'date': [], 'num_events': [], 'offset': []}
     for r in rats:
@@ -157,7 +156,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
 
 
 if __name__ == '__main__':
-    inventory(redo=False)
+    inventory(redo=True)
 
     # # get original stim starts/ends
     # ttl_stim_ori_strt, ttl_stim_ori_end, _ =\

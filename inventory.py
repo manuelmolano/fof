@@ -24,12 +24,26 @@ def check_stim_starts(samples, chnls, s_rate, events, evnts_compare, inventory,
                       date):
     stim_strt, _, _ = utils.find_events(samples=samples, chnls=chnls,
                                         s_rate=s_rate, events=events)
-    if len(evnts_compare) != len(stim_strt):
+    if len(evnts_compare) > len(stim_strt):
         print('Different number of start sounds')
         print('CSV times', len(evnts_compare))
         print('TTL times', len(stim_strt))
         inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
-        inventory['offset'][-1] = [np.nan, np.nan]
+        if len(stim_strt) > 0:
+            stim_strt -= stim_strt[0]
+            dists = np.array([np.min(np.abs(evnts_compare-ttl_ss))
+                              for ttl_ss in stim_strt])
+            inventory['offset'][-1] = [np.median(dists), np.max(dists)]
+        else:
+            inventory['offset'][-1] = [np.nan(), np.nan()]
+    elif len(evnts_compare) < len(stim_strt):
+        stim_strt -= stim_strt[0]
+        print('Different number of start sounds')
+        print('CSV times', len(evnts_compare))
+        print('TTL times', len(stim_strt))
+        inventory['num_events'][-1] = [len(evnts_compare), len(stim_strt)]
+        dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evnts_compare])
+        inventory['offset'][-1] = [np.median(dists), np.nan(dists)]
     else:
         stim_strt -= stim_strt[0]
         print('Median difference between start sounds')

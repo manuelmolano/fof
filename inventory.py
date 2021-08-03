@@ -24,8 +24,8 @@ def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
     stim_strt, _, _ = utils.find_events(samples=samples, chnls=chnls,
                                         s_rate=s_rate, events=events)
     if len(stim_strt) > 0:
-        inventory['offset'] = stim_strt[0]
-        stim_strt -= inventory['offset']
+        inventory['offset'].append(stim_strt[0])
+        stim_strt -= stim_strt[0]
         inventory['num_events'][-1] = [len(evs_comp), len(stim_strt)]
         if len(evs_comp) > len(stim_strt):
             dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
@@ -38,6 +38,8 @@ def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
         print(np.median(dists))
         print('Max difference between start sounds')
         print(np.max(dists))
+        print('Offset')
+        print(inventory['offset'][-1])
 
 
 def checked(dic, date):

@@ -51,7 +51,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     behav_folder = '/archive/rat/behavioral_data/'
     rats = glob.glob(spks_sort_folder+'LE*')
     try:
-        inventory = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+        invtry_ref = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+        inventory = {}
+        for k in invtry_ref.keys():
+            inventory[k] = invtry_ref[k].tolist()
     except FileNotFoundError:
         inventory = {'sil_per': [], 'rat': [], 'session': [], 'state': [],
                      'date': [], 'num_events': [], 'offset': []}

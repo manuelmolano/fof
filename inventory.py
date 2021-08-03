@@ -56,7 +56,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].item()
     except FileNotFoundError:
-        inventory = {'sil_pers': [], 'rat': [], 'session': [], 'state': [],
+        inventory = {'sil_per': [], 'rat': [], 'session': [], 'state': [],
                      'date': [], 'num_events': [], 'offset': []}
     for r in rats:
         rat_name = os.path.basename(r)

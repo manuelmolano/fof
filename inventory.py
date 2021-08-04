@@ -122,7 +122,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     p.load(b_f[0])
                     p.process()
                     p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
-                except KeyError:
+                except (KeyError, IndexError):
                     print('Could not load behavioral data')
                     inventory['state'].append('no_behavior')
                     continue

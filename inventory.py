@@ -24,7 +24,7 @@ def check_stim_starts(samples, s_rate, evs_comp, inventory):
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                      s_rate=s_rate, events='stim_ttl')
     if len(stim_strt) > 0:
-        inventory['offset'].append(stim_strt[0])
+        inventory['offset'][-1] = stim_strt[0]
         stim_strt -= stim_strt[0]
         inventory['num_events'][-1] = [len(evs_comp), len(stim_strt)]
         if len(evs_comp) > len(stim_strt):
@@ -102,7 +102,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             date = e_f[dt_indx:dt_indx+10]
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
             date = date.replace('-', '')
-            if not checked(dic=inventory, date=date) or redo:
+            if not checked(dic=inventory, date=date):
                 inventory['rat'].append(rat_name)
                 inventory['session'].append(e_f)
                 inventory['date'].append(date)

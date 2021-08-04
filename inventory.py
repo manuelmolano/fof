@@ -19,10 +19,10 @@ def order_by_sufix(file_list):
     return sorted_list
 
 
-def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
-                      date):
-    stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
-                                     s_rate=s_rate, events=events)
+def check_stim_starts(samples, s_rate, evs_comp, inventory):
+    # load ttls
+    stim_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
+                                     s_rate=s_rate, events='stim_ttl')
     if len(stim_strt) > 0:
         inventory['offset'].append(stim_strt[0])
         stim_strt -= stim_strt[0]
@@ -43,8 +43,18 @@ def check_stim_starts(samples, chnls, s_rate, events, evs_comp, inventory,
         print(inventory['offset'][-1])
     else:
         inventory['state'].append('no_ttls')
-    inventory[events][-1] = stim_strt
+    inventory['stim_ttl'][-1] = stim_strt
+    # load analogue
+    stim_analogue_strt, _, _ = ut.find_events(samples=samples,
+                                              chnls=[37, 38],
+                                              s_rate=s_rate,
+                                              events='stim_analogue')
+    inventory['stim_analogue'][-1] = stim_analogue_strt
 
+
+def compute_signal_stats(samples, inventory):
+    inventory['signal_stats'][-1] = [np.median(samples[:, 35:39], axis=0),
+                                     np.std(samples[:, 35:39], axis=0)]
 
 def checked(dic, date):
     return len(dic['date']) > 0 and (np.array(dic['date']) == date).any()
@@ -63,7 +73,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     else:
         inventory = {'sil_per': [], 'rat': [], 'session': [], 'bhv_session': [],
                      'state': [], 'date': [], 'num_events': [], 'evs_dists': [],
-                     'offset': [], 'stim_ttl': [], 'stim_analogue': []}
+                     'offset': [], 'stim_ttl': [], 'stim_analogue': [],
+                     'signal_stats': []}
     for r in rats:
         rat_name = os.path.basename(r)
         print('---------------')
@@ -102,6 +113,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['offset'].append(np.nan)
                 inventory['stim_ttl'].append([])
                 inventory['stim_analogue'].append([])
+                inventory['signal_stats'].append([])
                 b_f = [f for f in p.available if f.find(date) != -1]
                 if len(b_f) == 0:
                     print('---')
@@ -146,15 +158,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
                 # get stim ttl starts/ends
-                check_stim_starts(samples=samples, chnls=[35, 36],  date=date,
-                                  s_rate=s_rate_eff, events='stim_ttl',
+                check_stim_starts(samples=samples, s_rate=s_rate_eff,
                                   evs_comp=bhv_strt_stim_sec,
                                   inventory=inventory)
-                stim_analogue_strt, _, _ = ut.find_events(samples=samples,
-                                                          chnls=[37, 38],
-                                                          s_rate=s_rate,
-                                                          events='stim_analogue')
-                inventory['stim_analogue'][-1] = stim_analogue_strt
+                # compute signal stats
+                compute_signal_stats(samples=samples, inventory=inventory)
                 np.savez('/home/molano/fof/inventory.npz', **inventory)
 
 

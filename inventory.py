@@ -27,14 +27,17 @@ def check_stim_starts(samples, s_rate, evs_comp, inventory):
     if len(stim_strt) > 0:
         inventory['offset'][-1] = stim_strt[0]
         stim_strt -= stim_strt[0]
-        inventory['num_events'][-1] = [len(evs_comp), len(stim_strt)]
+        # TODO: update keys!
+        inventory['num_stms_csv'][-1] = len(evs_comp)
+        inventory['num_stms_ttl'][-1] = len(stim_strt)
         if len(evs_comp) > len(stim_strt):
             dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
         elif len(evs_comp) < len(stim_strt):
             dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evs_comp])
         else:
             dists = np.abs(evs_comp-stim_strt)
-        inventory['evs_dists'][-1] = [np.median(dists), np.max(dists)]
+        inventory['stms_dists_med'][-1] = np.median(dists)
+        inventory['stms_dists_max'][-1] = np.max(dists)
         inventory['state'].append('ok')
         if VERBOSE:
             print('Median difference between start sounds')
@@ -195,7 +198,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     continue
                 inventory['bhv_session'][-1] = b_f
                 # get start-sound times
-                bhv_strt_stim_sec, _ = ut.get_startSound_times(df=df)
+                bhv_strt_stim_sec = ut.get_startSound_times(df=df)
                 csv_offset = bhv_strt_stim_sec[0]
                 bhv_strt_stim_sec -= csv_offset
                 # load electro

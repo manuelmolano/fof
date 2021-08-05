@@ -9,7 +9,7 @@ import glob
 # Import all needed libraries
 import pandas as pd
 import numpy as np
-# import matplotlib.pyplot as plt
+import inventory as inv
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -68,8 +68,8 @@ def get_startSound_times(df):
     # STIM INITITAL PC-TIMES
     csv_strt_snd_times = df.loc[(df['MSG'] == 'StartSound') &
                                 (df.TYPE == 'TRANSITION'), 'PC-TIME']
-    csv_ss_sec, ref_time = date_2_secs(csv_date=csv_strt_snd_times)
-    return csv_ss_sec, ref_time
+    csv_ss_sec = date_2_secs(csv_date=csv_strt_snd_times)
+    return csv_ss_sec
 
     # # STIM FINAL PC-TIMES (animal's response)
     # csv_resp_times = df.loc[(df['MSG'] == 'WaitResponse') &
@@ -101,9 +101,7 @@ def get_startSound_times(df):
 def date_2_secs(csv_date):
     csv_sec = np.array([60*60*x.hour+60*x.minute+x.second+x.microsecond/1e6
                         for x in csv_date])
-    init_time = csv_sec[0]
-    csv_sec = csv_sec - init_time
-    return csv_sec, init_time
+    return csv_sec
 
 
 def get_electro(path, s_rate=3e4, s_rate_eff=2e3):
@@ -201,9 +199,10 @@ if __name__ == '__main__':
     p.process()
     p.trial_sess.head()  # preprocessed df stored in attr. trial_sess
     df = p.sess
-    csv_ss_sec, initial_time = get_startSound_times(df=df)
+    csv_ss_sec = get_startSound_times(df=df)
     csv_tmplt = get_template(events=csv_ss_sec, factor=tmplt_factor)
-    csv_ss_sec -= csv_ss_sec[0]
+    csv_offset = csv_ss_sec[0]
+    # csv_ss_sec -= csv_offset
     # get behavior events
     # I changed to using BPOD-INITIAL-TIME instead of PC-TIME. However, there
     # seems to be a missmatch between the two that grows throughout the session
@@ -213,8 +212,6 @@ if __name__ == '__main__':
     path = '/home/molano/fof_data/LE113/electro/LE113_2021-06-05_12-38-09/'
     # path = '/home/molano/fof_data/LE101/electro/LE101_2021-06-08_10-50-06/'
     samples = get_electro(path=path, s_rate=s_rate, s_rate_eff=s_rate_eff)
-    import sys
-    sys.exit()
     # get stim ttl starts/ends
     ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
                                                       chnls=[35, 36],
@@ -222,6 +219,47 @@ if __name__ == '__main__':
                                                       events='stim_ttl',
                                                       fltr_k=3)
     ttl_offset = ttl_stim_strt[0]
+    ttl_stim_strt -= ttl_offset - csv_offset
+    inventory = {'rat': [], 'session': [], 'bhv_session': [], 'sgnl_stts': [],
+                 'state': [], 'date': [],  'sil_per': [], 'offset': [],
+                 'num_stms_csv': [], 'num_stms_anlg': [],
+                 'num_stms_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
+                 'stms_dists_med': [], 'stms_dists_max': []}
+    for v in inventory.values():
+        v.append(np.nan)
+    inventory['rat'].append(sbj)
+    inventory['session'].append(path)
+    inventory['date'].append('')
+    inventory['bhv_session'].append('')
+    evs_comp = csv_ss_sec
+    if len(ttl_stim_strt) > 0:
+        inventory['offset'][-1] = ttl_stim_strt[0]
+        inventory['num_stms_csv'][-1] = len(evs_comp)
+        inventory['num_stms_ttl'][-1] = len(ttl_stim_strt)
+        if len(evs_comp) > len(ttl_stim_strt):
+            dists = np.array([np.min(np.abs(evs_comp-ttl))
+                              for ttl in ttl_stim_strt])
+        elif len(evs_comp) < len(ttl_stim_strt):
+            dists = np.array([np.min(np.abs(ttl_stim_strt-evs))
+                              for evs in evs_comp])
+        else:
+            dists = np.abs(evs_comp-ttl_stim_strt)
+        inventory['stms_dists_med'][-1] = np.median(dists)
+        inventory['stms_dists_max'][-1] = np.max(dists)
+        inventory['state'].append('ok')
+        print('Median difference between start sounds')
+        print(np.median(dists))
+        print('Max difference between start sounds')
+        print(np.max(dists))
+    else:
+        inventory['state'].append('no_ttls')
+    csv_times = date_2_secs(df['PC-TIME'])
+    ttl_indx = np.searchsorted(csv_times, ttl_stim_strt)
+    df['ttl_stim_strt'] = np.nan
+    df['ttl_stim_strt'][ttl_indx] = 1
+    import sys
+    sys.exit()
+
     ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
     ttl_stim_strt -= ttl_offset
 

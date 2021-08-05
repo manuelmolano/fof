@@ -10,6 +10,7 @@ import glob
 import os
 import utils as ut
 import numpy as np
+VERBOSE = False
 
 
 def order_by_sufix(file_list):
@@ -20,7 +21,7 @@ def order_by_sufix(file_list):
 
 
 def check_stim_starts(samples, s_rate, evs_comp, inventory):
-    # load ttls
+    # get stim from ttls
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                      s_rate=s_rate, events='stim_ttl')
     if len(stim_strt) > 0:
@@ -35,21 +36,20 @@ def check_stim_starts(samples, s_rate, evs_comp, inventory):
             dists = np.abs(evs_comp-stim_strt)
         inventory['evs_dists'][-1] = [np.median(dists), np.max(dists)]
         inventory['state'].append('ok')
-        print('Median difference between start sounds')
-        print(np.median(dists))
-        print('Max difference between start sounds')
-        print(np.max(dists))
-        print('Offset')
-        print(inventory['offset'][-1])
+        if VERBOSE:
+            print('Median difference between start sounds')
+            print(np.median(dists))
+            print('Max difference between start sounds')
+            print(np.max(dists))
+            print('Offset')
+            print(inventory['offset'][-1])
     else:
         inventory['state'].append('no_ttls')
-    inventory['stim_ttl'][-1] = stim_strt
-    # load analogue
+    # get stims from analogue signal
     stim_analogue_strt, _, _ = ut.find_events(samples=samples,
                                               chnls=[37, 38],
                                               s_rate=s_rate,
                                               events='stim_analogue')
-    inventory['stim_analogue'][-1] = stim_analogue_strt
 
 
 def compute_signal_stats(samples, inventory):
@@ -64,58 +64,57 @@ def checked(dic, session):
         if len(indx) > 0:
             assert len(indx) == 1
             checked = True
-            print('Session '+session+' already in inventory')
-            print('Rat ', dic['rat'][indx[0]])
-            print('Session ', dic['session'][indx[0]])
-            print('Stats ', dic['signal_stats'][indx[0]])
-            print('Offset ', dic['offset'][indx[0]])
+            if VERBOSE:
+                print('Session '+session+' already in inventory')
+                print('Rat ', dic['rat'][indx[0]])
+                print('Session ', dic['session'][indx[0]])
+                print('Stats ', dic['signal_stats'][indx[0]])
+                print('Offset ', dic['offset'][indx[0]])
     return checked
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     def init_inventory(inv):
+        for v in inv.values():
+            v.append(np.nan)
         inv['rat'].append(rat_name)
         inv['session'].append(e_f)
         inv['date'].append(date)
         inv['bhv_session'].append('')
-        inv['num_events'].append([np.nan, np.nan])
-        inv['evs_dists'].append([np.nan, np.nan])
-        inv['sil_per'].append(np.nan)
-        inv['offset'].append(np.nan)
-        inv['stim_ttl'].append([])
-        inv['stim_analogue'].append([])
-        inv['signal_stats'].append([])
 
     def get_bhv_folder(bhv_f):
         assert len(bhv_f) > 0, 'No behavioral folder for rat '+rat_name
         if len(bhv_f) > 1:
-            print(rat_name+': several behavioral files found')
             oks = []
             for f in bhv_f:
                 oks.append(os.path.exists(f+'/sessions'))
             assert np.sum(oks) == 1
             bhv_f = np.array(bhv_f)[np.where(np.array(oks))[0]]
-            print('Used file: ', bhv_f[0])
+            if VERBOSE:
+                print(rat_name+': several behavioral files found')
+                print('Used file: ', bhv_f[0])
         return bhv_f[0]
 
     def get_bhv_session(b_f):
         if len(b_f) == 0:
-            print('---')
-            print(date+' behavioral file not found')
+            if VERBOSE:
+                print('---')
+                print(date+' behavioral file not found')
             inventory['state'].append('no_behavior')
             b_f = None
         elif len(b_f) > 1:
-            print('---')
-            print(date+': several behavioral files found')
-            print(b_f)
             sorted_files = order_by_sufix(file_list=b_f)
-            print('Files:')
-            print(sorted_files)
-            print('Used file: ', sorted_files[-1])
             b_f = [sorted_files[-1]]
+            if VERBOSE:
+                print('---')
+                print(date+': several behavioral files found')
+                print(b_f)
+                print('Files:')
+                print(sorted_files)
+                print('Used file: ', sorted_files[-1])
         return b_f[0]
 
-    def load_behavior():
+    def load_behavior(b_f):
         try:
             p.load(b_f)
             p.process()
@@ -127,7 +126,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             df = None
         return df
 
-    def load_electro():
+    def load_electro(e_f):
         try:
             samples = ut.get_electro(path=e_f, s_rate=s_rate,
                                      s_rate_eff=s_rate_eff)
@@ -156,27 +155,30 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
     else:
-        inventory = {'sil_per': [], 'rat': [], 'session': [], 'bhv_session': [],
-                     'state': [], 'date': [], 'num_events': [], 'evs_dists': [],
-                     'offset': [], 'stim_ttl': [], 'stim_analogue': [],
-                     'signal_stats': []}
+        inventory = {'rat': [], 'session': [], 'bhv_session': [],
+                     'state': [], 'date': [],  'sil_per': [], 'offset': [],
+                     'num_stms_csv': [], 'num_stms_anlg': [],
+                     'num_stms_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
+                     'stms_dists_med': [], 'stms_dists_max': []}
     for r in rats:
         rat_name = os.path.basename(r)
-        print('---------------')
-        print(rat_name)
         # get rat number to look for the electro and behav folders
         rat_num = r[r.find('/LE')+3:]
         e_fs = glob.glob(spks_sort_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
         e_fs_bis = glob.glob(electro_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
-        print('Number of electro sessions:', str(len(e_fs)))
+        if VERBOSE:
+            print('---------------')
+            print(rat_name)
+            print('Number of electro sessions:', str(len(e_fs)))
         bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
         # check that the behav folder exists
         bhv_f = get_bhv_folder(bhv_f)
         path, name = os.path.split(bhv_f)
         p = ut.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:
-            print('-----------')
-            print(e_f)
+            if VERBOSE:
+                print('-----------')
+                print(e_f)
             dt_indx = e_f.find(rat_num+'_20')+len(rat_num)+1
             date = e_f[dt_indx:dt_indx+10]
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
@@ -190,7 +192,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 if b_f is None:
                     continue
                 # load load behavior
-                df = load_behavior()
+                df = load_behavior(b_f=b_f)
                 if df is None:
                     continue
                 inventory['bhv_session'][-1] = b_f
@@ -198,7 +200,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 bhv_strt_stim_sec, _ = ut.get_startSound_times(df=df)
                 bhv_strt_stim_sec -= bhv_strt_stim_sec[0]
                 # load electro
-                samples = load_electro()
+                samples = load_electro(e_f=e_f)
                 if samples is None:
                     continue
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]

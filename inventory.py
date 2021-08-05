@@ -58,16 +58,34 @@ def compute_signal_stats(samples, inventory):
 
 def checked(dic, session):
     checked = False
+<<<<<<< HEAD
     if len(dic['session']) > 0:
         indx = np.where(dic['session'] == session)[0]
+=======
+    print(dic['date'])
+    print(date)
+    if len(dic['date']) > 0:
+        indx = np.where(np.array(dic['date']) == date)[0]
+        print(indx)
+>>>>>>> ef2c8934102d0794a71b8111c93f84d592f9e354
         if len(indx) > 0:
+            assert len(indx) == 1
             checked = True
+<<<<<<< HEAD
             print('Session - '+session+' - already in inventory')
             print('Rat ', dic['rat'])
             print('Session ', dic['session'])
             print('Stats ', dic['signal_stats'])
             print('Offset ', dic['offset'])
     return checked  
+=======
+            print('Date '+date+' already in inventory')
+            print('Rat ', dic['rat'][indx[0]])
+            print('Session ', dic['session'][indx[0]])
+            print('Stats ', dic['signal_stats'][indx[0]])
+            print('Offset ', dic['offset'][indx[0]])
+    return checked
+>>>>>>> ef2c8934102d0794a71b8111c93f84d592f9e354
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
@@ -177,7 +195,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
 
 
 if __name__ == '__main__':
-    inventory(redo=True)
+    inventory(redo=False)
 
     # # get original stim starts/ends
     # ttl_stim_ori_strt, ttl_stim_ori_end, _ =\

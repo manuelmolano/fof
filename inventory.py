@@ -57,7 +57,17 @@ def compute_signal_stats(samples, inventory):
                                      np.std(samples[:, 35:39], axis=0)]
 
 def checked(dic, date):
-    return len(dic['date']) > 0 and (np.array(dic['date']) == date).any()
+    checked = False
+    if len(dic['date']) > 0:
+        indx = np.where(dic['date'] == date)[0]
+        if len(indx) > 0:
+            checked = True
+            print('Date '+date+' already in inventory')
+            print('Rat ', dic['rat'])
+            print('Session ', dic['session'])
+            print('Stats ', dic['signal_stats'])
+            print('Offset ', dic['offset'])
+    return checked
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):

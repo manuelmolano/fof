@@ -45,16 +45,12 @@ def check_stim_starts(samples, s_rate, evs_comp, inventory):
             print(inventory['offset'][-1])
     else:
         inventory['state'].append('no_ttls')
-    # get stims from analogue signal
-    stim_analogue_strt, _, _ = ut.find_events(samples=samples,
-                                              chnls=[37, 38],
-                                              s_rate=s_rate,
-                                              events='stim_analogue')
+    return stim_strt
 
 
 def compute_signal_stats(samples, inventory):
-    inventory['signal_stats'][-1] = [np.median(samples[:, 35:39], axis=0),
-                                     np.std(samples[:, 35:39], axis=0)]
+    inventory['sgnl_stts'][-1] = [np.median(samples[:, 35:39], axis=0),
+                                  np.std(samples[:, 35:39], axis=0)]
 
 
 def checked(dic, session):
@@ -68,7 +64,7 @@ def checked(dic, session):
                 print('Session '+session+' already in inventory')
                 print('Rat ', dic['rat'][indx[0]])
                 print('Session ', dic['session'][indx[0]])
-                print('Stats ', dic['signal_stats'][indx[0]])
+                print('Stats ', dic['sgnl_stts'][indx[0]])
                 print('Offset ', dic['offset'][indx[0]])
     return checked
 
@@ -157,7 +153,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
     else:
-        inventory = {'rat': [], 'session': [], 'bhv_session': [],
+        inventory = {'rat': [], 'session': [], 'bhv_session': [], 'sgnl_stts': [],
                      'state': [], 'date': [],  'sil_per': [], 'offset': [],
                      'num_stms_csv': [], 'num_stms_anlg': [],
                      'num_stms_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
@@ -200,7 +196,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['bhv_session'][-1] = b_f
                 # get start-sound times
                 bhv_strt_stim_sec, _ = ut.get_startSound_times(df=df)
-                bhv_strt_stim_sec -= bhv_strt_stim_sec[0]
+                csv_offset = bhv_strt_stim_sec[0]
+                bhv_strt_stim_sec -= csv_offset
                 # load electro
                 samples = load_electro(e_f=e_f)
                 if samples is None:
@@ -208,12 +205,30 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
                 # get stim ttl starts/ends
-                check_stim_starts(samples=samples, s_rate=s_rate_eff,
-                                  evs_comp=bhv_strt_stim_sec,
-                                  inventory=inventory)
+                stim_ttl_strt = check_stim_starts(samples=samples,
+                                                  s_rate=s_rate_eff,
+                                                  evs_comp=bhv_strt_stim_sec,
+                                                  inventory=inventory)
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
                 np.savez('/home/molano/fof/sessions_inventory.npz', **inventory)
+
+                # add times to bhv data
+                stim_ttl_strt += csv_offset
+                # get stims starts from analogue signal
+                stim_anlg_strt, _, _ = ut.find_events(samples=samples,
+                                                      chnls=[37, 38],
+                                                      s_rate=s_rate,
+                                                      events='stim_analogue')
+                stim_anlg_strt -= inventory['offset'][-1] - csv_offset
+                # get fixations from ttl
+                fix_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
+                                                s_rate=s_rate, events='fix')
+                fix_strt -= inventory['offset'][-1] - csv_offset
+                # get outcome starts from ttl
+                outc_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
+                                                 s_rate=s_rate, events='outcome')
+                outc_strt -= inventory['offset'][-1] - csv_offset
 
 
 if __name__ == '__main__':

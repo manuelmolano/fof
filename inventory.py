@@ -214,8 +214,3 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
 
 if __name__ == '__main__':
     inventory(redo=False)
-
-    # # get original stim starts/ends
-    # ttl_stim_ori_strt, ttl_stim_ori_end, _ =\
-    #     ut.find_events(samples=samples, chnls=[37, 38],
-    #                       s_rate=s_rate_eff, events='stim_ori')

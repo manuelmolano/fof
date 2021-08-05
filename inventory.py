@@ -72,10 +72,82 @@ def checked(dic, session):
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
+    def init_inventory(inv):
+        inv['rat'].append(rat_name)
+        inv['session'].append(e_f)
+        inv['date'].append(date)
+        inv['bhv_session'].append('')
+        inv['num_events'].append([np.nan, np.nan])
+        inv['evs_dists'].append([np.nan, np.nan])
+        inv['sil_per'].append(np.nan)
+        inv['offset'].append(np.nan)
+        inv['stim_ttl'].append([])
+        inv['stim_analogue'].append([])
+        inv['signal_stats'].append([])
+
+    def get_bhv_folder(bhv_f):
+        assert len(bhv_f) > 0, 'No behavioral folder for rat '+rat_name
+        if len(bhv_f) > 1:
+            print(rat_name+': several behavioral files found')
+            oks = []
+            for f in bhv_f:
+                oks.append(os.path.exists(f+'/sessions'))
+            assert np.sum(oks) == 1
+            bhv_f = np.array(bhv_f)[np.where(np.array(oks))[0]]
+            print('Used file: ', bhv_f[0])
+        return bhv_f[0]
+
+    def get_bhv_session(b_f):
+        if len(b_f) == 0:
+            print('---')
+            print(date+' behavioral file not found')
+            inventory['state'].append('no_behavior')
+            b_f = None
+        elif len(b_f) > 1:
+            print('---')
+            print(date+': several behavioral files found')
+            print(b_f)
+            sorted_files = order_by_sufix(file_list=b_f)
+            print('Files:')
+            print(sorted_files)
+            print('Used file: ', sorted_files[-1])
+            b_f = [sorted_files[-1]]
+        return b_f[0]
+
+    def load_behavior():
+        try:
+            p.load(b_f)
+            p.process()
+            p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
+            df = p.sess
+        except (KeyError, IndexError):
+            print('Could not load behavioral data')
+            inventory['state'].append('no_behavior')
+            df = None
+        return df
+
+    def load_electro():
+        try:
+            samples = ut.get_electro(path=e_f, s_rate=s_rate,
+                                     s_rate_eff=s_rate_eff)
+        except IndexError:
+            print('Electro file .dat not found in '+e_f)
+            if len(e_f_bis):
+                print('Trying folder '+e_f_bis[0])
+                samples = ut.get_electro(path=e_f_bis[0],
+                                         s_rate=s_rate,
+                                         s_rate_eff=s_rate_eff)
+            else:
+                inventory['state'].append('no_electro')
+                samples = None
+        return samples
+    # folders
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
     electro_folder = '/archive/rat/electrophysiology_recordings/'
     behav_folder = '/archive/rat/behavioral_data/'
+    # get rats from spike sorted files folder
     rats = glob.glob(spks_sort_folder+'LE*')
+    # load inventory or start from scratch
     if os.path.exists('/home/molano/fof/inventory.npz') and not redo:
         invtry_ref = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
         inventory = {}
@@ -89,22 +161,16 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     for r in rats:
         rat_name = os.path.basename(r)
         print('---------------')
-        rat_num = r[r.find('/LE')+3:]
         print(rat_name)
+        # get rat number to look for the electro and behav folders
+        rat_num = r[r.find('/LE')+3:]
         e_fs = glob.glob(spks_sort_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
         e_fs_bis = glob.glob(electro_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
         print('Number of electro sessions:', str(len(e_fs)))
-        b_f = glob.glob(behav_folder+'*'+str(rat_num))
-        assert len(b_f) > 0
-        if len(b_f) > 1:
-            print(rat_name+': several behavioral files found')
-            oks = []
-            for f in b_f:
-                oks.append(os.path.exists(f+'/sessions'))
-            assert np.sum(oks) == 1
-            b_f = np.array(b_f)[np.where(np.array(oks))[0]]
-            print('Used file: ', b_f[0])
-        path, name = os.path.split(b_f[0])
+        bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
+        # check that the behav folder exists
+        bhv_f = get_bhv_folder(bhv_f)
+        path, name = os.path.split(bhv_f)
         p = ut.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:
             print('-----------')
@@ -114,58 +180,25 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
             date = date.replace('-', '')
             if not checked(dic=inventory, session=e_f):
-                inventory['rat'].append(rat_name)
-                inventory['session'].append(e_f)
-                inventory['date'].append(date)
-                inventory['bhv_session'].append('')
-                inventory['num_events'].append([np.nan, np.nan])
-                inventory['evs_dists'].append([np.nan, np.nan])
-                inventory['sil_per'].append(np.nan)
-                inventory['offset'].append(np.nan)
-                inventory['stim_ttl'].append([])
-                inventory['stim_analogue'].append([])
-                inventory['signal_stats'].append([])
+                # initialize entry
+                init_inventory(inv=inventory)
                 b_f = [f for f in p.available if f.find(date) != -1]
-                if len(b_f) == 0:
-                    print('---')
-                    print(date+' behavioral file not found')
-                    inventory['state'].append('no_behavior')
-                    continue
-                elif len(b_f) > 1:
-                    print('---')
-                    print(date+': several behavioral files found')
-                    print(b_f)
-                    sorted_files = order_by_sufix(file_list=b_f)
-                    print('Files:')
-                    print(sorted_files)
-                    print('Used file: ', sorted_files[-1])
-                    b_f = [sorted_files[-1]]
                 # Load behavioral data
-                try:
-                    p.load(b_f[0])
-                    p.process()
-                    p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
-                except (KeyError, IndexError):
-                    print('Could not load behavioral data')
-                    inventory['state'].append('no_behavior')
+                b_f = get_bhv_session(b_f)
+                if b_f is None:
                     continue
-                inventory['bhv_session'][-1] = b_f[0]
-                df = p.sess
+                # load load behavior
+                df = load_behavior()
+                if df is None:
+                    continue
+                inventory['bhv_session'][-1] = b_f
+                # get start-sound times
                 bhv_strt_stim_sec, _ = ut.get_startSound_times(df=df)
                 bhv_strt_stim_sec -= bhv_strt_stim_sec[0]
-                try:
-                    samples = ut.get_electro(path=e_f, s_rate=s_rate,
-                                             s_rate_eff=s_rate_eff)
-                except IndexError:
-                    print('Electro file .dat not found in '+e_f)
-                    if len(e_f_bis):
-                        print('Trying folder '+e_f_bis[0])
-                        samples = ut.get_electro(path=e_f_bis[0],
-                                                 s_rate=s_rate,
-                                                 s_rate_eff=s_rate_eff)
-                    else:
-                        inventory['state'].append('no_electro')
-                        continue
+                # load electro
+                samples = load_electro()
+                if samples is None:
+                    continue
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
                 # get stim ttl starts/ends

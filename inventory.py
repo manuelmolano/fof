@@ -112,6 +112,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 print('Files:')
                 print(sorted_files)
                 print('Used file: ', sorted_files[-1])
+        else:
+            b_f = b_f[0]
         return b_f
 
     def load_behavior(b_f):
@@ -189,7 +191,6 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 b_f = [f for f in p.available if f.find(date) != -1]
                 # Load behavioral data
                 b_f = get_bhv_session(b_f)
-                print(b_f)
                 if b_f is None:
                     continue
                 # load load behavior

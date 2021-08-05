@@ -56,18 +56,18 @@ def compute_signal_stats(samples, inventory):
     inventory['signal_stats'][-1] = [np.median(samples[:, 35:39], axis=0),
                                      np.std(samples[:, 35:39], axis=0)]
 
-def checked(dic, date):
+def checked(dic, session):
     checked = False
-    if len(dic['date']) > 0:
-        indx = np.where(dic['date'] == date)[0]
+    if len(dic['session']) > 0:
+        indx = np.where(dic['session'] == session)[0]
         if len(indx) > 0:
             checked = True
-            print('Date '+date+' already in inventory')
+            print('Session - '+session+' - already in inventory')
             print('Rat ', dic['rat'])
             print('Session ', dic['session'])
             print('Stats ', dic['signal_stats'])
             print('Offset ', dic['offset'])
-    return checked
+    return checked  
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
@@ -112,7 +112,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             date = e_f[dt_indx:dt_indx+10]
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
             date = date.replace('-', '')
-            if not checked(dic=inventory, date=date):
+            if not checked(dic=inventory, session=e_f):
                 inventory['rat'].append(rat_name)
                 inventory['session'].append(e_f)
                 inventory['date'].append(date)

@@ -56,6 +56,7 @@ def compute_signal_stats(samples, inventory):
     inventory['signal_stats'][-1] = [np.median(samples[:, 35:39], axis=0),
                                      np.std(samples[:, 35:39], axis=0)]
 
+
 def checked(dic, session):
     checked = False
     if len(dic['session']) > 0:
@@ -148,8 +149,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     # get rats from spike sorted files folder
     rats = glob.glob(spks_sort_folder+'LE*')
     # load inventory or start from scratch
-    if os.path.exists('/home/molano/fof/inventory.npz') and not redo:
-        invtry_ref = np.load('/home/molano/fof/inventory.npz', allow_pickle=True)
+    if os.path.exists('/home/molano/fof/sessions_inventory.npz') and not redo:
+        invtry_ref = np.load('/home/molano/fof/sessions_inventory.npz',
+                             allow_pickle=True)
         inventory = {}
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
@@ -207,7 +209,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                   inventory=inventory)
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
-                np.savez('/home/molano/fof/inventory.npz', **inventory)
+                np.savez('/home/molano/fof/sessions_inventory.npz', **inventory)
 
 
 if __name__ == '__main__':

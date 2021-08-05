@@ -146,6 +146,10 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
         # stimulus corresponds to ch36=high and ch35=low
         assert chnls[0] == 35 and chnls[1] == 36
         signal = 1*((trace2_filt-trace1_filt) > 0.5)
+    elif events == 'fix':
+        # stimulus corresponds to ch36=high and ch35=low
+        assert chnls[0] == 35 and chnls[1] == 36
+        signal = 1*((trace1_filt-trace2_filt) > 0.5)
     elif events == 'outcome':
         # outcome corresponds to ch36=high and ch35=high
         assert chnls[0] == 35 and chnls[1] == 36
@@ -182,7 +186,7 @@ def get_spikes(path):
 
 
 if __name__ == '__main__':
-    plot_stuff = True
+    plot_stuff = False
     if plot_stuff:
         import matplotlib.pyplot as plt
         plt.close('all')
@@ -209,6 +213,8 @@ if __name__ == '__main__':
     path = '/home/molano/fof_data/LE113/electro/LE113_2021-06-05_12-38-09/'
     # path = '/home/molano/fof_data/LE101/electro/LE101_2021-06-08_10-50-06/'
     samples = get_electro(path=path, s_rate=s_rate, s_rate_eff=s_rate_eff)
+    import sys
+    sys.exit()
     # get stim ttl starts/ends
     ttl_stim_strt, ttl_stim_end, signal = find_events(samples=samples,
                                                       chnls=[35, 36],

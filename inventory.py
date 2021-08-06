@@ -258,7 +258,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
 
                 # add spikes
                 add_spks_to_df(df=df, path=e_fs, csv_tms=csv_tms)
-
+                df.to_pickle(e_fs+'/extended_df')
 
 if __name__ == '__main__':
     inventory(redo=False)

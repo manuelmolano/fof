@@ -81,7 +81,7 @@ def add_tms_to_df(df, csv_tms, ttl_tms, col):
 def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
     for i_cl, cl in enumerate(sel_clstrs):
-        spks_cl = spike_times[spike_clusters == cl]/s_rate+offset
+        spks_cl = spike_times[spike_clusters == cl]/s_rate-offset
         add_spks_to_df(df=df, csv_tms=csv_tms, ttl_tms=spks_cl)
 
 
@@ -256,7 +256,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                               col='outc_strt')
 
                 # add spikes
-                add_spks_to_df(df=df, path=e_fs, csv_tms=csv_tms)
+                add_spks_to_df(df=df, path=e_fs, csv_tms=csv_tms, s_rate=s_rate,
+                               offset=inventory['offset'][-1]-csv_offset)
                 df.to_pickle(e_fs+'/extended_df')
 
 

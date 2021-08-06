@@ -33,27 +33,27 @@ def plot_events(evs, ev_strt=0, ev_end=1e6, s_rate=3e4, label='', color='k',
                  linestyle=lnstl)
 
 
-# def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
-#                clstrs_qlt, spike_clusters, margin_spks_plot=1, bin_size=.1,
-#                name=''):
-#     bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
-#                        int(2*margin_spks_plot/bin_size))
-#     f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))
-#     ax = ax.flatten()
-#     for i_cl, cl in enumerate(sel_clstrs):
-#         spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
-#         spks_mat = np.tile(spks_cl, (1, len(events)))-events[None, :]
-#         hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
-#                           for i in range(spks_mat.shape[1])])
-#         hists = hists/bin_size
-#         psth = np.mean(hists, axis=0)
-#         # hist, _ = np.histogram(spks_cl, bins=bins)
-#         # hist = hist/step
-#         ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
-#         ax[i_cl].set_title(clstrs_qlt[i_cl])  #
-#     ax[10].set_xlabel('Time (s)')
-#     ax[10].set_ylabel('Mean firing rate (Hz)')
-#     f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
+def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
+               clstrs_qlt, spike_clusters, margin_spks_plot=1, bin_size=.1,
+               name=''):
+    bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
+                       int(2*margin_spks_plot/bin_size))
+    f, ax = plt.subplots(nrows=3, ncols=5, figsize=(15, 12))
+    ax = ax.flatten()
+    for i_cl, cl in enumerate(sel_clstrs):
+        spks_cl = spike_times[spike_clusters == cl]/s_rate+spikes_offset
+        spks_mat = np.tile(spks_cl, (1, len(events)))-events[None, :]
+        hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
+                          for i in range(spks_mat.shape[1])])
+        hists = hists/bin_size
+        psth = np.mean(hists, axis=0)
+        # hist, _ = np.histogram(spks_cl, bins=bins)
+        # hist = hist/step
+        ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
+        ax[i_cl].set_title(clstrs_qlt[i_cl])  #
+    ax[10].set_xlabel('Time (s)')
+    ax[10].set_ylabel('Mean firing rate (Hz)')
+    f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
 
 
 def get_behavior(main_folder, subject):
@@ -181,6 +181,7 @@ def get_spikes(path):
     # sel_clltrs = df_labels.loc[df_labels.group == 'good', 'cluster_id'].values
     sel_clstrs = df_labels['cluster_id'].values
     clstrs_qlt = df_labels['group']
+    return spike_times, spike_clusters, sel_clstrs, clstrs_qlt
 
 
 if __name__ == '__main__':

@@ -246,10 +246,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                                   inventory=inventory)
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
-                np.savez('/home/molano/fof/sess_inv.npz', **inventory)
 
-                csv_tms = ut.date_2_secs(df['PC-TIME'])
                 # add times to bhv data
+                csv_tms = ut.date_2_secs(df['PC-TIME'])
+                # stim starts from ttl signal
                 stim_ttl_strt += csv_offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_ttl_strt,
                               col='stim_ttl_strt')
@@ -283,6 +283,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/extended_df')
+                np.savez('/home/molano/fof/sess_inv.npz', **inventory)
 
 
 if __name__ == '__main__':

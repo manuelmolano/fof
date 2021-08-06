@@ -142,6 +142,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['state'].append('no_electro')
                 samples = None
         return samples
+
+    def add_tms_to_df(df, csv_tms, ttl_tms, col):
+        ttl_indx = np.searchsorted(csv_tms, ttl_tms)
+        df[col] = np.nan
+        df[col][ttl_indx] = 1
+
     # folders
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
     electro_folder = '/archive/rat/electrophysiology_recordings/'
@@ -216,22 +222,31 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 compute_signal_stats(samples=samples, inventory=inventory)
                 np.savez('/home/molano/fof/sessions_inventory.npz', **inventory)
 
+                csv_tms = ut.date_2_secs(df['PC-TIME'])
                 # add times to bhv data
                 stim_ttl_strt += csv_offset
+                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_ttl_strt,
+                              col='stim_ttl_strt')
                 # get stims starts from analogue signal
                 stim_anlg_strt, _, _ = ut.find_events(samples=samples,
                                                       chnls=[37, 38],
                                                       s_rate=s_rate,
                                                       events='stim_analogue')
                 stim_anlg_strt -= inventory['offset'][-1] - csv_offset
+                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
+                              col='stim_anlg_strt')
                 # get fixations from ttl
                 fix_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                 s_rate=s_rate, events='fix')
                 fix_strt -= inventory['offset'][-1] - csv_offset
+                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=fix_strt,
+                              col='fix_strt')
                 # get outcome starts from ttl
                 outc_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                  s_rate=s_rate, events='outcome')
                 outc_strt -= inventory['offset'][-1] - csv_offset
+                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=outc_strt,
+                              col='outc_strt')
 
 
 if __name__ == '__main__':

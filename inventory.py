@@ -73,14 +73,15 @@ def checked(dic, session):
 
 def add_tms_to_df(df, csv_tms, ttl_tms, col):
     ttl_indx = np.searchsorted(csv_tms, ttl_tms)
-    df[col] = np.nan
-    df[col][ttl_indx] = 1
     if VERBOSE:
         print('---')
         print(ttl_tms.shape)
         print(ttl_tms[:10])
         print(ttl_indx[:10])
         print(csv_tms[:10])
+        print(col)
+    df[col] = np.nan
+    df[col][ttl_indx] = 1
 
 def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)

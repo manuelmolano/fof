@@ -73,6 +73,7 @@ def checked(dic, session):
 
 
 def add_tms_to_df(df, csv_tms, ttl_tms, col):
+    print(ttl_tms)
     ttl_indx = np.searchsorted(csv_tms, ttl_tms)
     df[col] = np.nan
     df[col][ttl_indx] = 1
@@ -156,6 +157,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 samples = None
         return samples
 
+    def create_folder(f):
+        if not os.path.exists(f):
+            os.mkdir(f)
     # folders
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
     electro_folder = '/archive/rat/electrophysiology_recordings/'
@@ -178,7 +182,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     for r in rats:
         rat_name = os.path.basename(r)
         sv_f_rat = sv_folder+'/'+rat_name+'/'
-        os.mkdir(sv_f_rat)
+        create_folder(sv_f_rat)
         # get rat number to look for the electro and behav folders
         rat_num = r[r.find('/LE')+3:]
         e_fs = glob.glob(spks_sort_folder+'*'+str(rat_num)+'/*'+str(rat_num)+'*')
@@ -262,7 +266,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms, s_rate=s_rate,
                                offset=inventory['offset'][-1]-csv_offset)
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
-                os.mkdir(sv_f_sess)
+                create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/extended_df')
 
 

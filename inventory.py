@@ -72,6 +72,19 @@ def checked(dic, session):
     return checked
 
 
+def add_tms_to_df(df, csv_tms, ttl_tms, col):
+    ttl_indx = np.searchsorted(csv_tms, ttl_tms)
+    df[col] = np.nan
+    df[col][ttl_indx] = 1
+
+
+def add_spks_to_df(df, path, csv_tms, s_rate, offset):
+    spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
+    for i_cl, cl in enumerate(sel_clstrs):
+        spks_cl = spike_times[spike_clusters == cl]/s_rate+offset
+        add_spks_to_df(df=df, csv_tms=csv_tms, ttl_tms=spks_cl)
+
+
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     def init_inventory(inv):
         for v in inv.values():
@@ -142,11 +155,6 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['state'].append('no_electro')
                 samples = None
         return samples
-
-    def add_tms_to_df(df, csv_tms, ttl_tms, col):
-        ttl_indx = np.searchsorted(csv_tms, ttl_tms)
-        df[col] = np.nan
-        df[col][ttl_indx] = 1
 
     # folders
     spks_sort_folder = '/archive/lbektic/AfterClustering/'
@@ -247,6 +255,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 outc_strt -= inventory['offset'][-1] - csv_offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=outc_strt,
                               col='outc_strt')
+
+                # add spikes
+                add_spks_to_df(df=df, path=e_fs, csv_tms=csv_tms)
 
 
 if __name__ == '__main__':

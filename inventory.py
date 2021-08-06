@@ -73,25 +73,28 @@ def checked(dic, session):
 
 
 def add_tms_to_df(df, csv_tms, ttl_tms, col):
-    print('---')
-    print(ttl_tms.shape)
-    print(ttl_tms[:10])
     ttl_indx = np.searchsorted(csv_tms, ttl_tms)
-    print(ttl_indx[:10])
-    print(csv_tms[:10])
     df[col] = np.nan
     df[col][ttl_indx] = 1
-
+    if VERBOSE:
+        print('---')
+        print(ttl_tms.shape)
+        print(ttl_tms[:10])
+        print(ttl_indx[:10])
+        print(csv_tms[:10])
 
 def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
-    print('--------------------------')
-    print(sel_clstrs)
-    print(clstrs_qlt)
+    sel_clstrs = sel_clstrs[clstrs_qlt != 'noise']
+    if VERBOSE:
+        print('--------------------------')
+        print(sel_clstrs)
+        print(clstrs_qlt)
     for i_cl, cl in enumerate(sel_clstrs):
         spks_cl = spike_times[spike_clusters == cl]/s_rate-offset
         add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=spks_cl.flatten(),
                       col='cl_'+str(cl))
+    return sel_clstrs
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
@@ -186,7 +189,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                      'state': [], 'date': [],  'sil_per': [], 'offset': [],
                      'num_stms_csv': [], 'num_stms_anlg': [],
                      'num_stms_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
-                     'stms_dists_med': [], 'stms_dists_max': []}
+                     'stms_dists_med': [], 'stms_dists_max': [], 'num_clstrs': []}
     for r in rats:
         rat_name = os.path.basename(r)
         sv_f_rat = sv_folder+'/'+rat_name+'/'
@@ -254,26 +257,28 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                                       chnls=[37, 38],
                                                       s_rate=s_rate_eff,
                                                       events='stim_analogue')
-                stim_anlg_strt -= inventory['offset'][-1] - csv_offset
+                offset = inventory['offset'][-1] - csv_offset
+                stim_anlg_strt -= offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
                               col='stim_anlg_strt')
                 # get fixations from ttl
                 fix_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                 s_rate=s_rate_eff, events='fix')
-                fix_strt -= inventory['offset'][-1] - csv_offset
+                fix_strt -= offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=fix_strt,
                               col='fix_strt')
                 # get outcome starts from ttl
                 outc_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                  s_rate=s_rate_eff,
                                                  events='outcome')
-                outc_strt -= inventory['offset'][-1] - csv_offset
+                outc_strt -= offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=outc_strt,
                               col='outc_strt')
 
                 # add spikes
-                add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms, s_rate=s_rate,
-                               offset=inventory['offset'][-1]-csv_offset)
+                sel_clstrs = add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms,
+                                            s_rate=s_rate, offset=offset)
+                inventory['num_clstrs'][-1] = len(sel_clstrs)
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/extended_df')

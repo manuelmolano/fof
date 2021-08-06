@@ -10,7 +10,7 @@ import glob
 import os
 import utils as ut
 import numpy as np
-VERBOSE = False
+VERBOSE = True
 
 
 def order_by_sufix(file_list):
@@ -67,7 +67,6 @@ def checked(dic, session):
                 print('Session '+session+' already in inventory')
                 print('Rat ', dic['rat'][indx[0]])
                 print('Session ', dic['session'][indx[0]])
-                print('Stats ', dic['sgnl_stts'][indx[0]])
                 print('Offset ', dic['offset'][indx[0]])
     return checked
 

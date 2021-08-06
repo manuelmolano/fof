@@ -163,9 +163,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     # get rats from spike sorted files folder
     rats = glob.glob(spks_sort_folder+'LE*')
     # load inventory or start from scratch
-    if os.path.exists('/home/molano/fof/sessions_inventory.npz') and not redo:
-        invtry_ref = np.load('/home/molano/fof/sessions_inventory.npz',
-                             allow_pickle=True)
+    if os.path.exists('/home/molano/fof/sess_inv.npz') and not redo:
+        invtry_ref = np.load('/home/molano/fof/sess_inv.npz', allow_pickle=True)
         inventory = {}
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
@@ -228,7 +227,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                                   inventory=inventory)
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
-                np.savez('/home/molano/fof/sessions_inventory.npz', **inventory)
+                np.savez('/home/molano/fof/sess_inv.npz', **inventory)
 
                 csv_tms = ut.date_2_secs(df['PC-TIME'])
                 # add times to bhv data
@@ -259,6 +258,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 # add spikes
                 add_spks_to_df(df=df, path=e_fs, csv_tms=csv_tms)
                 df.to_pickle(e_fs+'/extended_df')
+
 
 if __name__ == '__main__':
     inventory(redo=False)

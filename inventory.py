@@ -256,7 +256,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                               col='outc_strt')
 
                 # add spikes
-                add_spks_to_df(df=df, path=e_fs, csv_tms=csv_tms, s_rate=s_rate,
+                add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms, s_rate=s_rate,
                                offset=inventory['offset'][-1]-csv_offset)
                 df.to_pickle(e_fs+'/extended_df')
 

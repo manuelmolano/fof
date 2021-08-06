@@ -10,6 +10,7 @@ import glob
 import os
 import utils as ut
 import numpy as np
+import time
 VERBOSE = False
 
 
@@ -73,9 +74,12 @@ def checked(dic, session):
 
 
 def add_tms_to_df(df, csv_tms, ttl_tms, col):
+    start = time.time()
     ttl_indx = np.searchsorted(csv_tms, ttl_tms)
+    ttl_indx = ttl_indx[ttl_indx < len(df)]
     if VERBOSE:
         print('---')
+        print(time.time() - start)
         print(ttl_tms.shape)
         print(ttl_tms[:10])
         print(ttl_indx[:10])
@@ -83,6 +87,7 @@ def add_tms_to_df(df, csv_tms, ttl_tms, col):
         print(col)
     df[col] = np.nan
     df[col][ttl_indx] = 1
+
 
 def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)

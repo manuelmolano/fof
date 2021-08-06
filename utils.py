@@ -173,11 +173,11 @@ def get_template(events, factor=1):
 def get_spikes(path):
     # Load spike sorted data
     # Times of the spikes, array of lists
-    spike_times = np.load(path+'spike_times.npy')
+    spike_times = np.load(path+'/spike_times.npy')
     # cluster number of each of the spikes, same length as before
-    spike_clusters = np.load(path+'spike_clusters.npy')
+    spike_clusters = np.load(path+'/spike_clusters.npy')
     # Cluster labels (good, noise, mua) for the previous two arrays
-    df_labels = pd.read_csv(path+"cluster_group.tsv", sep='\t')
+    df_labels = pd.read_csv(path+'/cluster_group.tsv', sep='\t')
     # sel_clltrs = df_labels.loc[df_labels.group == 'good', 'cluster_id'].values
     sel_clstrs = df_labels['cluster_id'].values
     clstrs_qlt = df_labels['group']

@@ -100,10 +100,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     def init_inventory(inv):
         for v in inv.values():
             v.append(np.nan)
-        inv['rat'].append(rat_name)
-        inv['session'].append(e_f)
-        inv['date'].append(date)
-        inv['bhv_session'].append('')
+        inv['rat'][-1] = rat_name
+        inv['session'][-1] = e_f
+        inv['date'][-1] = date
+        inv['bhv_session'][-1] = ''
 
     def get_bhv_folder(bhv_f):
         assert len(bhv_f) > 0, 'No behavioral folder for rat '+rat_name

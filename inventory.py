@@ -73,7 +73,7 @@ def checked(dic, session):
 
 
 def add_tms_to_df(df, csv_tms, ttl_tms, col):
-    print('----------')
+    print('---')
     print(ttl_tms.shape)
     print(ttl_tms[:10])
     ttl_indx = np.searchsorted(csv_tms, ttl_tms)
@@ -85,11 +85,13 @@ def add_tms_to_df(df, csv_tms, ttl_tms, col):
 
 def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
+    print('--------------------------')
     print(sel_clstrs)
     print(clstrs_qlt)
     for i_cl, cl in enumerate(sel_clstrs):
         spks_cl = spike_times[spike_clusters == cl]/s_rate-offset
-        add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=spks_cl, col='cl_'+str(cl))
+        add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=spks_cl.flatten(),
+                      col='cl_'+str(cl))
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
@@ -250,20 +252,21 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 # get stims starts from analogue signal
                 stim_anlg_strt, _, _ = ut.find_events(samples=samples,
                                                       chnls=[37, 38],
-                                                      s_rate=s_rate,
+                                                      s_rate=s_rate_eff,
                                                       events='stim_analogue')
                 stim_anlg_strt -= inventory['offset'][-1] - csv_offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
                               col='stim_anlg_strt')
                 # get fixations from ttl
                 fix_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
-                                                s_rate=s_rate, events='fix')
+                                                s_rate=s_rate_eff, events='fix')
                 fix_strt -= inventory['offset'][-1] - csv_offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=fix_strt,
                               col='fix_strt')
                 # get outcome starts from ttl
                 outc_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
-                                                 s_rate=s_rate, events='outcome')
+                                                 s_rate=s_rate_eff,
+                                                 events='outcome')
                 outc_strt -= inventory['offset'][-1] - csv_offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=outc_strt,
                               col='outc_strt')

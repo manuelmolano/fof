@@ -145,7 +145,7 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
         assert chnls[0] == 35 and chnls[1] == 36
         signal = 1*((trace2_filt-trace1_filt) > 0.5)
     elif events == 'fix':
-        # stimulus corresponds to ch36=high and ch35=low
+        # fixation corresponds to ch35=high and ch36=low
         assert chnls[0] == 35 and chnls[1] == 36
         signal = 1*((trace1_filt-trace2_filt) > 0.5)
     elif events == 'outcome':

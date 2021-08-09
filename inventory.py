@@ -22,12 +22,13 @@ def order_by_sufix(file_list):
 
 
 def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
-                        evs='stim_ttl'):
+                        evs='stim_ttl', offset=None):
     # get stim from ttls
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
                                      s_rate=s_rate, events=evs)
     if len(stim_strt) > 0:
-        offset = stim_strt[0]
+        if offset is None:
+            offset = stim_strt[0]
         stim_strt -= stim_strt[0]
         # TODO: update keys!
         inventory['num_'+evs][-1] = len(stim_strt)
@@ -196,9 +197,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
     else:
         inventory = {'rat': [], 'session': [], 'bhv_session': [], 'sgnl_stts': [],
                      'state': [], 'date': [],  'sil_per': [], 'offset': [],
-                     'num_stms_csv': [], 'num_stms_anlg': [],
-                     'num_stms_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
-                     'stms_dists_med': [], 'stms_dists_max': [], 'num_clstrs': []}
+                     'num_stms_csv': [], 'num_stim_analogue': [],
+                     'num_stim_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
+                     'stim_ttl_dists_med': [], 'stim_ttl_dists_max': [],
+                     'stim_analogue_dists_med': [], 'stim_analogue_dists_max': [],
+                     'num_clstrs': []}
     for r in rats:
         rat_name = os.path.basename(r)
         sv_f_rat = sv_folder+'/'+rat_name+'/'
@@ -248,6 +251,13 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     continue
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
+                # compute signal stats
+                compute_signal_stats(samples=samples, inventory=inventory)
+
+                # pass pc-time to seconds
+                csv_tms = ut.date_2_secs(df['PC-TIME'])
+
+                # ADD EVENT TIMES TO BEHAVIORAL DATA
                 # get stim ttl starts/ends
                 stim_ttl_strt, offset, state =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
@@ -256,12 +266,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 offset = offset - csv_offset
                 inventory['offset'][-1] = offset
                 inventory['state'][-1] = state
-                # compute signal stats
-                compute_signal_stats(samples=samples, inventory=inventory)
-
-                # add times to bhv data
-                csv_tms = ut.date_2_secs(df['PC-TIME'])
-                # stim starts from ttl signal
+                # get stim starts from ttl signal
                 stim_ttl_strt += csv_offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_ttl_strt,
                               col='stim_ttl_strt')
@@ -270,9 +275,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=stim_ttl_strt,
                                         inventory=inventory, chnls=[37, 38],
-                                        events='stim_analogue')
+                                        events='stim_analogue', offset=offset)
 
-                stim_anlg_strt -= offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
                               col='stim_anlg_strt')
                 # get fixations from ttl

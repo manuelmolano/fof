@@ -26,7 +26,7 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
     # get stim from ttls
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
                                      s_rate=s_rate, events=evs)
-    if len(stim_strt) > 0:
+    if len(stim_strt) > 0 and len(evs_comp) > 0:
         if offset is None:
             offset = stim_strt[0]
         stim_strt -= stim_strt[0]
@@ -240,6 +240,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 inventory['bhv_session'][-1] = b_f
                 # get start-sound times
                 bhv_strt_stim_sec = ut.get_startSound_times(df=df)
+                assert len(bhv_strt_stim_sec) > 0, str(len(bhv_strt_stim_sec))
                 csv_offset = bhv_strt_stim_sec[0]
                 bhv_strt_stim_sec -= csv_offset
                 inventory['num_stms_csv'][-1] = len(bhv_strt_stim_sec)

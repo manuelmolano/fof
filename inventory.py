@@ -32,10 +32,8 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
         stim_strt -= stim_strt[0]
         # TODO: update keys!
         inventory['num_'+evs][-1] = len(stim_strt)
-        if len(evs_comp) > len(stim_strt):
+        if len(evs_comp) != len(stim_strt):
             dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
-        elif len(evs_comp) < len(stim_strt):
-            dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evs_comp])
         else:
             dists = np.abs(evs_comp-stim_strt)
         inventory[evs+'_dists_med'][-1] = np.median(dists)

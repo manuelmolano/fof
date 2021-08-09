@@ -304,4 +304,4 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
 
 
 if __name__ == '__main__':
-    inventory(redo=False)
+    inventory(redo=True)

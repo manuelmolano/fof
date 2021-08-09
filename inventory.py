@@ -10,8 +10,8 @@ import glob
 import os
 import utils as ut
 import numpy as np
-VERBOSE = True
 import time
+VERBOSE = True
 
 
 def order_by_sufix(file_list):
@@ -90,6 +90,9 @@ def add_tms_to_df(df, csv_tms, ttl_tms, col):
 
 def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
+    if len(spike_times) != len(spike_clusters):
+        print('ERROR: Diff. lengths for spike-times and spike-clusters vectors')
+        return
     sel_clstrs = sel_clstrs[clstrs_qlt != 'noise']
     if VERBOSE:
         print('--------------------------')

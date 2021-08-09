@@ -21,35 +21,36 @@ def order_by_sufix(file_list):
     return sorted_list
 
 
-def check_stim_starts(samples, s_rate, evs_comp, inventory):
+def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
+                        evs='stim_ttl'):
     # get stim from ttls
-    stim_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
-                                     s_rate=s_rate, events='stim_ttl')
+    stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
+                                     s_rate=s_rate, events=evs)
     if len(stim_strt) > 0:
-        inventory['offset'][-1] = stim_strt[0]
+        offset = stim_strt[0]
         stim_strt -= stim_strt[0]
         # TODO: update keys!
-        inventory['num_stms_csv'][-1] = len(evs_comp)
-        inventory['num_stms_ttl'][-1] = len(stim_strt)
+        inventory['num_'+evs][-1] = len(stim_strt)
         if len(evs_comp) > len(stim_strt):
             dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
         elif len(evs_comp) < len(stim_strt):
             dists = np.array([np.min(np.abs(stim_strt-evs)) for evs in evs_comp])
         else:
             dists = np.abs(evs_comp-stim_strt)
-        inventory['stms_dists_med'][-1] = np.median(dists)
-        inventory['stms_dists_max'][-1] = np.max(dists)
-        inventory['state'].append('ok')
+        inventory[evs+'_dists_med'][-1] = np.median(dists)
+        inventory[evs+'_dists_max'][-1] = np.max(dists)
+        state = 'ok'
         if VERBOSE:
             print('Median difference between start sounds')
             print(np.median(dists))
             print('Max difference between start sounds')
             print(np.max(dists))
             print('Offset')
-            print(inventory['offset'][-1])
+            print(offset)
     else:
-        inventory['state'].append('no_ttls')
-    return stim_strt
+        state = 'no_ttls'
+        offset = 0
+    return stim_strt, offset, state
 
 
 def compute_signal_stats(samples, inventory):
@@ -132,7 +133,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             if VERBOSE:
                 print('---')
                 print(date+' behavioral file not found')
-            inventory['state'].append('no_behavior')
+            inventory['state'][-1] = 'no_behavior'
             b_f = None
         elif len(b_f) > 1:
             sorted_files = order_by_sufix(file_list=b_f)
@@ -156,7 +157,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
             df = p.sess
         except (KeyError, IndexError):
             print('Could not load behavioral data')
-            inventory['state'].append('no_behavior')
+            inventory['state'][-1] = 'no_behavior'
             df = None
         return df
 
@@ -172,7 +173,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                                          s_rate=s_rate,
                                          s_rate_eff=s_rate_eff)
             else:
-                inventory['state'].append('no_electro')
+                inventory['state'][-1] = 'no_electro'
                 samples = None
         return samples
 
@@ -240,6 +241,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 bhv_strt_stim_sec = ut.get_startSound_times(df=df)
                 csv_offset = bhv_strt_stim_sec[0]
                 bhv_strt_stim_sec -= csv_offset
+                inventory['num_stms_csv'][-1] = len(bhv_strt_stim_sec)
                 # load electro
                 samples = load_electro(e_f=e_f)
                 if samples is None:
@@ -247,10 +249,13 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
                 # get stim ttl starts/ends
-                stim_ttl_strt = check_stim_starts(samples=samples,
-                                                  s_rate=s_rate_eff,
-                                                  evs_comp=bhv_strt_stim_sec,
-                                                  inventory=inventory)
+                stim_ttl_strt, offset, state =\
+                    check_evs_alignment(samples=samples, s_rate=s_rate_eff,
+                                        evs_comp=bhv_strt_stim_sec,
+                                        inventory=inventory)
+                offset = offset - csv_offset
+                inventory['offset'][-1] = offset
+                inventory['state'][-1] = state
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
 
@@ -261,11 +266,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_ttl_strt,
                               col='stim_ttl_strt')
                 # get stims starts from analogue signal
-                stim_anlg_strt, _, _ = ut.find_events(samples=samples,
-                                                      chnls=[37, 38],
-                                                      s_rate=s_rate_eff,
-                                                      events='stim_analogue')
-                offset = inventory['offset'][-1] - csv_offset
+                stim_anlg_strt, _, _ =\
+                    check_evs_alignment(samples=samples, s_rate=s_rate_eff,
+                                        evs_comp=stim_ttl_strt,
+                                        inventory=inventory, chnls=[37, 38],
+                                        events='stim_analogue')
+
                 stim_anlg_strt -= offset
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
                               col='stim_anlg_strt')

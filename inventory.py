@@ -273,7 +273,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=stim_ttl_strt,
                                         inventory=inventory, chnls=[37, 38],
-                                        events='stim_analogue', offset=offset)
+                                        evs='stim_analogue', offset=offset)
 
                 add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
                               col='stim_anlg_strt')

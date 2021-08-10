@@ -90,21 +90,25 @@ def add_tms_to_df(df, csv_tms, ttl_tms, col):
 
 def get_spks(path, limit, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
+    spike_times = spike_times.flatten()
     if len(spike_times) != len(spike_clusters):
         print('ERROR: Diff. lengths for spike-times and spike-clusters vectors')
         return []
     sel_clstrs = sel_clstrs[clstrs_qlt != 'noise']
     clstrs_qlt = clstrs_qlt[clstrs_qlt != 'noise']
-    spike_times = spike_times.flatten()
-    clst_filt = np.array([(x, y) for x, y in zip(spike_times, spike_clusters)
-                          if y in sel_clstrs])
-    spks = clst_filt[:, 0]
-    clsts = clst_filt[:, 1]
-    if VERBOSE:
-        print('--------------------------')
-        print(sel_clstrs)
-        print(clstrs_qlt)
-    spks = spks/s_rate-offset
+    if len(sel_clstrs) > 0:
+        clst_filt = np.array([(x, y) for x, y in zip(spike_times, spike_clusters)
+                              if y in sel_clstrs])
+        spks = clst_filt[:, 0]
+        clsts = clst_filt[:, 1]
+        if VERBOSE:
+            print('--------------------------')
+            print(sel_clstrs)
+            print(clstrs_qlt)
+        spks = spks/s_rate-offset
+    else:
+        spks = []
+        clsts = []
     return spks, clsts, sel_clstrs, clstrs_qlt
 
 
@@ -325,7 +329,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 
 if __name__ == '__main__':
     default = True
-    redo = True
+    redo = False
     if default:
         inventory(redo=redo)
     else:

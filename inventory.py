@@ -293,8 +293,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                               col='outc_strt')
 
                 # add spikes
-                sel_clstrs = add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms,
-                                            s_rate=s_rate, offset=offset)
+                try:
+                    sel_clstrs = add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms,
+                                                s_rate=s_rate, offset=offset)
+                except KeyError as e:
+                    print(e)
+                    sel_clstrs = []
                 inventory['num_clstrs'][-1] = len(sel_clstrs)
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)

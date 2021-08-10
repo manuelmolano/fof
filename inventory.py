@@ -105,7 +105,9 @@ def add_spks_to_df(df, path, csv_tms, s_rate, offset):
     return sel_clstrs
 
 
-def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
+def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
+              electro_folder=None, behav_folder=None, sv_folder=None,
+              sel_rats=None):
     def init_inventory(inv):
         for v in inv.values():
             v.append(np.nan)
@@ -180,15 +182,20 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
         if not os.path.exists(f):
             os.mkdir(f)
     # folders
-    spks_sort_folder = '/archive/lbektic/AfterClustering/'
-    electro_folder = '/archive/rat/electrophysiology_recordings/'
-    behav_folder = '/archive/rat/behavioral_data/'
-    sv_folder = '/home/molano/fof_data/'
+    if spks_sort_folder is None:
+        spks_sort_folder = '/archive/lbektic/AfterClustering/'
+    if electro_folder is None:
+        electro_folder = '/archive/rat/electrophysiology_recordings/'
+    if behav_folder is None:
+        behav_folder = '/archive/rat/behavioral_data/'
+    if sv_folder is None:
+        sv_folder = '/home/molano/fof_data/'
     # get rats from spike sorted files folder
     rats = glob.glob(spks_sort_folder+'LE*')
+    sel_rats = rats if sel_rats is None else sel_rats
     # load inventory or start from scratch
-    if os.path.exists('/home/molano/fof/sess_inv.npz') and not redo:
-        invtry_ref = np.load('/home/molano/fof/sess_inv.npz', allow_pickle=True)
+    if os.path.exists(sv_folder+'sess_inv.npz') and not redo:
+        invtry_ref = np.load(sv_folder+'sess_inv.npz', allow_pickle=True)
         inventory = {}
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
@@ -202,6 +209,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                      'num_clstrs': []}
     for r in rats:
         rat_name = os.path.basename(r)
+        if rat_name not in sel_rats:
+            continue
         sv_f_rat = sv_folder+'/'+rat_name+'/'
         create_folder(sv_f_rat)
         # get rat number to look for the electro and behav folders
@@ -296,15 +305,18 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False):
                 try:
                     sel_clstrs = add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms,
                                                 s_rate=s_rate, offset=offset)
-                except KeyError as e:
+                except (KeyError, ValueError) as e:
                     print(e)
                     sel_clstrs = []
                 inventory['num_clstrs'][-1] = len(sel_clstrs)
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/extended_df')
-                np.savez('/home/molano/fof/sess_inv.npz', **inventory)
+                np.savez(sv_folder+'sess_inv.npz', **inventory)
 
 
 if __name__ == '__main__':
-    inventory(redo=False)
+    inventory(s_rate=3e4, s_rate_eff=2e3, redo=False,
+              spks_sort_folder='/home/molano/fof_data/AfterClustering/',
+              behav_folder='/home/molano/fof_data/behavioral_data/',
+              sv_folder='/home/molano/fof_data/', sel_rats=['LE113'])

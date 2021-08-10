@@ -192,7 +192,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
         sv_folder = '/home/molano/fof_data/'
     # get rats from spike sorted files folder
     rats = glob.glob(spks_sort_folder+'LE*')
-    sel_rats = [os.path.basename(x) for x in rats] if sel_rats is None else sel_rats
+    if sel_rats is None:
+        sel_rats = [os.path.basename(x) for x in rats]
     # load inventory or start from scratch
     if os.path.exists(sv_folder+'sess_inv.npz') and not redo:
         invtry_ref = np.load(sv_folder+'sess_inv.npz', allow_pickle=True)
@@ -317,8 +318,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 
 
 if __name__ == '__main__':
-    inventory(redo=False)
-    #inventory(s_rate=3e4, s_rate_eff=2e3, redo=False,
-    #          spks_sort_folder='/home/molano/fof_data/AfterClustering/',
-    #          behav_folder='/home/molano/fof_data/behavioral_data/',
-    #          sv_folder='/home/molano/fof_data/', sel_rats=['LE113'])
+    default = True
+    if default:
+        inventory(redo=False)
+    else:
+        inventory(s_rate=3e4, s_rate_eff=2e3, redo=False,
+                  spks_sort_folder='/home/molano/fof_data/AfterClustering/',
+                  behav_folder='/home/molano/fof_data/behavioral_data/',
+                  sv_folder='/home/molano/fof_data/', sel_rats=['LE113'])

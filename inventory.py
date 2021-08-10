@@ -29,7 +29,7 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
     if len(stim_strt) > 0 and len(evs_comp) > 0:
         if offset is None:
             offset = stim_strt[0]
-        stim_strt -= stim_strt[0]
+        stim_strt -= offset
         # TODO: update keys!
         inventory['num_'+evs][-1] = len(stim_strt)
         if len(evs_comp) != len(stim_strt):
@@ -88,21 +88,24 @@ def add_tms_to_df(df, csv_tms, ttl_tms, col):
     df[col][ttl_indx] = 1
 
 
-def add_spks_to_df(df, path, csv_tms, s_rate, offset):
+def get_spks(path, limit, s_rate, offset):
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
     if len(spike_times) != len(spike_clusters):
         print('ERROR: Diff. lengths for spike-times and spike-clusters vectors')
         return []
     sel_clstrs = sel_clstrs[clstrs_qlt != 'noise']
+    clstrs_qlt = clstrs_qlt[clstrs_qlt != 'noise']
+    spike_times = spike_times.flatten()
+    clst_filt = np.array([(x, y) for x, y in zip(spike_times, spike_clusters)
+                          if y in sel_clstrs])
+    spks = clst_filt[:, 0]
+    clsts = clst_filt[:, 1]
     if VERBOSE:
         print('--------------------------')
         print(sel_clstrs)
         print(clstrs_qlt)
-    for i_cl, cl in enumerate(sel_clstrs):
-        spks_cl = spike_times[spike_clusters == cl]/s_rate-offset
-        add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=spks_cl.flatten(),
-                      col='cl_'+str(cl))
-    return sel_clstrs
+    spks = spks/s_rate-offset
+    return spks, clsts, sel_clstrs, clstrs_qlt
 
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
@@ -276,53 +279,57 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 offset = offset - csv_offset
                 inventory['offset'][-1] = offset
                 inventory['state'][-1] = state
+
+                # ELECTRO DATA
+                e_dict = {}
                 # get stim starts from ttl signal
                 stim_ttl_strt += csv_offset
-                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_ttl_strt,
-                              col='stim_ttl_strt')
+                e_dict['stim_ttl_strt'] = stim_ttl_strt
                 # get stims starts from analogue signal
                 stim_anlg_strt, _, _ =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=stim_ttl_strt,
                                         inventory=inventory, chnls=[37, 38],
                                         evs='stim_analogue', offset=offset)
-
-                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=stim_anlg_strt,
-                              col='stim_anlg_strt')
+                e_dict['stim_anlg_strt'] = stim_anlg_strt
                 # get fixations from ttl
                 fix_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                 s_rate=s_rate_eff, events='fix')
                 fix_strt -= offset
-                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=fix_strt,
-                              col='fix_strt')
+                e_dict['fix_strt'] = fix_strt
                 # get outcome starts from ttl
                 outc_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                  s_rate=s_rate_eff,
                                                  events='outcome')
                 outc_strt -= offset
-                add_tms_to_df(df=df, csv_tms=csv_tms, ttl_tms=outc_strt,
-                              col='outc_strt')
-
+                e_dict['outc_strt'] = outc_strt
                 # add spikes
                 try:
-                    sel_clstrs = add_spks_to_df(df=df, path=e_f, csv_tms=csv_tms,
-                                                s_rate=s_rate, offset=offset)
+                    spks, clsts, sel_clstrs, clstrs_qlt =\
+                        get_spks(path=e_f, limit=csv_tms[-1], s_rate=s_rate,
+                                 offset=offset)
                 except (KeyError, ValueError) as e:
                     print(e)
                     sel_clstrs = []
                 inventory['num_clstrs'][-1] = len(sel_clstrs)
+                e_dict['spks'] = spks
+                e_dict['clsts'] = clsts
+                e_dict['sel_clstrs'] = sel_clstrs
+                e_dict['clstrs_qlt'] = clstrs_qlt
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
-                df.to_pickle(sv_f_sess+'/extended_df')
+                df.to_pickle(sv_f_sess+'/df')
+                np.savez(sv_f_sess+'/e_data.npz', **e_dict)
                 np.savez(sv_folder+'sess_inv.npz', **inventory)
 
 
 if __name__ == '__main__':
     default = True
+    redo = True
     if default:
-        inventory(redo=False)
+        inventory(redo=redo)
     else:
-        inventory(s_rate=3e4, s_rate_eff=2e3, redo=False,
+        inventory(redo=redo,
                   spks_sort_folder='/home/molano/fof_data/AfterClustering/',
                   behav_folder='/home/molano/fof_data/behavioral_data/',
                   sv_folder='/home/molano/fof_data/', sel_rats=['LE113'])

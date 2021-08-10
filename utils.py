@@ -50,7 +50,7 @@ def plot_psths(spike_times, sel_clstrs, events, s_rate, spikes_offset,
         # hist, _ = np.histogram(spks_cl, bins=bins)
         # hist = hist/step
         ax[i_cl].plot(bins[:-1]+bin_size/2, psth)
-        ax[i_cl].set_title(clstrs_qlt[i_cl])  #
+        ax[i_cl].set_title(str(cl)+' / #spks: '+str(len(spks_cl)))
     ax[10].set_xlabel('Time (s)')
     ax[10].set_ylabel('Mean firing rate (Hz)')
     f.savefig('/home/molano/Dropbox/psths_'+name+'.png')
@@ -185,14 +185,14 @@ def get_spikes(path):
 
 
 if __name__ == '__main__':
-    plot_stuff = False
+    plot_stuff = True
     if plot_stuff:
         import matplotlib.pyplot as plt
         plt.close('all')
     s_rate = 3e4
     s_rate_eff = 2e3
     tmplt_factor = 10
-    main_folder = '/home/molano/fof_data/'
+    main_folder = '/home/molano/fof_data/behavioral_data/'
     # sbj = 'LE101'
     sbj = 'LE113'
     p = get_behavior(main_folder=main_folder, subject=sbj)
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     # StartSound. Apparently, there is a period of time between trials during which
     # the BPOD is switched off and that produces a missmatch between BPOD and TTL
     # times
-    path = '/home/molano/fof_data/LE113/electro/LE113_2021-06-05_12-38-09/'
+    path = '/home/molano/fof_data/AfterClustering/LE113/LE113_2021-06-05_12-38-09/'
     # path = '/home/molano/fof_data/LE101/electro/LE101_2021-06-08_10-50-06/'
     samples = get_electro(path=path, s_rate=s_rate, s_rate_eff=s_rate_eff)
     # get stim ttl starts/ends
@@ -219,8 +219,8 @@ if __name__ == '__main__':
                                                       s_rate=s_rate_eff,
                                                       events='stim_ttl',
                                                       fltr_k=3)
-    ttl_offset = ttl_stim_strt[0]
-    ttl_stim_strt -= ttl_offset - csv_offset
+    offset = ttl_stim_strt[0] - csv_offset
+    ttl_stim_strt -= offset
     inventory = {'rat': [], 'session': [], 'bhv_session': [], 'sgnl_stts': [],
                  'state': [], 'date': [],  'sil_per': [], 'offset': [],
                  'num_stms_csv': [], 'num_stms_anlg': [],
@@ -258,11 +258,19 @@ if __name__ == '__main__':
     ttl_indx = np.searchsorted(csv_times, ttl_stim_strt)
     df['ttl_stim_strt'] = np.nan
     df['ttl_stim_strt'][ttl_indx] = 1
+
+    # LOAD SPIKES
+    spike_times, spike_clusters, sel_clstrs, clstrs_qlt = get_spikes(path=path)
+    # plot PSTHs
+    plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs,
+               spike_clusters=spike_clusters, clstrs_qlt=clstrs_qlt,
+               s_rate=s_rate, spikes_offset=-offset, events=csv_ss_sec,
+               margin_spks_plot=1, bin_size=.1, name='stim')
     import sys
     sys.exit()
 
     ttl_tmplt = get_template(events=ttl_stim_strt, factor=tmplt_factor)
-    ttl_stim_strt -= ttl_offset
+    ttl_stim_strt -= offset
 
     # get original stim starts/ends
     # ttl_stim_analogue_strt, ttl_stim_analogue_end, _ =\
@@ -284,24 +292,24 @@ if __name__ == '__main__':
         samples_plt = samples_plt/max_samples
         plt.figure()
         plt.plot(samples_plt)
-        plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
                  signal[ev_strt:ev_end], label='signal')
-        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        # plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
         #          samples[ev_strt:ev_end, 35]/3e4, label='35')
-        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        # plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
         #          samples[ev_strt:ev_end, 36]/3e4, label='36', linestyle='--')
-        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        # plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
         #          samples[ev_strt:ev_end, 37]/3e4, label='37')
-        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        # plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
         #          samples[ev_strt:ev_end, 38]/3e4, label='38', linestyle='--')
 
-        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        # plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
         #          samples[ev_strt:ev_end, 20]/1e4, label='20', linestyle='--')
-        # plt.plot(np.arange(ev_strt, ev_end)-ttl_offset*s_rate_eff,
+        # plt.plot(np.arange(ev_strt, ev_end)-offset*s_rate_eff,
         #          samples[ev_strt:ev_end, 21]/1e4, label='21', linestyle='--')
 
-        ev_strt = ev_strt-ttl_offset*s_rate_eff
-        ev_end = ev_end-ttl_offset*s_rate_eff
+        ev_strt = ev_strt-offset*s_rate_eff
+        ev_end = ev_end-offset*s_rate_eff
         plot_events(evs=ttl_stim_strt, ev_strt=ev_strt, ev_end=ev_end,
                     label='ttl', s_rate=s_rate_eff)
         plot_events(evs=csv_ss_sec, ev_strt=ev_strt, ev_end=ev_end, color='m',
@@ -379,14 +387,6 @@ if __name__ == '__main__':
     # events = {'stim_starts': ttl_stim_strt, 'outc_starts': ttl_outc_strt,
     #           'samples': samples[offset:offset+num_samples, 35:39]}
     # np.savez(path+'/events.npz', **events)
-
-    # plot PSTHs
-    # plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs, events=csv_ss_sec,
-    #             s_rate=s_rate_eff, spikes_offset=spikes_offset,
-    #             margin_spks_plot=1, bin_size=.1, name='stim')
-    # plot_psths(spike_times=spike_times, sel_clstrs=sel_clstrs,
-    #            events=csv_so_sec, s_rate=s_rate_eff, spikes_offset=spikes_offset,
-    #             margin_spks_plot=1, bin_size=.1, name='outcome')
 
     # f = plt.figure()
     # plot_events(ttl_stim_strt, label='ttl-stim', color='m')

@@ -329,7 +329,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 
 if __name__ == '__main__':
     default = True
+<<<<<<< HEAD
     redo = False
+=======
+    redo = True
+>>>>>>> a2b42cee7c75e5328bafd7bc1aaf6f389a70d519
     if default:
         inventory(redo=redo)
     else:
@@ -337,3 +341,4 @@ if __name__ == '__main__':
                   spks_sort_folder='/home/molano/fof_data/AfterClustering/',
                   behav_folder='/home/molano/fof_data/behavioral_data/',
                   sv_folder='/home/molano/fof_data/', sel_rats=['LE113'])
+

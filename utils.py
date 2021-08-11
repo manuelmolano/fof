@@ -397,3 +397,4 @@ if __name__ == '__main__':
     # plot_events(ttl_outc_strt, label='ttl-outcome', color='m')
     # plot_events(csv_so_sec, label='outcome', color='c', lnstl='--')
     # f.savefig('/home/molano/Dropbox/outcome_check.png')
+

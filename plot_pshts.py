@@ -8,13 +8,14 @@ Created on Mon Aug  9 17:26:32 2021
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+import pandas as pd
 # from scipy.ndimage import gaussian_filter1d
 # import sys
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 # import utils as ut
 
 
-def histogram_psth(spk_times, events, bins):
+def histogram_psth(spk_times, events, bins, bin_size):
     spks_mat = np.tile(spk_times, (1, len(events)))-events.T
     hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
                       for i in range(spks_mat.shape[1])])
@@ -48,41 +49,16 @@ def convolve_psth(spk_times, events, std=20, margin_psth=1000):
     return psth
 
 
-if __name__ == '__main__':
-    plt.close('all')
-    main_folder = '/home/molano/fof_data'
-    # rat = 'LE113'  # 'LE101'
-    # session = 'LE113_p4_noenv_20210605-123818'  # 'LE101_2021-06-11_12-10-11'
-    # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
-    file = '/home/manuel/fof_data/LE113/LE113_2021-06-05_12-38-09/e_data.npz'
-    margin_spks_plot = 1
-    bin_size = .1
-    std_conv = 20
-    margin_psth = 1000
-    e_data = np.load(file, allow_pickle=1)
-    evs = e_data['stim_ttl_strt']
-    spks = e_data['spks']
-    clstrs = e_data['clsts']
-    sel_clstrs = e_data['sel_clstrs']
-    clstrs_qlt = e_data['clstrs_qlt']
-    bins = np.linspace(-margin_spks_plot, margin_spks_plot-bin_size,
-                       int(2*margin_spks_plot/bin_size))
-    nrows = 3
-    ncols = 5
-    f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(16, 8))
-    ax = ax.flatten()
+def plt_psths(spks, clstrs, sel_clstrs, clstrs_qlt, evs,
+              std_conv=20):
     for i_cl, cl in enumerate(sel_clstrs):
-        if i_cl == 13:
-            print(1)
         spk_tms = spks[clstrs == cl][:, None]
-        psth = histogram_psth(spk_times=spk_tms, events=evs, bins=bins)
         ax[i_cl].axvline(x=0, linestyle='--', color=(.7, .7, .7))
-        ax[i_cl].plot(bins[:-1]+bin_size/2, psth, label='clstr '+str(cl))
         psth_cnv = convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
                                  margin_psth=margin_psth)
         xs = np.arange(2*margin_psth)-margin_psth
         xs = xs/1000
-        ax[i_cl].plot(xs, psth_cnv, label='psth conv')
+        ax[i_cl].plot(xs, psth_cnv, label='clstr '+str(cl))
         ax[i_cl].set_title('#spks: '+str(len(spk_tms))+' / qlt: '+clstrs_qlt[i_cl])
         ax[i_cl].legend()
         if i_cl < ncols*(nrows-1):
@@ -90,3 +66,28 @@ if __name__ == '__main__':
         if i_cl == ncols*(nrows-1):
             ax[i_cl].set_xlabel('Peri-stimulus time (s)')
             ax[i_cl].set_ylabel('Firing rate (Hz)')
+
+
+if __name__ == '__main__':
+    plt.close('all')
+    main_folder = '/home/molano/fof_data'
+    # rat = 'LE113'  # 'LE101'
+    # session = 'LE113_p4_noenv_20210605-123818'  # 'LE101_2021-06-11_12-10-11'
+    # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
+    e_file = '/home/manuel/fof_data/LE113/LE113_2021-06-05_12-38-09/e_data.npz'
+    b_file = '/home/manuel/fof_data/LE113/LE113_2021-06-05_12-38-09/df'
+    std_conv = 20
+    margin_psth = 1000
+    e_data = np.load(e_file, allow_pickle=1)
+    b_data = pd.read_pickle(b_file)
+    tmp = b_data.MSG == 'REWARD_SIDE'
+    b_data.loc[tmp]
+    ev = 'stim_ttl_strt'
+    sel_clstrs = e_data['sel_clstrs']
+    ncols = int(np.ceil(np.sqrt(len(sel_clstrs))))
+    nrows = (ncols-1) if ncols*(ncols-1) >= len(sel_clstrs) else ncols
+    f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(16, 8))
+    ax = ax.flatten()
+    plt_psths(spks=e_data['spks'], clstrs=e_data['clsts'],
+              sel_clstrs=e_data['sel_clstrs'], clstrs_qlt=e_data['clstrs_qlt'],
+              evs=e_data[ev], std_conv=std_conv)

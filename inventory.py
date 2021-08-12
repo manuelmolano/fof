@@ -163,11 +163,13 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
             p.process()
             p.trial_sess.head()  # preprocssd df stored in attr. trial_sess
             df = p.sess
+            df_trials = p.trial_sess
         except (KeyError, IndexError):
             print('Could not load behavioral data')
             inventory['state'][-1] = 'no_behavior'
             df = None
-        return df
+            df_trials = None
+        return df, df_trials
 
     def load_electro(e_f):
         try:
@@ -252,7 +254,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 if b_f is None:
                     continue
                 # load load behavior
-                df = load_behavior(b_f=b_f)
+                df, df_trials = load_behavior(b_f=b_f)
                 if df is None:
                     continue
                 inventory['bhv_session'][-1] = b_f
@@ -314,7 +316,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                                  offset=offset)
                 except (KeyError, ValueError, FileNotFoundError) as e:
                     print(e)
+                    spks = []
+                    clsts = []
                     sel_clstrs = []
+                    clstrs_qlt = []
                 inventory['num_clstrs'][-1] = len(sel_clstrs)
                 e_dict['spks'] = spks
                 e_dict['clsts'] = clsts
@@ -323,6 +328,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/df')
+                df_trials.to_pickle(sv_f_sess+'/df_trials')
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
                 np.savez(sv_folder+'sess_inv.npz', **inventory)
 

@@ -312,7 +312,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                     spks, clsts, sel_clstrs, clstrs_qlt =\
                         get_spks(path=e_f, limit=csv_tms[-1], s_rate=s_rate,
                                  offset=offset)
-                except (KeyError, ValueError) as e:
+                except (KeyError, ValueError, FileNotFoundError) as e:
                     print(e)
                     sel_clstrs = []
                 inventory['num_clstrs'][-1] = len(sel_clstrs)

@@ -325,12 +325,17 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 e_dict['clsts'] = clsts
                 e_dict['sel_clstrs'] = sel_clstrs
                 e_dict['clstrs_qlt'] = clstrs_qlt
+                e_dict['s_rate'] = s_rate
+                e_dict['s_rate_eff'] = s_rate_eff
+                e_dict['code'] = 'inventory.py'
                 sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/df')
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
                 np.savez(sv_folder+'sess_inv.npz', **inventory)
+                ttls_sbsmpl = {'samples': samples[:, -4:]}
+                np.savez(sv_f_sess+'/ttls_sbsmpl.npz', **ttls_sbsmpl)
 
 
 if __name__ == '__main__':

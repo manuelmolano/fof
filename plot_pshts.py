@@ -73,32 +73,33 @@ def plt_psths(cl, spk_tms, evs, ax, margin_psth=1000,
     ax.plot(xs, psth_cnv, label=lbl)
 
 
-def psth_choice_cond(cl, e_data, b_data, session, ax, ev='stim_ttl_strt', std_conv=20,
-                     margin_psth=1000, sv_folder=''):
-    import time
-    offset = 1 if ev != 'fix_strt' else 0
+def psth_choice_cond(cl, e_data, b_data, session, ax, ev='stim_ttl_strt',
+                     std_conv=20, margin_psth=1000, sv_folder=''):
     trial_times = ut.date_2_secs(b_data.fix_onset_dt)
     events = e_data[ev]
-    start = time.time()
-    ev_indx = np.searchsorted(trial_times, events)-offset
-    aux, unq_idx, counts = np.unique(ev_indx, return_counts=1, return_index=1)
-    filt_evs_b = events[unq_idx]
-    print(time.time()-start)
-    start = time.time()
-    filt_evs = [(np.min(np.abs(events-tr)), events[np.argmin(np.abs(events-tr))])
-                for tr in trial_times]
-    print(time.time()-start)
+    idx_good_trs = np.logical_and(b_data['special_trial'].values == 0,
+                                  b_data['soundrfail'].values == 0)
+
+    filt_evs = np.array([(np.min(np.abs(events-tr)),
+                          events[np.argmin(np.abs(events-tr))])
+                         for tr in trial_times])
+    evs_dists = filt_evs[:, 0]
+    filt_evs = filt_evs[:, 1]
+    if ev == 'fix_strt':
+        synchr_cond = evs_dists < 1e-2
+    elif ev == 'stim_ttl_strt':
+        synchr_cond = np.abs(evs_dists-0.3) < 1e-2
+    elif ev == 'outc_strt':
+        synchr_cond = np.ones((len(evs_dists,))) == 1
+    indx_good_evs = np.logical_and(synchr_cond, idx_good_trs)
     # indx of regular trials
-    indx = np.logical_and(b_data['special_trial'] == 0, b_data['soundrfail'] == 0)
-    if np.max(counts) != 1:
-        print(np.unique(counts, return_counts=1))
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
     choice = b_data['R_response'].values
-    indx_ch = np.logical_and(choice[ev_indx] > .5, indx[ev_indx])
-    plt_psths(cl=cl, spk_tms=spk_tms, evs=events[indx_ch], ax=ax,
+    indx_ch = np.logical_and(choice > .5, indx_good_evs)
+    plt_psths(cl=cl, spk_tms=spk_tms, evs=filt_evs[indx_ch], ax=ax,
               std_conv=std_conv, margin_psth=margin_psth, lbl='Right')
-    indx_ch = np.logical_and(choice[ev_indx] < .5, indx[ev_indx])
-    plt_psths(cl=cl, spk_tms=spk_tms, evs=events[indx_ch], ax=ax,
+    indx_ch = np.logical_and(choice < .5, indx_good_evs)
+    plt_psths(cl=cl, spk_tms=spk_tms, evs=filt_evs[indx_ch], ax=ax,
               std_conv=std_conv, margin_psth=margin_psth, lbl='Left')
 
 

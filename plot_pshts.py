@@ -81,9 +81,10 @@ def plt_psths(spks, clstrs, sel_clstrs, clstrs_qlt, evs, ax, ncols, nrows,
 
 def psth_choice_cond(e_data, b_data, session, ev='stim_ttl_strt', std_conv=20,
                      margin_psth=1000, sv_folder=''):
+    offset = 1 if ev != 'fix_strt' else 0
     trial_times = ut.date_2_secs(b_data.fix_onset_dt)
     events = e_data[ev]
-    ev_indx = np.searchsorted(trial_times, events)-1
+    ev_indx = np.searchsorted(trial_times, events)-offset
     _, counts = np.unique(ev_indx, return_counts=1)
     # indx of regular trials
     indx = np.logical_and(b_data['special_trial'] == 0, b_data['soundrfail'] == 0)
@@ -120,9 +121,9 @@ if __name__ == '__main__':
     sv_folder = '/home/molano/fof_data/pshts/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
-    inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
-    # rat = 'LE113'  # 'LE101'
-    # session = 'LE113_p4_noenv_20210605-123818'  # 'LE101_2021-06-11_12-10-11'
+    inv = np.load('/home/molano/fof_data/sess_inv_full.npz', allow_pickle=1)
+    sel_rats = ['LE101']  # 'LE101'
+    sel_sess = []  # ['LE113_2021-06-05_12-38-09']  # 'LE101_2021-06-11_12-10-11'
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     home = 'molano'
     rats = glob.glob(main_folder+'LE*')
@@ -133,6 +134,9 @@ if __name__ == '__main__':
             session = os.path.basename(sess)
             print('----')
             print(session)
+            if session not in sel_sess and rat not in sel_rats and\
+               (len(sel_sess) != 0 or len(sel_rats) != 0):
+                continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
             if len(idx) != 1:
                 print(str(idx))
@@ -155,17 +159,17 @@ if __name__ == '__main__':
                     ev = 'stim_ttl_strt'
                     psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
-                                     sv_folder=sv_folder)
+                                     sv_folder=sv_folder, ev=ev)
                     ev = 'fix_strt'
                     psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
-                                     sv_folder=sv_folder)
+                                     sv_folder=sv_folder, ev=ev)
                     ev = 'outc_strt'
                     psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
-                                     sv_folder=sv_folder)
+                                     sv_folder=sv_folder, ev=ev)
                 if inv['stim_analogue_dists_max'][idx[0]] < 0.1:
                     ev = 'stim_anlg_strt'
                     psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
-                                     sv_folder=sv_folder)
+                                     sv_folder=sv_folder, ev=ev)

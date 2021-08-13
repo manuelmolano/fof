@@ -79,14 +79,14 @@ def plt_psths(spks, clstrs, sel_clstrs, clstrs_qlt, evs, ax, ncols, nrows,
             ax[i_cl].set_ylabel('Firing rate (Hz)')
 
 
-def psth_choice_cond(e_file, b_file, session, ev='stim_ttl_strt', std_conv=20,
+def psth_choice_cond(e_data, b_data, session, ev='stim_ttl_strt', std_conv=20,
                      margin_psth=1000, sv_folder=''):
-    e_data = np.load(e_file, allow_pickle=1)
-    b_data = pd.read_pickle(b_file)
     trial_times = ut.date_2_secs(b_data.fix_onset_dt)
     events = e_data[ev]
     ev_indx = np.searchsorted(trial_times, events)-1
     _, counts = np.unique(ev_indx, return_counts=1)
+    # indx of regular trials
+    indx = np.logical_and(b_data['special_trial'] == 0, b_data['soundrfail'] == 0)
     if np.max(counts) != 1:
         print(np.unique(counts, return_counts=1))
     choice = b_data['R_response'].values
@@ -97,14 +97,16 @@ def psth_choice_cond(e_file, b_file, session, ev='stim_ttl_strt', std_conv=20,
         f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(18, 8))
         ax = ax.flatten() if nrows > 1 and ncols > 1 else ax
         ax = [ax] if nrows == 1 and ncols == 1 else ax
+        indx_ch = np.logical_and(choice[ev_indx] > .5, indx[ev_indx])
         plt_psths(spks=e_data['spks'], clstrs=e_data['clsts'],
                   sel_clstrs=e_data['sel_clstrs'], clstrs_qlt=e_data['clstrs_qlt'],
-                  evs=events[choice[ev_indx] > .5], ax=ax, ncols=ncols,
+                  evs=events[indx_ch], ax=ax, ncols=ncols,
                   nrows=nrows, std_conv=std_conv, margin_psth=margin_psth,
                   lbl='Right')
+        indx_ch = np.logical_and(choice[ev_indx] < .5, indx[ev_indx])
         plt_psths(spks=e_data['spks'], clstrs=e_data['clsts'],
                   sel_clstrs=e_data['sel_clstrs'], clstrs_qlt=e_data['clstrs_qlt'],
-                  evs=events[choice[ev_indx] < .5], ax=ax, ncols=ncols,
+                  evs=events[indx_ch], ax=ax, ncols=ncols,
                   nrows=nrows, std_conv=std_conv, margin_psth=margin_psth,
                   lbl='Left')
         f.savefig(sv_folder+session+'_'+ev+'.png')
@@ -148,20 +150,22 @@ if __name__ == '__main__':
                 if inv['stim_ttl_dists_max'][idx[0]] < 0.1:
                     e_file = sess+'/e_data.npz'
                     b_file = sess+'/df_trials'
+                    e_data = np.load(e_file, allow_pickle=1)
+                    b_data = pd.read_pickle(b_file)
                     ev = 'stim_ttl_strt'
-                    psth_choice_cond(e_file=e_file, b_file=b_file, session=session,
+                    psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
                                      sv_folder=sv_folder)
                     ev = 'fix_strt'
-                    psth_choice_cond(e_file=e_file, b_file=b_file, session=session,
+                    psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
                                      sv_folder=sv_folder)
                     ev = 'outc_strt'
-                    psth_choice_cond(e_file=e_file, b_file=b_file, session=session,
+                    psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
                                      sv_folder=sv_folder)
                 if inv['stim_analogue_dists_max'][idx[0]] < 0.1:
                     ev = 'stim_anlg_strt'
-                    psth_choice_cond(e_file=e_file, b_file=b_file, session=session,
+                    psth_choice_cond(e_data=e_data, b_data=b_data, session=session,
                                      std_conv=std_conv, margin_psth=margin_psth,
                                      sv_folder=sv_folder)

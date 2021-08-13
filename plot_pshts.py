@@ -112,7 +112,7 @@ if __name__ == '__main__':
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
+    sel_sess = []  # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     home = 'molano'
     rats = glob.glob(main_folder+'LE*')
@@ -147,7 +147,8 @@ if __name__ == '__main__':
                 b_data = pd.read_pickle(b_file)
                 for i_cl, cl in enumerate(sel_clstrs):
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
-                    f, ax = plt.subplots(ncols=3, nrows=1, figsize=(12, 4))
+                    f, ax = plt.subplots(ncols=3, nrows=1, figsize=(12, 4),
+                                         sharey=True)
                     if inv['stim_ttl_dists_max'][idx[0]] < 0.1:
                         ev = 'fix_strt'
                         print(ev)

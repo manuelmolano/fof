@@ -17,57 +17,12 @@ import glob
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 import utils as ut
 
-def rm_top_right_lines(ax):
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-
-
-def histogram_psth(spk_times, events, bins, bin_size):
-    spks_mat = np.tile(spk_times, (1, len(events)))-events.T
-    hists = np.array([np.histogram(spks_mat[:, i], bins)[0]
-                      for i in range(spks_mat.shape[1])])
-    hists = hists/bin_size
-    psth = np.mean(hists, axis=0)
-    return psth
-
-
-def convolve_psth(spk_times, events, std=20, margin_psth=1000):
-    if len(events) > 0:
-        krnl_len = 5*std
-        # pass spikes to ms
-        spk_times = 1000*spk_times.flatten()
-        spk_times = spk_times.astype(int)
-        spk_dist = spk_times[-1] - spk_times[0]
-        # build spike vector
-        spk_vct = np.zeros((spk_dist+2*margin_psth, ))
-        spk_vct[spk_times-spk_times[0]+margin_psth] = 1
-        # convolve
-        x = np.linspace(norm.ppf(1e-5, scale=std),
-                        norm.ppf(1-1e-5, scale=std), krnl_len)
-        kernel = norm.pdf(x, scale=std)
-        kernel = kernel/np.sum(kernel)  # XXX: why isn't kernel already normalized?
-        spk_conv = np.convolve(spk_vct, kernel)
-        # spk_conv = gaussian_filter1d(spk_vct, std)
-        # pass events to ms
-        events = 1000*events
-        # offset events
-        events = events.astype(int)-spk_times[0]+margin_psth
-        peri_evs = np.array([spk_conv[x-margin_psth:x+margin_psth]
-                             for x in events])
-        try:
-            psth = np.mean(peri_evs, axis=0)*1000
-        except:
-            print(1)
-    else:
-        psth = []
-    return psth
-
 
 def plt_psths(cl, spk_tms, evs, ax, margin_psth=1000,
               std_conv=20, lbl=''):
     ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
-    psth_cnv = convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
-                             margin_psth=margin_psth)
+    psth_cnv = ut.convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
+                                margin_psth=margin_psth)
     xs = np.arange(2*margin_psth)-margin_psth
     xs = xs/1000
     ax.plot(xs, psth_cnv, label=lbl)
@@ -107,7 +62,7 @@ if __name__ == '__main__':
     plt.close('all')
     std_conv = 20
     margin_psth = 1000
-    sv_folder = '/home/molano/fof_data/pshts/'
+    sv_folder = '/home/molano/fof_data/psths/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
@@ -181,7 +136,7 @@ if __name__ == '__main__':
                     ax[1].set_xlabel('Peri-stim time (s)')
                     ax[2].set_xlabel('Peri-outcome time (s)')
                     for a in ax:
-                        rm_top_right_lines(a)
+                        ut.rm_top_right_lines(a)
                     num_spks = np.sum(e_data['clsts'] == cl)
                     f.suptitle(str(cl)+' / #spks: '+str(num_spks) +
                                ' / qlt: '+cl_qlt)

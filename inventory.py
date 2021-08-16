@@ -334,13 +334,17 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
                 np.savez(sv_folder+'sess_inv.npz', **inventory)
-                ttls_sbsmpl = {'samples': samples[:, -4:]}
+                if samples.shape[1] == 40:
+                    smpls = samples[:, -5:-1]
+                elif samples.shape[1] == 39:
+                    smpls = samples[:, -4:]
+                ttls_sbsmpl = {'samples': smpls}
                 np.savez(sv_f_sess+'/ttls_sbsmpl.npz', **ttls_sbsmpl)
 
 
 if __name__ == '__main__':
     default = True
-    redo = False
+    redo = True
     if default:
         inventory(redo=redo)
     else:

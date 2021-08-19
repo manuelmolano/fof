@@ -23,6 +23,7 @@ def order_by_sufix(file_list):
 
 def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
                         evs='stim_ttl', offset=None):
+    state = 'no_ttls'
     # get stim from ttls
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
                                      s_rate=s_rate, events=evs)
@@ -48,8 +49,8 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
                 print('Offset')
                 print(offset)
     else:
-        state = 'no_ttls'
         offset = 0
+
     return stim_strt, offset, state
 
 

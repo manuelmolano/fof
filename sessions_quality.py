@@ -134,7 +134,6 @@ if __name__ == '__main__':
                         print('to-do')
                     ax_psth.legend()
             f.savefig(sv_folder+'/'+session+'.png')
-            plt.close(f)
             good = input("Is this session good?")
             if good == 'y':
                 fldr = 'good'
@@ -155,6 +154,8 @@ if __name__ == '__main__':
             extended_inv['sess_class'] = sess_classification
             extended_inv['issue'] = issue
             extended_inv['observations'] = observations
+            f.savefig(sv_folder+fldr+'/'+session+'.png')
+            plt.close(f)
             np.savez('/home/molano/fof_data/sess_inv_extended.npz', **inv)
     #
     #

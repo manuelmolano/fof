@@ -49,21 +49,25 @@ if __name__ == '__main__':
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
     xs = xs/1000
-    sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
     num_ps = int(1e5)  # for traces plot
     ax_size = 0.17  # for hist and psth axes
     margin = .06  # for hist and psth axes
-    home = 'molano'
+    home = 'molano'  # 'molano'
     main_folder = '/home/'+home+'/fof_data/'
-    inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
-    inv_sbsmpld = np.load('/home/molano/fof_data/sess_inv_sbsTrue.npz',
+    if home == 'manuel':
+        sv_folder = main_folder
+    elif home == 'molano':
+        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
+
+    inv = np.load('/home/'+home+'/fof_data/sess_inv.npz', allow_pickle=1)
+    inv_sbsmpld = np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
                           allow_pickle=1)
     sess_classification = ['bad']*len(inv['session'])
     issue = ['']*len(inv['session'])
     observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
-    home = 'molano'
+    sel_sess = []  # ['LE104_2021-03-31_14-14-20']
+    # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
@@ -173,7 +177,7 @@ if __name__ == '__main__':
                 ax_traces.text(num_ps, 5, prob+': '+obs)
                 pdf_issues.savefig(f)
             plt.close(f)
-            np.savez('/home/molano/fof_data/sess_inv_extended.npz', **inv)
+            np.savez(main_folder+'/sess_inv_extended.npz', **inv)
     pdf_issues.close()
     #
     #

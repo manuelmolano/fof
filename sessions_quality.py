@@ -53,7 +53,6 @@ if __name__ == '__main__':
     num_ps = int(1e5)  # for traces plot
     ax_size = 0.17  # for hist and psth axes
     margin = .06  # for hist and psth axes
-    sv_folder = '/home/molano/fof_data/ttl_psths/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)

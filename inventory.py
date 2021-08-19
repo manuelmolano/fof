@@ -26,12 +26,12 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
     # get stim from ttls
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
                                      s_rate=s_rate, events=evs)
+    inventory['num_'+evs][-1] = len(stim_strt)
     if len(stim_strt) > 0 and len(evs_comp) > 0:
         if offset is None:
             offset = stim_strt[0]
         stim_strt -= offset
         # TODO: update keys!
-        inventory['num_'+evs][-1] = len(stim_strt)
         if len(evs_comp) != len(stim_strt):
             dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
         else:
@@ -114,7 +114,7 @@ def get_spks(path, limit, s_rate, offset):
 
 def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
               electro_folder=None, behav_folder=None, sv_folder=None,
-              sel_rats=None):
+              sel_rats=None, sbsmpld_electr=False):
     def init_inventory(inv):
         for v in inv.values():
             v.append(np.nan)
@@ -173,8 +173,14 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 
     def load_electro(e_f):
         try:
-            samples = ut.get_electro(path=e_f, s_rate=s_rate,
-                                     s_rate_eff=s_rate_eff)
+            if sbsmpld_electr:
+                samples = np.load(sv_folder+'ttls_sbsmpl.npz')
+                samples = samples['samples']
+                dummy_data = np.ones((samples.shape[0], 35))
+                samples = np.concatenate((dummy_data, samples), axis=1)
+            else:
+                samples = ut.get_electro(path=e_f, s_rate=s_rate,
+                                         s_rate_eff=s_rate_eff)
         except IndexError:
             print('Electro file .dat not found in '+e_f)
             if len(e_f_bis):
@@ -333,7 +339,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 df.to_pickle(sv_f_sess+'/df')
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
-                np.savez(sv_folder+'sess_inv.npz', **inventory)
+                np.savez(sv_folder+'sess_inv_sbs'+sbsmpld_electr+'.npz',
+                         **inventory)
                 if samples.shape[1] == 40:
                     smpls = samples[:, -5:-1]
                 elif samples.shape[1] == 39:
@@ -345,8 +352,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 if __name__ == '__main__':
     default = True
     redo = True
+    use_subsampled_electro = True
     if default:
-        inventory(redo=redo)
+        inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:
         inventory(redo=redo,
                   spks_sort_folder='/home/molano/fof_data/AfterClustering/',

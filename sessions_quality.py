@@ -21,15 +21,22 @@ import utils as ut
 colors = sns.color_palette()
 
 
-def set_title(ax, inv):
+def set_title(ax, inv, inv_sbsmpld):
     ax.set_title(str(np.round(inv['num_stms_csv'][idx[0]], 3))+' / ' +
                  str(np.round(inv['sil_per'][idx[0]], 3))+' /// ' +
                  str(np.round(inv['num_stim_ttl'][idx[0]], 3))+' / ' +
                  str(np.round(inv['stim_ttl_dists_med'][idx[0]], 3))+' / ' +
                  str(np.round(inv['stim_ttl_dists_max'][idx[0]], 3))+' /// ' +
-                 str(np.round(inv['num_stim_analogue'][idx[0]], 3))+' / ' +
+                 str(np.round(inv_sbsmpld['num_stim_analogue'][idx[0]], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_med'][idx[0]], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][idx[0]], 3)))
+    assert inv_sbsmpld['num_stms_csv'] == inv['num_stms_csv'],\
+        str(inv_sbsmpld['num_stms_csv'] - inv['num_stms_csv'])
+    assert inv_sbsmpld['num_stim_ttl'] == inv['num_stim_ttl'],\
+        str(inv_sbsmpld['num_stim_ttl'] - inv['num_stim_ttl'])
+    assert inv_sbsmpld['stim_ttl_dists_med'] == inv['stim_ttl_dists_med'],\
+        str(inv_sbsmpld['stim_ttl_dists_med'] - inv['stim_ttl_dists_med'])
+    assert inv_sbsmpld['stim_analogue_dists_med'] == inv['stim_analogue_dists_med']
 
 
 if __name__ == '__main__':
@@ -42,6 +49,8 @@ if __name__ == '__main__':
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
+    inv_sbsmpld = np.load('/home/molano/fof_data/sess_inv_sbsTrue.npz',
+                          allow_pickle=1)
     sess_classification = ['bad']*len(inv['session'])
     issue = ['']*len(inv['session'])
     observations = ['']*len(inv['session'])
@@ -72,7 +81,7 @@ if __name__ == '__main__':
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
             ax.remove()
             ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-            set_title(ax=ax_traces, inv=inv)
+            set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
             ax_size = 0.17
             margin = .06
             idx_max = np.where(samples[:, 0] == np.max(samples[:, 0]))[0][0]

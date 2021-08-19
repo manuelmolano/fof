@@ -174,7 +174,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
     def load_electro(e_f):
         try:
             if sbsmpld_electr:
-                samples = np.load(sv_folder+'ttls_sbsmpl.npz')
+                samples = np.load(sv_f_sess+'/ttls_sbsmpl.npz')
                 samples = samples['samples']
                 dummy_data = np.ones((samples.shape[0], 35))
                 samples = np.concatenate((dummy_data, samples), axis=1)
@@ -244,6 +244,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
         path, name = os.path.split(bhv_f)
         p = ut.get_behavior(main_folder=path+'/', subject=name)
         for e_f in e_fs:
+            sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
             if VERBOSE:
                 print('-----------')
                 print(e_f)
@@ -334,12 +335,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 e_dict['s_rate'] = s_rate
                 e_dict['s_rate_eff'] = s_rate_eff
                 e_dict['code'] = 'inventory.py'
-                sv_f_sess = sv_f_rat+'/'+os.path.basename(e_f)
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/df')
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
-                np.savez(sv_folder+'sess_inv_sbs'+sbsmpld_electr+'.npz',
+                np.savez(sv_folder+'sess_inv_sbs'+str(sbsmpld_electr)+'.npz',
                          **inventory)
                 if samples.shape[1] == 40:
                     smpls = samples[:, -5:-1]

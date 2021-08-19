@@ -43,6 +43,8 @@ if __name__ == '__main__':
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
     sess_classification = ['bad']*len(inv['session'])
+    issue = ['']*len(inv['session'])
+    observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     home = 'molano'
@@ -125,14 +127,15 @@ if __name__ == '__main__':
                         psth_1 = np.mean(peri_evs_1, axis=0)
                         psth_2 = np.mean(peri_evs_2, axis=0)
                         ax_psth.plot(xs, psth_1, color=colors[0], lw=1,
-                                      label='ch '+lbls[0])
+                                     label='ch '+lbls[0])
                         ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
-                                      label='ch '+lbls[1])
+                                     label='ch '+lbls[1])
                     except ValueError:
                         print('to-do')
                     ax_psth.legend()
-            plt.show(block=False)
-            good = ' '  # input("Is this session good?")
+            f.savefig(sv_folder+'/'+session+'.png')
+            plt.close(f)
+            good = input("Is this session good?")
             if good == 'y':
                 fldr = 'good'
             elif good == 'n':
@@ -142,10 +145,17 @@ if __name__ == '__main__':
             else:
                 raise ValueError('Specify the quality of the session with y/n')
             sess_classification[idx[0]] = fldr
-            f.savefig(sv_folder+fldr+'/'+session+'.png')
-            plt.close(f)
-    inv['sess_class'] = sess_classification
-    np.savez('/home/molano/fof_data/sess_inv_extended.npz', **inv)
+            prob = input("issue:")
+            issue[idx[0]] = prob
+            obs = input("Observations:")
+            observations[idx[0]] = obs
+            extended_inv = {}
+            for it in inv.items():
+                extended_inv[it[0]] = it[1]
+            extended_inv['sess_class'] = sess_classification
+            extended_inv['issue'] = issue
+            extended_inv['observations'] = observations
+            np.savez('/home/molano/fof_data/sess_inv_extended.npz', **inv)
     #
     #
     #

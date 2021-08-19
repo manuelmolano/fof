@@ -31,13 +31,14 @@ def set_title(ax, inv, inv_sbsmpld):
                  str(np.round(inv_sbsmpld['num_stim_analogue'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][i], 3)))
-    for k in inv.keys():
+    ks_to_check = [k for k in inv.keys() if k not in ['num_stim_analogue', 'sil_per',
+                                                      'rat', 'session', 'bhv_session',
+                                                      'sgnl_stts', 'state', 'date']]
+    for k in ks_to_check:
         print(k)
-        print(not np.isnan(inv[k][i]))
         print(inv[k][i])
         print(inv_sbsmpld[k][i])
-        if not np.isnan(inv[k][i]) and not np.isnan(inv_sbsmpld[k][i]) and\
-           k not in ['num_stim_analogue', 'sil_per', 'rat', 'session']:
+        if not np.isnan(inv[k][i]) and not np.isnan(inv_sbsmpld[k][i]):
             assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])
 
 

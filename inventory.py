@@ -339,7 +339,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 df.to_pickle(sv_f_sess+'/df')
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
-                np.savez(sv_folder+'sess_inv_sbs'+sbsmpld_electr+'.npz',
+                np.savez(sv_folder+'sess_inv_sbs'+str(sbsmpld_electr)+'.npz',
                          **inventory)
                 if samples.shape[1] == 40:
                     smpls = samples[:, -5:-1]

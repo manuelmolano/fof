@@ -27,25 +27,26 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
                                      s_rate=s_rate, events=evs)
     inventory['num_'+evs][-1] = len(stim_strt)
-    if len(stim_strt) > 0 and len(evs_comp) > 0:
+    if len(stim_strt) > 0:
         if offset is None:
             offset = stim_strt[0]
         stim_strt -= offset
-        # TODO: update keys!
-        if len(evs_comp) != len(stim_strt):
-            dists = np.array([np.min(np.abs(evs_comp-ttl)) for ttl in stim_strt])
-        else:
-            dists = np.abs(evs_comp-stim_strt)
-        inventory[evs+'_dists_med'][-1] = np.median(dists)
-        inventory[evs+'_dists_max'][-1] = np.max(dists)
-        state = 'ok'
-        if VERBOSE:
-            print('Median difference between start sounds')
-            print(np.median(dists))
-            print('Max difference between start sounds')
-            print(np.max(dists))
-            print('Offset')
-            print(offset)
+        if len(evs_comp) > 0:
+            if len(evs_comp) != len(stim_strt):
+                dists = np.array([np.min(np.abs(evs_comp-ttl))
+                                  for ttl in stim_strt])
+            else:
+                dists = np.abs(evs_comp-stim_strt)
+            inventory[evs+'_dists_med'][-1] = np.median(dists)
+            inventory[evs+'_dists_max'][-1] = np.max(dists)
+            state = 'ok'
+            if VERBOSE:
+                print('Median difference between start sounds')
+                print(np.median(dists))
+                print('Max difference between start sounds')
+                print(np.max(dists))
+                print('Offset')
+                print(offset)
     else:
         state = 'no_ttls'
         offset = 0

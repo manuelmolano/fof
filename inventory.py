@@ -174,7 +174,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
     def load_electro(e_f):
         try:
             if sbsmpld_electr:
-                samples = np.load(sv_f_sess+'ttls_sbsmpl.npz')
+                samples = np.load(sv_f_sess+'/ttls_sbsmpl.npz')
                 samples = samples['samples']
                 dummy_data = np.ones((samples.shape[0], 35))
                 samples = np.concatenate((dummy_data, samples), axis=1)

@@ -85,6 +85,7 @@ if __name__ == '__main__':
                 sample = samples[:, ttl]
                 ax_hist.hist(sample, 100)
                 ax_hist.set_title('TTL: '+str(ttl+36))
+                ax_hist.set_yscale('log')
                 sample = sample/np.max(sample)
                 # plot around a max event
                 ax_traces.plot(np.arange(num_ps)+idx_max,

@@ -22,18 +22,19 @@ colors = sns.color_palette()
 
 
 def set_title(ax, inv, inv_sbsmpld):
-    ax.set_title(str(np.round(inv['num_stms_csv'][idx[0]], 3))+' / ' +
-                 str(np.round(inv['sil_per'][idx[0]], 3))+' /// ' +
-                 str(np.round(inv['num_stim_ttl'][idx[0]], 3))+' / ' +
-                 str(np.round(inv['stim_ttl_dists_med'][idx[0]], 3))+' / ' +
-                 str(np.round(inv['stim_ttl_dists_max'][idx[0]], 3))+' /// ' +
-                 str(np.round(inv_sbsmpld['num_stim_analogue'][idx[0]], 3))+' / ' +
-                 str(np.round(inv['stim_analogue_dists_med'][idx[0]], 3))+' / ' +
-                 str(np.round(inv['stim_analogue_dists_max'][idx[0]], 3)))
+    i = idx[0]
+    ax.set_title(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
+                 str(np.round(inv['sil_per'][i], 3))+' /// ' +
+                 str(np.round(inv['num_stim_ttl'][i], 3))+' / ' +
+                 str(np.round(inv['stim_ttl_dists_med'][i], 3))+' / ' +
+                 str(np.round(inv['stim_ttl_dists_max'][i], 3))+' /// ' +
+                 str(np.round(inv_sbsmpld['num_stim_analogue'][i], 3))+' / ' +
+                 str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
+                 str(np.round(inv['stim_analogue_dists_max'][i], 3)))
     for k in inv.keys():
-        if not np.isnan(inv[k]) and not np.isnan(inv_sbsmpld[k]) and\
+        if not np.isnan(inv[k][i]) and not np.isnan(inv_sbsmpld[k][i]) and\
            k not in ['num_stim_analogue', 'sil_per']:
-            assert inv[k] == inv_sbsmpld[k], str(inv[k] - inv_sbsmpld[k])
+            assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ from scipy.stats import norm
 import pandas as pd
 import glob
 import shutil
+from matplotlib.backends.backend_pdf import PdfPages
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
@@ -43,6 +44,9 @@ if __name__ == '__main__':
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
     xs = xs/1000
+    num_ps = int(1e5)  # for traces plot
+    ax_size = 0.17  # for hist and psth axes
+    margin = .06  # for hist and psth axes
     sv_folder = '/home/molano/fof_data/ttl_psths/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
@@ -55,6 +59,7 @@ if __name__ == '__main__':
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     home = 'molano'
+    pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
@@ -80,11 +85,8 @@ if __name__ == '__main__':
             ax.remove()
             ax_traces = plt.axes([.05, 0.55, 0.9, .4])
             set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
-            ax_size = 0.17
-            margin = .06
             idx_max = np.where(samples[:, 0] == np.max(samples[:, 0]))[0][0]
             idx_midd = int(samples.shape[0]/2)
-            num_ps = int(1e5)
             for ttl in range(4):
                 aux1 = ttl % 2 != 0
                 aux2 = ttl > 1
@@ -162,8 +164,12 @@ if __name__ == '__main__':
             extended_inv['issue'] = issue
             extended_inv['observations'] = observations
             f.savefig(sv_folder+fldr+'/'+session+'.png')
+            if good == 'n':
+                ax_traces.text(num_ps, 5, prob+': '+obs)
+                pdf_issues.savefig(f)
             plt.close(f)
             np.savez('/home/molano/fof_data/sess_inv_extended.npz', **inv)
+    pdf_issues.close()
     #
     #
     #
@@ -175,7 +181,7 @@ if __name__ == '__main__':
     # trace2 = trace2/np.max(trace2)
     # trace2_filt = ss.medfilt(trace2, fltr_k) if fltr_k is not None else trace2
     # signal = 1*((trace1_filt-trace2_filt) > 0.5)
-   
+
     # # stim starts/ends
     # stim_starts = np.where(np.diff(signal) > 0.9)[0]
     # ttl_stim_strt = stim_starts/e_data['s_rate_eff']
@@ -188,7 +194,7 @@ if __name__ == '__main__':
     #              color=colors[0])
     #     plt.plot(samples[ttl_stim_strt[i]-20:ttl_stim_strt[i]+100, 1],
     #              color=colors[1])
-        
+
     # signal = 1*((trace2_filt-trace1_filt) > 0.5)
     # stim_starts = np.where(np.diff(signal) > 0.9)[0]
     # ttl_stim_strt = stim_starts/e_data['s_rate_eff']
@@ -202,7 +208,3 @@ if __name__ == '__main__':
     #              color=colors[0])
     #     plt.plot(samples[ttl_stim_strt[i]-20:ttl_stim_strt[i]+100, 1],
     #              color=colors[1])
-
-    #
-    #
-    #

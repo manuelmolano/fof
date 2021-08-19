@@ -38,7 +38,7 @@ if __name__ == '__main__':
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
     xs = xs/1000
-    sv_folder = '/home/molano/fof_data/ttl_psths/'
+    sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)

@@ -142,8 +142,8 @@ if __name__ == '__main__':
                                      label='ch '+lbls[0])
                         ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                                      label='ch '+lbls[1])
-                    except ValueError:
-                        print('to-do')
+                    except ValueError as e:
+                        print(e)
                     ax_psth.legend()
             f.savefig(sv_folder+'/'+session+'.png')
             good = input("Is this session good?")

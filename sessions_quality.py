@@ -32,6 +32,10 @@ def set_title(ax, inv, inv_sbsmpld):
                  str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][i], 3)))
     for k in inv.keys():
+        print(k)
+        print(not np.isnan(inv[k][i]))
+        print(inv[k][i])
+        print(inv_sbsmpld[k][i])
         if not np.isnan(inv[k][i]) and not np.isnan(inv_sbsmpld[k][i]) and\
            k not in ['num_stim_analogue', 'sil_per']:
             assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])

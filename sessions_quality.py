@@ -30,13 +30,10 @@ def set_title(ax, inv, inv_sbsmpld):
                  str(np.round(inv_sbsmpld['num_stim_analogue'][idx[0]], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_med'][idx[0]], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][idx[0]], 3)))
-    assert inv_sbsmpld['num_stms_csv'] == inv['num_stms_csv'],\
-        str(inv_sbsmpld['num_stms_csv'] - inv['num_stms_csv'])
-    assert inv_sbsmpld['num_stim_ttl'] == inv['num_stim_ttl'],\
-        str(inv_sbsmpld['num_stim_ttl'] - inv['num_stim_ttl'])
-    assert inv_sbsmpld['stim_ttl_dists_med'] == inv['stim_ttl_dists_med'],\
-        str(inv_sbsmpld['stim_ttl_dists_med'] - inv['stim_ttl_dists_med'])
-    assert inv_sbsmpld['stim_analogue_dists_med'] == inv['stim_analogue_dists_med']
+    assert inv_sbsmpld['num_stms_csv'][idx[0]] == inv['num_stms_csv'][idx[0]],\
+        str(inv_sbsmpld['num_stms_csv'][idx[0]] - inv['num_stms_csv'][idx[0]])
+    assert inv_sbsmpld['num_stim_ttl'][idx[0]] == inv['num_stim_ttl'][idx[0]],\
+        str(inv_sbsmpld['num_stim_ttl'][idx[0]] - inv['num_stim_ttl'][idx[0]])
 
 
 if __name__ == '__main__':

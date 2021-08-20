@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import inventory as inv
 from scipy.stats import norm
+from scipy import signal as sig
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -178,30 +179,39 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
                 fltr_k=None):
     # load and med-filter TTL channels
     trace1 = samples[:, chnls[0]]
+    # detrend
+    trace1 = sig.detrend(trace1)
+    # normalize
     trace1 = trace1/np.max(trace1)
-    trace1_filt = ss.medfilt(trace1, fltr_k) if fltr_k is not None else trace1
+    # filter
+    trace1 = ss.medfilt(trace1, fltr_k) if fltr_k is not None else trace1
     trace2 = samples[:, chnls[1]]
+    # detrend
+    trace2 = sig.detrend(trace2)
+    # normalize
     trace2 = trace2/np.max(trace2)
-    trace2_filt = ss.medfilt(trace2, fltr_k) if fltr_k is not None else trace2
+    # filter
+    trace2 = ss.medfilt(trace2, fltr_k) if fltr_k is not None else trace2
 
     if events == 'stim_ttl':
         # stimulus corresponds to ch36=high and ch35=low
         assert chnls[0] == 35 and chnls[1] == 36
-        signal = 1*((trace2_filt-trace1_filt) > 0.5)
+        signal = 1*((trace2-trace1) > 0.5)
     elif events == 'fix':
         # fixation corresponds to ch35=high and ch36=low
         assert chnls[0] == 35 and chnls[1] == 36
-        signal = 1*((trace1_filt-trace2_filt) > 0.5)
+        signal = 1*((trace1-trace2) > 0.5)
     elif events == 'outcome':
         # outcome corresponds to ch36=high and ch35=high
         assert chnls[0] == 35 and chnls[1] == 36
-        signal = 1*((trace2_filt+trace1_filt) > 1.9)
+        signal = 1*((trace2+trace1) > 1.9)
     elif events == 'stim_analogue':
         assert chnls[0] == 37 and chnls[1] == 38
-        signal = 1*((trace2_filt+trace1_filt) > .9)
+        signal = 1*((trace2+trace1) > .9)
     # stim starts/ends
     stim_starts = np.where(np.diff(signal) > 0.9)[0]
     stim_ends = np.where(np.diff(signal) < -0.9)[0]
+    # to seconds
     ttl_stim_strt = stim_starts/s_rate
     ttl_stim_end = stim_ends/s_rate
     return ttl_stim_strt, ttl_stim_end, signal

@@ -151,7 +151,7 @@ if __name__ == '__main__':
     num_ps = int(1e5)  # for traces plot
     ax_size = 0.17  # for hist and psth axes
     margin = .06  # for hist and psth axes
-    home = 'molano'  # 'molano'
+    home = 'molano'  # 'manuel'
     main_folder = '/home/'+home+'/fof_data/'
     if home == 'manuel':
         sv_folder = main_folder+'/ttl_psths/'
@@ -219,8 +219,8 @@ if __name__ == '__main__':
             if fldr == 'bad':
                 ax_traces.text(idx_max, 4.25, prob+': '+obs)
                 ax_traces.set_ylim([-.1, 4.5])
-                pdf_issues.savefig(f)
-            plt.closen(f)
+                pdf_issues.savefig(f.number)
+            plt.close(f)
             if obs == 'EXIT':
                 np.savez(main_folder+'/sess_inv_extended.npz', **inv)
                 pdf_issues.close()

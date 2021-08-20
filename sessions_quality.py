@@ -55,7 +55,7 @@ if __name__ == '__main__':
     home = 'molano'  # 'molano'
     main_folder = '/home/'+home+'/fof_data/'
     if home == 'manuel':
-        sv_folder = main_folder
+        sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
 
@@ -66,8 +66,8 @@ if __name__ == '__main__':
     issue = ['']*len(inv['session'])
     observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE81_2021-02-09_11-34-47']
-    # ['LE101_2021-05-31_12-34-48']  # ['LE104_2021-03-31_14-14-20']
+    sel_sess = []  # ['LE101_2021-05-31_12-34-48']  # ['LE81_2021-02-09_11-34-47']
+    # ['LE104_2021-03-31_14-14-20']
     # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')
@@ -116,7 +116,7 @@ if __name__ == '__main__':
                 ax_traces.plot(np.arange(num_ps)+idx_max+num_ps+1e3,
                                sample[idx_midd:idx_midd+num_ps]+ttl,
                                color=colors[ttl])
-            ax_traces.legend()
+            ax_traces.legend(loc='lower right')
             # PSTHs
             evs_lbls = ['stim_ttl_strt', 'fix_strt', 'outc_strt', 'stim_anlg_strt']
             for i_e, ev in enumerate(evs_lbls):
@@ -175,9 +175,10 @@ if __name__ == '__main__':
             extended_inv['observations'] = observations
             f.savefig(sv_folder+fldr+'/'+session+'.png')
             if good == 'n':
-                ax_traces.text(num_ps, 5, prob+': '+obs)
+                ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                ax_traces.set_ylim([-.1, 4.5])
                 pdf_issues.savefig(f)
-            plt.close(f)
+            plt.closen(f)
             np.savez(main_folder+'/sess_inv_extended.npz', **inv)
     pdf_issues.close()
     #

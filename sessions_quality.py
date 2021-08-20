@@ -94,9 +94,9 @@ def plot_psths(samples, e_data, offset, margin_psth, xs,
                              label='ch '+lbls[0])
                 ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                              label='ch '+lbls[1])
+                ax_psth.legend()
             except ValueError as e:
                 print(e)
-            ax_psth.legend()
 
 
 def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5), ax_size=0.17,
@@ -141,8 +141,19 @@ def get_input():
     return fldr, prob, obs
 
 
+def get_extended_inv(inv, sess_classif, issue, observations):
+    extended_inv = {}
+    for it in inv.items():
+        extended_inv[it[0]] = it[1]
+    extended_inv['sess_class'] = sess_classif
+    extended_inv['issue'] = issue
+    extended_inv['observations'] = observations
+    return extended_inv
+
+
 if __name__ == '__main__':
     plt.close('all')
+    redo = False
     std_conv = 20
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
@@ -160,7 +171,9 @@ if __name__ == '__main__':
     inv = np.load('/home/'+home+'/fof_data/sess_inv.npz', allow_pickle=1)
     inv_sbsmpld = np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
                           allow_pickle=1)
-    sess_classification = ['bad']*len(inv['session'])
+    if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
+        old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
+    sess_classif = ['n.c.']*len(inv['session'])
     issue = ['']*len(inv['session'])
     observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
@@ -184,49 +197,56 @@ if __name__ == '__main__':
                 print(idx)
                 continue
 
-            offset = inv['offset'][idx[0]]
-            e_file = sess+'/e_data.npz'
-            e_data = np.load(e_file, allow_pickle=1)
-            samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
-            samples = samples['samples']
-            f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
-            ax.remove()
-            ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-            set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
-            # PLOT TRACES AND HISTOGRAMS
-            idx_max = plot_traces_and_hists(samples=samples, ax_traces=ax_traces,
-                                            num_ps=num_ps, ax_size=ax_size,
-                                            margin=margin)
-            # PLOT TTL PSTHs
-            plot_psths(samples=samples, e_data=e_data, offset=offset,
-                       margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
-                       margin=margin)
-            f.savefig(sv_folder+'/'+session+'.png')
+            if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
+                fldr = old_inv_extended['sess_class'][idx[0]]
+                prob = old_inv_extended['issue'][idx[0]]
+                obs = old_inv_extended['observations'][idx[0]]
+                if obs.endswith('EXIT'):
+                    obs = obs[:-4]
+            else:
+                fldr, prob, obs = 'n.c.', '', ''
+            if fldr == 'n.c.':
+                offset = inv['offset'][idx[0]]
+                e_file = sess+'/e_data.npz'
+                e_data = np.load(e_file, allow_pickle=1)
+                samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
+                samples = samples['samples']
+                f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
+                ax.remove()
+                ax_traces = plt.axes([.05, 0.55, 0.9, .4])
+                set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
+                # PLOT TRACES AND HISTOGRAMS
+                idx_max = plot_traces_and_hists(samples=samples,
+                                                ax_traces=ax_traces,
+                                                num_ps=num_ps, ax_size=ax_size,
+                                                margin=margin)
+                # PLOT TTL PSTHs
+                plot_psths(samples=samples, e_data=e_data, offset=offset,
+                           margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
+                           margin=margin)
+                f.savefig(sv_folder+'/'+session+'.png')
 
-            # INPUT INFO
-            fldr, prob, obs = get_input()
+                # INPUT INFO
+                fldr, prob, obs = get_input()
+                f.savefig(sv_folder+fldr+'/'+session+'.png')
+                if fldr == 'bad':
+                    ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                    ax_traces.set_ylim([-.1, 4.5])
+                    pdf_issues.savefig(f.number)
+                plt.close(f)
             # SAVE DATA
             issue[idx[0]] = prob
-            sess_classification[idx[0]] = fldr
+            sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
-            extended_inv = {}
-            for it in inv.items():
-                extended_inv[it[0]] = it[1]
-            extended_inv['sess_class'] = sess_classification
-            extended_inv['issue'] = issue
-            extended_inv['observations'] = observations
-            f.savefig(sv_folder+fldr+'/'+session+'.png')
-            if fldr == 'bad':
-                ax_traces.text(idx_max, 4.25, prob+': '+obs)
-                ax_traces.set_ylim([-.1, 4.5])
-                pdf_issues.savefig(f.number)
-            plt.close(f)
-            if obs == 'EXIT':
-                np.savez(main_folder+'/sess_inv_extended.npz', **inv)
+            if obs.endswith('EXIT'):
+                extended_inv = get_extended_inv(inv, sess_classif, issue,
+                                                observations)
+                np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
                 pdf_issues.close()
                 import sys
                 sys.exit()
-    np.savez(main_folder+'/sess_inv_extended.npz', **inv)
+    extended_inv = get_extended_inv(inv, sess_classif, issue, observations)
+    np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
     pdf_issues.close()
     #
     #

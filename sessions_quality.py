@@ -23,6 +23,23 @@ colors = sns.color_palette()
 
 
 def set_title(ax, inv, inv_sbsmpld):
+    '''
+    Set title and check inv and subsampled inv are equivalent
+
+    Parameters
+    ----------
+    ax : axis
+        where to add the tittle.
+    inv : dict
+        original inventory.
+    inv_sbsmpld : dict
+        inventory obtained from subsampled ttl signals (sil-per seems to be diff).
+
+    Returns
+    -------
+    None.
+
+    '''
     i = idx[0]
     ax.set_title(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
                  str(np.round(inv['sil_per'][i], 3))+' /// ' +
@@ -32,9 +49,10 @@ def set_title(ax, inv, inv_sbsmpld):
                  str(np.round(inv_sbsmpld['num_stim_analogue'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][i], 3)))
-    ks_to_check = [k for k in inv.keys() if k not in ['num_stim_analogue', 'sil_per',
-                                                      'rat', 'session', 'bhv_session',
-                                                      'sgnl_stts', 'state', 'date']]
+    ks_to_check = [k for k in inv.keys() if k not in ['num_stim_analogue',
+                                                      'sil_per', 'rat', 'session',
+                                                      'bhv_session', 'sgnl_stts',
+                                                      'state', 'date']]
     for k in ks_to_check:
         print(k)
         print(inv[k][i])
@@ -43,8 +61,99 @@ def set_title(ax, inv, inv_sbsmpld):
             assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])
 
 
+def plot_psths(samples, e_data, offset, margin_psth, xs,
+               ax_size=0.17, margin=.06):
+    # PSTHs
+    evs_lbls = ['stim_ttl_strt', 'fix_strt', 'outc_strt', 'stim_anlg_strt']
+    for i_e, ev in enumerate(evs_lbls):
+        aux1 = i_e % 2 != 0
+        aux2 = i_e > 1
+        ax_loc = [.55+(ax_size+margin)*aux1, .05+(ax_size+margin)*aux2,
+                  ax_size, ax_size]
+        ax_psth = plt.axes(ax_loc)
+        ax_psth.set_title(ev)
+        chnls = [0, 1] if i_e < 3 else [2, 3]
+        lbls = [' (36)', ' (37)'] if i_e < 3 else [' (38)', ' (39)']
+        evs = e_data[ev]
+        if len(evs) > 0:
+            evs = e_data['s_rate_eff']*(evs+offset)
+            evs = evs.astype(int)
+            peri_evs_1 = np.array([samples[x-margin_psth:x+margin_psth,
+                                           chnls[0]] for x in evs])
+            peri_evs_2 = np.array([samples[x-margin_psth:x+margin_psth,
+                                           chnls[1]] for x in evs])
+            try:
+                for i_ex in range(10):
+                    ax_psth.plot(xs, peri_evs_1[i_ex], color=colors[0],
+                                 lw=.5, alpha=.2)
+                    ax_psth.plot(xs, peri_evs_2[i_ex], color=colors[1],
+                                 lw=.5, alpha=.2)
+                psth_1 = np.mean(peri_evs_1, axis=0)
+                psth_2 = np.mean(peri_evs_2, axis=0)
+                ax_psth.plot(xs, psth_1, color=colors[0], lw=1,
+                             label='ch '+lbls[0])
+                ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
+                             label='ch '+lbls[1])
+                ax_psth.legend()
+            except ValueError as e:
+                print(e)
+
+
+def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5), ax_size=0.17,
+                          margin=.06):
+    idx_max = np.where(samples[:, 0] == np.max(samples[:, 0]))[0][0]
+    idx_midd = int(samples.shape[0]/2)
+    for ttl in range(4):
+        aux1 = ttl % 2 != 0
+        aux2 = ttl > 1
+        ax_loc = [.05+(ax_size+margin)*aux1, .05+(ax_size+margin)*aux2,
+                  ax_size, ax_size]
+        ax_hist = plt.axes(ax_loc)
+        sample = samples[:, ttl]
+        ax_hist.hist(sample, 100)
+        ax_hist.set_title('TTL: '+str(ttl+36))
+        ax_hist.set_yscale('log')
+        sample = sample/np.max(sample)
+        # plot around a max event
+        ax_traces.plot(np.arange(num_ps)+idx_max,
+                       sample[idx_max:idx_max+num_ps]+ttl,
+                       label=str(ttl+36), color=colors[ttl])
+        # plot around the middle point of the recording
+        ax_traces.plot(np.arange(num_ps)+idx_max+num_ps+1e3,
+                       sample[idx_midd:idx_midd+num_ps]+ttl,
+                       color=colors[ttl])
+    ax_traces.legend(loc='lower right')
+    return idx_max
+
+
+def get_input():
+    good = input("Is this session good?")
+    if good == 'y':
+        fldr = 'good'
+    elif good == 'n':
+        fldr = 'bad'
+    elif good == ' ':
+        fldr = 'revisit'
+    else:
+        raise ValueError('Specify the quality of the session with y/n')
+    prob = input("issue:")
+    obs = input("Observations:")
+    return fldr, prob, obs
+
+
+def get_extended_inv(inv, sess_classif, issue, observations):
+    extended_inv = {}
+    for it in inv.items():
+        extended_inv[it[0]] = it[1]
+    extended_inv['sess_class'] = sess_classif
+    extended_inv['issue'] = issue
+    extended_inv['observations'] = observations
+    return extended_inv
+
+
 if __name__ == '__main__':
     plt.close('all')
+    redo = False
     std_conv = 20
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
@@ -52,21 +161,24 @@ if __name__ == '__main__':
     num_ps = int(1e5)  # for traces plot
     ax_size = 0.17  # for hist and psth axes
     margin = .06  # for hist and psth axes
-    home = 'molano'  # 'molano'
+    home = 'molano'  # 'manuel'
     main_folder = '/home/'+home+'/fof_data/'
     if home == 'manuel':
-        sv_folder = main_folder
+        sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
 
     inv = np.load('/home/'+home+'/fof_data/sess_inv.npz', allow_pickle=1)
     inv_sbsmpld = np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
                           allow_pickle=1)
-    sess_classification = ['bad']*len(inv['session'])
+    if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
+        old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
+    sess_classif = ['n.c.']*len(inv['session'])
     issue = ['']*len(inv['session'])
     observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = ['LE101_2021-05-31_12-34-48']  # ['LE104_2021-03-31_14-14-20']
+    sel_sess = []  # ['LE101_2021-05-31_12-34-48']  # ['LE81_2021-02-09_11-34-47']
+    # ['LE104_2021-03-31_14-14-20']
     # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')
@@ -85,99 +197,56 @@ if __name__ == '__main__':
                 print(idx)
                 continue
 
-            offset = inv['offset'][idx[0]]
-            e_file = sess+'/e_data.npz'
-            e_data = np.load(e_file, allow_pickle=1)
-            samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
-            samples = samples['samples']
-            f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
-            ax.remove()
-            ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-            set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
-            idx_max = np.where(samples[:, 0] == np.max(samples[:, 0]))[0][0]
-            idx_midd = int(samples.shape[0]/2)
-            for ttl in range(4):
-                aux1 = ttl % 2 != 0
-                aux2 = ttl > 1
-                ax_loc = [.05+(ax_size+margin)*aux1, .05+(ax_size+margin)*aux2,
-                          ax_size, ax_size]
-                ax_hist = plt.axes(ax_loc)
-                sample = samples[:, ttl]
-                ax_hist.hist(sample, 100)
-                ax_hist.set_title('TTL: '+str(ttl+36))
-                ax_hist.set_yscale('log')
-                sample = sample/np.max(sample)
-                # plot around a max event
-                ax_traces.plot(np.arange(num_ps)+idx_max,
-                               sample[idx_max:idx_max+num_ps]+ttl,
-                               label=str(ttl+36), color=colors[ttl])
-                # plot around the middle point of the recording
-                ax_traces.plot(np.arange(num_ps)+idx_max+num_ps+1e3,
-                               sample[idx_midd:idx_midd+num_ps]+ttl,
-                               color=colors[ttl])
-            ax_traces.legend()
-            # PSTHs
-            evs_lbls = ['stim_ttl_strt', 'fix_strt', 'outc_strt', 'stim_anlg_strt']
-            for i_e, ev in enumerate(evs_lbls):
-                aux1 = i_e % 2 != 0
-                aux2 = i_e > 1
-                ax_loc = [.55+(ax_size+margin)*aux1, .05+(ax_size+margin)*aux2,
-                          ax_size, ax_size]
-                ax_psth = plt.axes(ax_loc)
-                ax_psth.set_title(ev)
-                chnls = [0, 1] if i_e < 3 else [2, 3]
-                lbls = [' (36)', ' (37)'] if i_e < 3 else [' (38)', ' (39)']
-                evs = e_data[ev]
-                print(ev)
-                if len(evs) > 0:
-                    evs = e_data['s_rate_eff']*(evs+offset)
-                    evs = evs.astype(int)
-                    peri_evs_1 = np.array([samples[x-margin_psth:x+margin_psth,
-                                                   chnls[0]] for x in evs])
-                    peri_evs_2 = np.array([samples[x-margin_psth:x+margin_psth,
-                                                   chnls[1]] for x in evs])
-                    try:
-                        for i_ex in range(10):
-                            ax_psth.plot(xs, peri_evs_1[i_ex], color=colors[0],
-                                         lw=.5, alpha=.2)
-                            ax_psth.plot(xs, peri_evs_2[i_ex], color=colors[1],
-                                         lw=.5, alpha=.2)
-                        psth_1 = np.mean(peri_evs_1, axis=0)
-                        psth_2 = np.mean(peri_evs_2, axis=0)
-                        ax_psth.plot(xs, psth_1, color=colors[0], lw=1,
-                                     label='ch '+lbls[0])
-                        ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
-                                     label='ch '+lbls[1])
-                    except ValueError as e:
-                        print(e)
-                    ax_psth.legend()
-            f.savefig(sv_folder+'/'+session+'.png')
-            good = input("Is this session good?")
-            if good == 'y':
-                fldr = 'good'
-            elif good == 'n':
-                fldr = 'bad'
-            elif good == ' ':
-                fldr = 'revisit'
+            if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
+                fldr = old_inv_extended['sess_class'][idx[0]]
+                prob = old_inv_extended['issue'][idx[0]]
+                obs = old_inv_extended['observations'][idx[0]]
+                if obs.endswith('EXIT'):
+                    obs = obs[:-4]
             else:
-                raise ValueError('Specify the quality of the session with y/n')
-            sess_classification[idx[0]] = fldr
-            prob = input("issue:")
+                fldr, prob, obs = 'n.c.', '', ''
+            if fldr == 'n.c.':
+                offset = inv['offset'][idx[0]]
+                e_file = sess+'/e_data.npz'
+                e_data = np.load(e_file, allow_pickle=1)
+                samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
+                samples = samples['samples']
+                f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
+                ax.remove()
+                ax_traces = plt.axes([.05, 0.55, 0.9, .4])
+                set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
+                # PLOT TRACES AND HISTOGRAMS
+                idx_max = plot_traces_and_hists(samples=samples,
+                                                ax_traces=ax_traces,
+                                                num_ps=num_ps, ax_size=ax_size,
+                                                margin=margin)
+                # PLOT TTL PSTHs
+                plot_psths(samples=samples, e_data=e_data, offset=offset,
+                           margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
+                           margin=margin)
+                f.savefig(sv_folder+'/'+session+'.png')
+
+                # INPUT INFO
+                fldr, prob, obs = get_input()
+                f.savefig(sv_folder+fldr+'/'+session+'.png')
+                if fldr == 'bad':
+                    ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                    ax_traces.set_ylim([-.1, 4.5])
+                    pdf_issues.savefig(f.number)
+                plt.close(f)
+            # SAVE DATA
             issue[idx[0]] = prob
-            obs = input("Observations:")
+            sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
-            extended_inv = {}
-            for it in inv.items():
-                extended_inv[it[0]] = it[1]
-            extended_inv['sess_class'] = sess_classification
-            extended_inv['issue'] = issue
-            extended_inv['observations'] = observations
-            f.savefig(sv_folder+fldr+'/'+session+'.png')
-            if good == 'n':
-                ax_traces.text(num_ps, 5, prob+': '+obs)
-                pdf_issues.savefig(f)
-            plt.close(f)
-            np.savez(main_folder+'/sess_inv_extended.npz', **inv)
+            if obs.endswith('EXIT'):
+                extended_inv = get_extended_inv(inv, sess_classif, issue,
+                                                observations)
+                np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
+                pdf_issues.close()
+                import sys
+                sys.exit()
+    extended_inv = get_extended_inv(inv, sess_classif, issue, observations)
+    np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
     pdf_issues.close()
     #
     #

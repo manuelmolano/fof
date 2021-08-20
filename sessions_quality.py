@@ -126,18 +126,21 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5), ax_size=0.17,
     return idx_max
 
 
-def get_input():
-    good = input("Is this session good?")
-    if good == 'y':
-        fldr = 'good'
-    elif good == 'n':
-        fldr = 'bad'
-    elif good == ' ':
-        fldr = 'revisit'
+def get_input(ignore=False):
+    if ignore:
+        fldr, prob, obs = 'revisit', '', ''
     else:
-        raise ValueError('Specify the quality of the session with y/n')
-    prob = input("issue:")
-    obs = input("Observations:")
+        good = input("Is this session good?")
+        if good == 'y':
+            fldr = 'good'
+        elif good == 'n':
+            fldr = 'bad'
+        elif good == ' ':
+            fldr = 'revisit'
+        else:
+            raise ValueError('Specify the quality of the session with y/n')
+        prob = input("issue:")
+        obs = input("Observations:")
     return fldr, prob, obs
 
 
@@ -153,7 +156,8 @@ def get_extended_inv(inv, sess_classif, issue, observations):
 
 if __name__ == '__main__':
     plt.close('all')
-    redo = False
+    redo = False  # whether to rewrite comments
+    ignore_input = True  # whether to input comments (or just save the figures)
     std_conv = 20
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
@@ -227,7 +231,7 @@ if __name__ == '__main__':
                 f.savefig(sv_folder+'/'+session+'.png')
 
                 # INPUT INFO
-                fldr, prob, obs = get_input()
+                fldr, prob, obs = get_input(ignore=ignore_input)
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
                 if fldr == 'bad':
                     ax_traces.text(idx_max, 4.25, prob+': '+obs)

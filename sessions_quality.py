@@ -75,7 +75,6 @@ def plot_psths(samples, e_data, offset, margin_psth, xs,
         chnls = [0, 1] if i_e < 3 else [2, 3]
         lbls = [' (36)', ' (37)'] if i_e < 3 else [' (38)', ' (39)']
         evs = e_data[ev]
-        print(ev)
         if len(evs) > 0:
             evs = e_data['s_rate_eff']*(evs+offset)
             evs = evs.astype(int)
@@ -195,12 +194,13 @@ if __name__ == '__main__':
             ax_traces = plt.axes([.05, 0.55, 0.9, .4])
             set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
             # PLOT TRACES AND HISTOGRAMS
-            plot_traces_and_hists(samples=samples, ax_traces=ax_traces,
-                                  num_ps=num_ps, ax_size=ax_size, margin=margin)
+            idx_max = plot_traces_and_hists(samples=samples, ax_traces=ax_traces,
+                                            num_ps=num_ps, ax_size=ax_size,
+                                            margin=margin)
             # PLOT TTL PSTHs
-            idx_max = plot_psths(samples=samples, e_data=e_data, offset=offset,
-                                 margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
-                                 margin=margin)
+            plot_psths(samples=samples, e_data=e_data, offset=offset,
+                       margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
+                       margin=margin)
             f.savefig(sv_folder+'/'+session+'.png')
 
             # INPUT INFO

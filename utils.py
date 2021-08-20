@@ -198,7 +198,7 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
         signal = 1*((trace2_filt+trace1_filt) > 1.9)
     elif events == 'stim_analogue':
         assert chnls[0] == 37 and chnls[1] == 38
-        signal = 1*((trace2_filt+trace1_filt) > .5)
+        signal = 1*((trace2_filt+trace1_filt) > .9)
     # stim starts/ends
     stim_starts = np.where(np.diff(signal) > 0.9)[0]
     stim_ends = np.where(np.diff(signal) < -0.9)[0]

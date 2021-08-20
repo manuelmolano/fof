@@ -66,7 +66,7 @@ if __name__ == '__main__':
     issue = ['']*len(inv['session'])
     observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE104_2021-03-31_14-14-20']
+    sel_sess = ['LE101_2021-05-31_12-34-48']  # ['LE104_2021-03-31_14-14-20']
     # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')

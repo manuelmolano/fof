@@ -172,9 +172,9 @@ if __name__ == '__main__':
     elif home == 'molano':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
 
-    inv = np.load('/home/'+home+'/fof_data/sess_inv.npz', allow_pickle=1)
-    inv_sbsmpld = np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
-                          allow_pickle=1)
+    inv = np.load('/home/'+home+'/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
+    inv_sbsmpld = inv  # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
+                       # allow_pickle=1)
     if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
         old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
     sess_classif = ['n.c.']*len(inv['session'])

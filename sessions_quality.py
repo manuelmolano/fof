@@ -95,7 +95,7 @@ def plot_psths(samples, e_data, offset, margin_psth, xs,
                 ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                              label='ch '+lbls[1])
                 ax_psth.legend()
-            except ValueError as e:
+            except (ValueError,IndexError) as e:
                 print(e)
 
 
@@ -238,19 +238,17 @@ if __name__ == '__main__':
                     ax_traces.set_ylim([-.1, 4.5])
                     pdf_issues.savefig(f.number)
                 plt.close(f)
+
             # SAVE DATA
             issue[idx[0]] = prob
             sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
+            extended_inv = get_extended_inv(inv, sess_classif, issue, observations)
+            np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
-                extended_inv = get_extended_inv(inv, sess_classif, issue,
-                                                observations)
-                np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
                 pdf_issues.close()
                 import sys
                 sys.exit()
-    extended_inv = get_extended_inv(inv, sess_classif, issue, observations)
-    np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
     pdf_issues.close()
     #
     #

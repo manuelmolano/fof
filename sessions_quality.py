@@ -156,8 +156,8 @@ def get_extended_inv(inv, sess_classif, issue, observations):
 
 if __name__ == '__main__':
     plt.close('all')
-    redo = False  # whether to rewrite comments
-    ignore_input = True  # whether to input comments (or just save the figures)
+    redo = True  # whether to rewrite comments
+    ignore_input = False  # whether to input comments (or just save the figures)
     std_conv = 20
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth

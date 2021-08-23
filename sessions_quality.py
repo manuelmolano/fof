@@ -51,9 +51,9 @@ def set_title(ax, inv, inv_sbsmpld):
                                                       'bhv_session', 'sgnl_stts',
                                                       'state', 'date']]
     for k in ks_to_check:
-        print(k)
-        print(inv[k][i])
-        print(inv_sbsmpld[k][i])
+        # print(k)
+        # print(inv[k][i])
+        # print(inv_sbsmpld[k][i])
         if not np.isnan(inv[k][i]) and not np.isnan(inv_sbsmpld[k][i]):
             assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])
 

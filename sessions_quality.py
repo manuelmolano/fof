@@ -203,10 +203,10 @@ if __name__ == '__main__':
                 print(idx)
                 continue
 
-            if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
-                fldr = old_inv_extended['sess_class'][idx[0]]
-                prob = old_inv_extended['issue'][idx[0]]
-                obs = old_inv_extended['observations'][idx[0]]
+            if not redo:
+                fldr = sess_classif[idx[0]]
+                prob = issue[idx[0]]
+                obs = observations[idx[0]]
                 if obs.endswith('EXIT'):
                     obs = obs[:-4]
             else:

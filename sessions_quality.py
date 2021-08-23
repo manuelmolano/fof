@@ -9,22 +9,19 @@ import seaborn as sns
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
-import pandas as pd
 import glob
-import shutil
 from matplotlib.backends.backend_pdf import PdfPages
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
 # sys.path.remove('/home/molano/rewTrained_RNNs')
-import utils as ut
+# import utils as ut
 colors = sns.color_palette()
 
 
 def set_title(ax, inv, inv_sbsmpld):
-    '''
-    Set title and check inv and subsampled inv are equivalent
+    """
+    Set title and check inv and subsampled inv are equivalent.
 
     Parameters
     ----------
@@ -39,7 +36,7 @@ def set_title(ax, inv, inv_sbsmpld):
     -------
     None.
 
-    '''
+    """
     i = idx[0]
     ax.set_title(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
                  str(np.round(inv['sil_per'][i], 3))+' /// ' +
@@ -95,7 +92,7 @@ def plot_psths(samples, e_data, offset, margin_psth, xs,
                 ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                              label='ch '+lbls[1])
                 ax_psth.legend()
-            except (ValueError,IndexError) as e:
+            except (ValueError, IndexError) as e:
                 print(e)
 
 
@@ -174,7 +171,7 @@ if __name__ == '__main__':
 
     inv = np.load('/home/'+home+'/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
     inv_sbsmpld = inv  # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
-                       # allow_pickle=1)
+    # allow_pickle=1)
     if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
         old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
     sess_classif = ['n.c.']*len(inv['session'])

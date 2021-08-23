@@ -156,7 +156,7 @@ def get_extended_inv(inv, sess_classif, issue, observations):
 
 if __name__ == '__main__':
     plt.close('all')
-    redo = True  # whether to rewrite comments
+    redo = False  # whether to rewrite comments
     ignore_input = False  # whether to input comments (or just save the figures)
     std_conv = 20
     margin_psth = 2000

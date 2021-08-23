@@ -174,13 +174,17 @@ if __name__ == '__main__':
     # allow_pickle=1)
     if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
         old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
-    sess_classif = ['n.c.']*len(inv['session'])
-    issue = ['']*len(inv['session'])
-    observations = ['']*len(inv['session'])
+        sess_classif = old_inv_extended['sess_class']
+        issue = old_inv_extended['issue']
+        observations = old_inv_extended['observations']
+    else:
+        sess_classif = ['n.c.']*len(inv['session'])
+        issue = ['']*len(inv['session'])
+        observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE101_2021-05-31_12-34-48']  # ['LE81_2021-02-09_11-34-47']
-    # ['LE104_2021-03-31_14-14-20']
-    # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
+    sel_sess = []  # ['LE101_2021-05-31_12-34-48']
+    # ['LE104_2021-03-31_14-14-20'] ['LE81_2021-02-09_11-34-47']
+    # ['LE113_2021-06-02_14-28-00'] ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')
     for r in rats:

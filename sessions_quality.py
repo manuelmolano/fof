@@ -173,7 +173,8 @@ if __name__ == '__main__':
     inv_sbsmpld = inv  # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
     # allow_pickle=1)
     if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
-        old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
+        old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz',
+                                   allow_pickle=1)
         sess_classif = old_inv_extended['sess_class']
         issue = old_inv_extended['issue']
         observations = old_inv_extended['observations']

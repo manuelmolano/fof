@@ -11,6 +11,7 @@ import os
 import utils as ut
 import numpy as np
 import time
+import pandas as pd
 VERBOSE = True
 
 
@@ -263,7 +264,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 if b_f is None:
                     continue
                 # load load behavior
-                df, df_trials = load_behavior(b_f=b_f)
+                try:
+                    df = pd.read_pickle(sv_f_sess+'/df')
+                    df_trials = pd.read_pickle(sv_f_sess+'/df_trials')
+                except FileNotFoundError as e:
+                    print(e)
+                    df, df_trials = load_behavior(b_f=b_f)
                 if df is None:
                     continue
                 inventory['bhv_session'][-1] = b_f

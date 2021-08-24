@@ -65,7 +65,7 @@ if __name__ == '__main__':
     sv_folder = '/home/molano/fof_data/psths/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
-    inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
+    inv = np.load('/home/molano/fof_data/sess_inv_extended.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
@@ -97,7 +97,7 @@ if __name__ == '__main__':
             e_file = sess+'/e_data.npz'
             e_data = np.load(e_file, allow_pickle=1)
             sel_clstrs = e_data['sel_clstrs']
-            if inv['sil_per'][idx[0]] < 1e-2 and len(sel_clstrs) > 0:
+            if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
                 b_file = sess+'/df_trials'
                 b_data = pd.read_pickle(b_file)
                 for i_cl, cl in enumerate(sel_clstrs):

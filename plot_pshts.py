@@ -62,12 +62,16 @@ if __name__ == '__main__':
     plt.close('all')
     std_conv = 20
     margin_psth = 1000
-    sv_folder = '/home/molano/fof_data/psths/'
-    home = 'molano'
+    home = 'manuel'
     main_folder = '/home/'+home+'/fof_data/'
-    inv = np.load('/home/molano/fof_data/sess_inv.npz', allow_pickle=1)
+    if home == 'manuel':
+        sv_folder = main_folder+'/psths/'
+    elif home == 'molano':
+        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
+    inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
+    sel_sess = ['LE104_2021-06-02_13-14-24'] 
+    # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     home = 'molano'
     rats = glob.glob(main_folder+'LE*')
@@ -97,7 +101,8 @@ if __name__ == '__main__':
             e_file = sess+'/e_data.npz'
             e_data = np.load(e_file, allow_pickle=1)
             sel_clstrs = e_data['sel_clstrs']
-            if inv['sil_per'][idx[0]] < 1e-2 and len(sel_clstrs) > 0:
+            print(inv['sess_class'][idx[0]])
+            if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
                 b_file = sess+'/df_trials'
                 b_data = pd.read_pickle(b_file)
                 for i_cl, cl in enumerate(sel_clstrs):
@@ -119,6 +124,7 @@ if __name__ == '__main__':
                                          sv_folder=sv_folder)
                         ev = 'outc_strt'
                         print(ev)
+                        print(e_data[ev])
                         psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
                                          session=session, ev=ev, std_conv=std_conv,
                                          ax=ax[2], margin_psth=margin_psth,

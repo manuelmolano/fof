@@ -9,22 +9,19 @@ import seaborn as sns
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
-import pandas as pd
 import glob
-import shutil
 from matplotlib.backends.backend_pdf import PdfPages
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
 # sys.path.remove('/home/molano/rewTrained_RNNs')
-import utils as ut
+# import utils as ut
 colors = sns.color_palette()
 
 
 def set_title(ax, inv, inv_sbsmpld):
-    '''
-    Set title and check inv and subsampled inv are equivalent
+    """
+    Set title and check inv and subsampled inv are equivalent.
 
     Parameters
     ----------
@@ -39,7 +36,7 @@ def set_title(ax, inv, inv_sbsmpld):
     -------
     None.
 
-    '''
+    """
     i = idx[0]
     ax.set_title(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
                  str(np.round(inv['sil_per'][i], 3))+' /// ' +
@@ -54,9 +51,9 @@ def set_title(ax, inv, inv_sbsmpld):
                                                       'bhv_session', 'sgnl_stts',
                                                       'state', 'date']]
     for k in ks_to_check:
-        print(k)
-        print(inv[k][i])
-        print(inv_sbsmpld[k][i])
+        # print(k)
+        # print(inv[k][i])
+        # print(inv_sbsmpld[k][i])
         if not np.isnan(inv[k][i]) and not np.isnan(inv_sbsmpld[k][i]):
             assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])
 
@@ -95,7 +92,7 @@ def plot_psths(samples, e_data, offset, margin_psth, xs,
                 ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                              label='ch '+lbls[1])
                 ax_psth.legend()
-            except ValueError as e:
+            except (ValueError, IndexError) as e:
                 print(e)
 
 
@@ -126,18 +123,21 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5), ax_size=0.17,
     return idx_max
 
 
-def get_input():
-    good = input("Is this session good?")
-    if good == 'y':
-        fldr = 'good'
-    elif good == 'n':
-        fldr = 'bad'
-    elif good == ' ':
-        fldr = 'revisit'
+def get_input(ignore=False):
+    if ignore:
+        fldr, prob, obs = 'revisit', '', ''
     else:
-        raise ValueError('Specify the quality of the session with y/n')
-    prob = input("issue:")
-    obs = input("Observations:")
+        good = input("Is this session good?")
+        if good == 'y':
+            fldr = 'good'
+        elif good == 'n':
+            fldr = 'bad'
+        elif good == ' ':
+            fldr = 'revisit'
+        else:
+            raise ValueError('Specify the quality of the session with y/n')
+        prob = input("issue:")
+        obs = input("Observations:")
     return fldr, prob, obs
 
 
@@ -153,7 +153,9 @@ def get_extended_inv(inv, sess_classif, issue, observations):
 
 if __name__ == '__main__':
     plt.close('all')
-    redo = False
+    redo = False  # whether to rewrite comments
+    ignore_input = True  # whether to input comments (or just save the figures)
+    plot_fig = True  # whether to plot the figures
     std_conv = 20
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
@@ -168,18 +170,23 @@ if __name__ == '__main__':
     elif home == 'molano':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
 
-    inv = np.load('/home/'+home+'/fof_data/sess_inv.npz', allow_pickle=1)
-    inv_sbsmpld = np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
-                          allow_pickle=1)
+    inv = np.load('/home/'+home+'/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
+    inv_sbsmpld = inv  # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
+    # allow_pickle=1)
     if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
-        old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz')
-    sess_classif = ['n.c.']*len(inv['session'])
-    issue = ['']*len(inv['session'])
-    observations = ['']*len(inv['session'])
+        old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz',
+                                   allow_pickle=1)
+        sess_classif = old_inv_extended['sess_class']
+        issue = old_inv_extended['issue']
+        observations = old_inv_extended['observations']
+    else:
+        sess_classif = ['n.c.']*len(inv['session'])
+        issue = ['']*len(inv['session'])
+        observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE101_2021-05-31_12-34-48']  # ['LE81_2021-02-09_11-34-47']
-    # ['LE104_2021-03-31_14-14-20']
-    # ['LE113_2021-06-02_14-28-00']  # ['LE113_2021-06-05_12-38-09']
+    sel_sess = []  # ['LE101_2021-05-31_12-34-48']
+    # ['LE104_2021-03-31_14-14-20'] ['LE81_2021-02-09_11-34-47']
+    # ['LE113_2021-06-02_14-28-00'] ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
@@ -197,20 +204,22 @@ if __name__ == '__main__':
                 print(idx)
                 continue
 
-            if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
-                fldr = old_inv_extended['sess_class'][idx[0]]
-                prob = old_inv_extended['issue'][idx[0]]
-                obs = old_inv_extended['observations'][idx[0]]
+            if not redo:
+                fldr = sess_classif[idx[0]]
+                prob = issue[idx[0]]
+                obs = observations[idx[0]]
                 if obs.endswith('EXIT'):
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
-            if fldr == 'n.c.':
+            if plot_fig:
+                # GET DTA
                 offset = inv['offset'][idx[0]]
                 e_file = sess+'/e_data.npz'
                 e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
                 samples = samples['samples']
+                # BUILD FIGURE
                 f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
                 ax.remove()
                 ax_traces = plt.axes([.05, 0.55, 0.9, .4])
@@ -226,27 +235,29 @@ if __name__ == '__main__':
                            margin=margin)
                 f.savefig(sv_folder+'/'+session+'.png')
 
-                # INPUT INFO
-                fldr, prob, obs = get_input()
+            # INPUT INFO
+            if fldr == 'n.c.':
+                fldr, prob, obs = get_input(ignore=ignore_input)
+            if plot_fig:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
-                if fldr == 'bad':
-                    ax_traces.text(idx_max, 4.25, prob+': '+obs)
-                    ax_traces.set_ylim([-.1, 4.5])
-                    pdf_issues.savefig(f.number)
-                plt.close(f)
+            if plot_fig and fldr == 'bad':
+                ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                ax_traces.set_ylim([-.1, 4.5])
+                pdf_issues.savefig(f.number)
+            plt.close(f)
+
             # SAVE DATA
             issue[idx[0]] = prob
             sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
-            if obs.endswith('EXIT'):
+            if not ignore_input:
                 extended_inv = get_extended_inv(inv, sess_classif, issue,
                                                 observations)
                 np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
+            if obs.endswith('EXIT'):
                 pdf_issues.close()
                 import sys
                 sys.exit()
-    extended_inv = get_extended_inv(inv, sess_classif, issue, observations)
-    np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
     pdf_issues.close()
     #
     #

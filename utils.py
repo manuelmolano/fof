@@ -179,15 +179,11 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
                 fltr_k=None):
     # load and med-filter TTL channels
     trace1 = samples[:, chnls[0]]
-    # detrend
-    trace1 = sig.detrend(trace1)
     # normalize
     trace1 = trace1/np.max(trace1)
     # filter
     trace1 = ss.medfilt(trace1, fltr_k) if fltr_k is not None else trace1
     trace2 = samples[:, chnls[1]]
-    # detrend
-    trace2 = sig.detrend(trace2)
     # normalize
     trace2 = trace2/np.max(trace2)
     # filter

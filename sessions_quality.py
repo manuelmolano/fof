@@ -154,7 +154,8 @@ def get_extended_inv(inv, sess_classif, issue, observations):
 if __name__ == '__main__':
     plt.close('all')
     redo = False  # whether to rewrite comments
-    ignore_input = False  # whether to input comments (or just save the figures)
+    ignore_input = True  # whether to input comments (or just save the figures)
+    plot_fig = True  # whether to plot the figures
     std_conv = 20
     margin_psth = 2000
     xs = np.arange(2*margin_psth)-margin_psth
@@ -211,12 +212,14 @@ if __name__ == '__main__':
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
-            if fldr == 'n.c.':
+            if plot_fig:
+                # GET DTA
                 offset = inv['offset'][idx[0]]
                 e_file = sess+'/e_data.npz'
                 e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
                 samples = samples['samples']
+                # BUILD FIGURE
                 f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
                 ax.remove()
                 ax_traces = plt.axes([.05, 0.55, 0.9, .4])
@@ -232,14 +235,16 @@ if __name__ == '__main__':
                            margin=margin)
                 f.savefig(sv_folder+'/'+session+'.png')
 
-                # INPUT INFO
+            # INPUT INFO
+            if fldr == 'n.c.':
                 fldr, prob, obs = get_input(ignore=ignore_input)
+            if plot_fig:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
-                if fldr == 'bad':
-                    ax_traces.text(idx_max, 4.25, prob+': '+obs)
-                    ax_traces.set_ylim([-.1, 4.5])
-                    pdf_issues.savefig(f.number)
-                plt.close(f)
+            if plot_fig and fldr == 'bad':
+                ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                ax_traces.set_ylim([-.1, 4.5])
+                pdf_issues.savefig(f.number)
+            plt.close(f)
 
             # SAVE DATA
             issue[idx[0]] = prob

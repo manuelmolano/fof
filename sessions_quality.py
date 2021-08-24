@@ -211,35 +211,37 @@ if __name__ == '__main__':
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
-            if fldr == 'n.c.':
-                offset = inv['offset'][idx[0]]
-                e_file = sess+'/e_data.npz'
-                e_data = np.load(e_file, allow_pickle=1)
-                samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
-                samples = samples['samples']
-                f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
-                ax.remove()
-                ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-                set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
-                # PLOT TRACES AND HISTOGRAMS
-                idx_max = plot_traces_and_hists(samples=samples,
-                                                ax_traces=ax_traces,
-                                                num_ps=num_ps, ax_size=ax_size,
-                                                margin=margin)
-                # PLOT TTL PSTHs
-                plot_psths(samples=samples, e_data=e_data, offset=offset,
-                           margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
-                           margin=margin)
-                f.savefig(sv_folder+'/'+session+'.png')
+            # GET DTA
+            offset = inv['offset'][idx[0]]
+            e_file = sess+'/e_data.npz'
+            e_data = np.load(e_file, allow_pickle=1)
+            samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
+            samples = samples['samples']
+            # BUILD FIGURE
+            f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
+            ax.remove()
+            ax_traces = plt.axes([.05, 0.55, 0.9, .4])
+            set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
+            # PLOT TRACES AND HISTOGRAMS
+            idx_max = plot_traces_and_hists(samples=samples,
+                                            ax_traces=ax_traces,
+                                            num_ps=num_ps, ax_size=ax_size,
+                                            margin=margin)
+            # PLOT TTL PSTHs
+            plot_psths(samples=samples, e_data=e_data, offset=offset,
+                       margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
+                       margin=margin)
+            f.savefig(sv_folder+'/'+session+'.png')
 
-                # INPUT INFO
+            # INPUT INFO
+            if fldr == 'n.c.':
                 fldr, prob, obs = get_input(ignore=ignore_input)
-                f.savefig(sv_folder+fldr+'/'+session+'.png')
-                if fldr == 'bad':
-                    ax_traces.text(idx_max, 4.25, prob+': '+obs)
-                    ax_traces.set_ylim([-.1, 4.5])
-                    pdf_issues.savefig(f.number)
-                plt.close(f)
+            f.savefig(sv_folder+fldr+'/'+session+'.png')
+            if fldr == 'bad':
+                ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                ax_traces.set_ylim([-.1, 4.5])
+                pdf_issues.savefig(f.number)
+            plt.close(f)
 
             # SAVE DATA
             issue[idx[0]] = prob

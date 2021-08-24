@@ -250,8 +250,10 @@ if __name__ == '__main__':
             issue[idx[0]] = prob
             sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
-            extended_inv = get_extended_inv(inv, sess_classif, issue, observations)
-            np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
+            if not ignore_input:
+                extended_inv = get_extended_inv(inv, sess_classif, issue,
+                                                observations)
+                np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
                 import sys

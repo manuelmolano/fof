@@ -62,7 +62,7 @@ if __name__ == '__main__':
     plt.close('all')
     std_conv = 20
     margin_psth = 1000
-    sv_folder = '/home/molano/fof_data/psths/'
+    sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
     home = 'molano'
     main_folder = '/home/'+home+'/fof_data/'
     inv = np.load('/home/molano/fof_data/sess_inv_extended.npz', allow_pickle=1)

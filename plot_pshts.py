@@ -183,28 +183,26 @@ if __name__ == '__main__':
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
                     f, ax = plt.subplots(ncols=3, nrows=2, figsize=(12, 4),
                                          sharey='row')
-                    if inv['stim_ttl_dists_max'][idx[0]] < 0.1:
-                        ev = 'fix_strt'
-                        print(ev)
-                        psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                         session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[:, 0], margin_psth=margin_psth)
-                        ev = 'stim_ttl_strt'
-                        print(ev)
-                        psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                         session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[:, 1], margin_psth=margin_psth)
-                        ev = 'outc_strt'
-                        print(ev)
-                        psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                         session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[:, 2], margin_psth=margin_psth)
-                    if inv['stim_analogue_dists_max'][idx[0]] < 0.1:
-                        ev = 'stim_anlg_strt'
-                        print(ev)
-                        psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                         session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[:, 1], margin_psth=margin_psth)
+                    ev = 'fix_strt'
+                    print(ev)
+                    psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
+                                     session=session, ev=ev, std_conv=std_conv,
+                                     ax=ax[:, 0], margin_psth=margin_psth)
+                    ev = 'stim_ttl_strt'
+                    print(ev)
+                    psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
+                                     session=session, ev=ev, std_conv=std_conv,
+                                     ax=ax[:, 1], margin_psth=margin_psth)
+                    ev = 'outc_strt'
+                    print(ev)
+                    psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
+                                     session=session, ev=ev, std_conv=std_conv,
+                                     ax=ax[:, 2], margin_psth=margin_psth)
+                    # ev = 'stim_anlg_strt'
+                    # print(ev)
+                    # psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
+                    #                  session=session, ev=ev, std_conv=std_conv,
+                    #                  ax=ax[:, 1], margin_psth=margin_psth)
                     ax[0, 0].set_ylabel('Trial')
                     ax[1, 0].set_ylabel('Firing rate (Hz)')
                     ax[1, 0].set_xlabel('Peri-fixation time (s)')

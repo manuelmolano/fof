@@ -11,22 +11,35 @@ import matplotlib.pyplot as plt
 # from scipy.stats import norm
 import pandas as pd
 import glob
+import seaborn as sns
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 import utils as ut
+colors = sns.color_palette()
 
 
-def plt_psths(cl, spk_tms, evs, ax, margin_psth=1000,
-              std_conv=20, lbl=''):
+def plt_psths(cl, spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
+              color='k'):
     ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
     psth_cnv = ut.convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
                                 margin=margin_psth)
     if len(psth_cnv) > 0:
         xs = np.arange(2*margin_psth)-margin_psth
         xs = xs/1000
-        ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')')
+        ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')', color=color)
+
+
+def plot_scatter(ax, spk_tms, evs, margin_psth, color, offset=0):
+    spk_raster = 1000*spk_tms
+    evs = 1000*evs
+    for i_ev, ev in enumerate(evs):
+        spk_tmp = spk_raster-ev
+        spk_tmp = spk_tmp[np.logical_and(spk_tmp > -margin_psth,
+                                         spk_tmp < margin_psth)]
+        ax.scatter(spk_tmp, np.ones((len(spk_tmp)))+i_ev+offset,
+                   color=color, s=1)
 
 
 def find_repeated_evs(evs_dists, indx_evs):
@@ -102,15 +115,20 @@ def psth_choice_cond(cl, e_data, b_data, session, ax, ev='stim_ttl_strt',
     evs = filt_evs[indx_ch]
     if len(evs) > 0:
         assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-        plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax, std_conv=std_conv,
-                  margin_psth=margin_psth, lbl='Right')
+        plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
+                     color=colors[0])
+        plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                  margin_psth=margin_psth, lbl='Right', color=colors[0])
+    spk_offset = len(evs)
     # plot psth for left trials
     indx_ch = np.logical_and(choice < .5, indx_good_evs)
     evs = filt_evs[indx_ch]
     if len(evs) > 0:
         assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-        plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax, std_conv=std_conv,
-                  margin_psth=margin_psth, lbl='Left')
+        plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
+                     color=colors[1], offset=spk_offset)
+        plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                  margin_psth=margin_psth, lbl='Left', color=colors[1])
 
 
 if __name__ == '__main__':
@@ -163,35 +181,36 @@ if __name__ == '__main__':
                 b_data = pd.read_pickle(b_file)
                 for i_cl, cl in enumerate(sel_clstrs):
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
-                    f, ax = plt.subplots(ncols=3, nrows=1, figsize=(12, 4),
-                                         sharey=True)
+                    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(12, 4),
+                                         sharey='row')
                     if inv['stim_ttl_dists_max'][idx[0]] < 0.1:
                         ev = 'fix_strt'
                         print(ev)
                         psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
                                          session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[0], margin_psth=margin_psth)
+                                         ax=ax[:, 0], margin_psth=margin_psth)
                         ev = 'stim_ttl_strt'
                         print(ev)
                         psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
                                          session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[1], margin_psth=margin_psth)
+                                         ax=ax[:, 1], margin_psth=margin_psth)
                         ev = 'outc_strt'
                         print(ev)
                         psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
                                          session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[2], margin_psth=margin_psth)
+                                         ax=ax[:, 2], margin_psth=margin_psth)
                     if inv['stim_analogue_dists_max'][idx[0]] < 0.1:
                         ev = 'stim_anlg_strt'
                         print(ev)
                         psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
                                          session=session, ev=ev, std_conv=std_conv,
-                                         ax=ax[1], margin_psth=margin_psth)
-                    ax[0].set_ylabel('Firing rate (Hz)')
-                    ax[0].set_xlabel('Peri-fixation time (s)')
-                    ax[1].set_xlabel('Peri-stim time (s)')
-                    ax[2].set_xlabel('Peri-outcome time (s)')
-                    for a in ax:
+                                         ax=ax[:, 1], margin_psth=margin_psth)
+                    ax[0, 0].set_ylabel('Trial')
+                    ax[1, 0].set_ylabel('Firing rate (Hz)')
+                    ax[1, 0].set_xlabel('Peri-fixation time (s)')
+                    ax[1, 1].set_xlabel('Peri-stim time (s)')
+                    ax[1, 2].set_xlabel('Peri-outcome time (s)')
+                    for a in ax.flatten():
                         ut.rm_top_right_lines(a)
                         a.legend()
                     num_spks = np.sum(e_data['clsts'] == cl)

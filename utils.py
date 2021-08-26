@@ -9,9 +9,9 @@ import glob
 # Import all needed libraries
 import pandas as pd
 import numpy as np
-import inventory as inv
+# import inventory as inv
 from scipy.stats import norm
-from scipy import signal as sig
+# from scipy import signal as sig
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -72,7 +72,7 @@ def histogram_psth(spk_times, events, bins, bin_size):
     return psth
 
 
-def convolve_psth(spk_times, events, std=20, margin_psth=1000):
+def convolve_psth(spk_times, events, std=20, margin=1000):
     if len(events) > 0:
         krnl_len = 5*std
         # pass spikes to ms
@@ -80,8 +80,8 @@ def convolve_psth(spk_times, events, std=20, margin_psth=1000):
         spk_times = spk_times.astype(int)
         spk_dist = spk_times[-1] - spk_times[0]
         # build spike vector
-        spk_vct = np.zeros((spk_dist+2*margin_psth, ))
-        spk_vct[spk_times-spk_times[0]+margin_psth] = 1
+        spk_vct = np.zeros((spk_dist+2*margin, ))
+        spk_vct[spk_times-spk_times[0]+margin] = 1
         # convolve
         x = np.linspace(norm.ppf(1e-5, scale=std),
                         norm.ppf(1-1e-5, scale=std), krnl_len)
@@ -92,10 +92,13 @@ def convolve_psth(spk_times, events, std=20, margin_psth=1000):
         # pass events to ms
         events = 1000*events
         # offset events
-        events = events.astype(int)-spk_times[0]+margin_psth
-        peri_evs = np.array([spk_conv[x-margin_psth:x+margin_psth]
-                             for x in events])
-        psth = np.mean(peri_evs, axis=0)*1000
+        events = events.astype(int)-spk_times[0]+margin
+        events = events[np.logical_and(events >= margin, events < spk_dist-margin)]
+        peri_evs = np.array([spk_conv[x-margin:x+margin] for x in events])
+        if len(events) > 0:
+            psth = np.mean(peri_evs, axis=0)*1000
+        else:
+            psth = []
     else:
         psth = []
     return psth
@@ -200,7 +203,7 @@ def find_events(samples, chnls=[35, 36], s_rate=3e4, events='stim_ttl',
     elif events == 'outcome':
         # outcome corresponds to ch36=high and ch35=high
         assert chnls[0] == 35 and chnls[1] == 36
-        signal = 1*((trace2+trace1) > 1.9)
+        signal = 1*((trace2+trace1) > 1.5)
     elif events == 'stim_analogue':
         assert chnls[0] == 37 and chnls[1] == 38
         signal = 1*((trace2+trace1) > .9)

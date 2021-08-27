@@ -18,20 +18,21 @@ import seaborn as sns
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 import utils as ut
 colors = sns.color_palette()
-
+grad_colors = sns.color_palette("vlag", 7)
 
 def plt_psths(cl, spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
-              color='k'):
+              color='k', alpha=1):
     ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
     psth_cnv = ut.convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
                                 margin=margin_psth)
     if len(psth_cnv) > 0:
         xs = np.arange(2*margin_psth)-margin_psth
         xs = xs/1000
-        ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')', color=color)
+        ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')', color=color,
+                alpha=alpha)
 
 
-def plot_scatter(ax, spk_tms, evs, margin_psth, color, offset=0):
+def plot_scatter(ax, spk_tms, evs, margin_psth, color, offset=0, alpha=1):
     spk_raster = 1000*spk_tms
     evs = 1000*evs
     for i_ev, ev in enumerate(evs):
@@ -39,7 +40,7 @@ def plot_scatter(ax, spk_tms, evs, margin_psth, color, offset=0):
         spk_tmp = spk_tmp[np.logical_and(spk_tmp > -margin_psth,
                                          spk_tmp < margin_psth)]
         ax.scatter(spk_tmp, np.ones((len(spk_tmp)))+i_ev+offset,
-                   color=color, s=1)
+                   color=color, s=1, alpha=alpha)
 
 
 def find_repeated_evs(evs_dists, indx_evs):
@@ -80,8 +81,7 @@ def find_repeated_evs(evs_dists, indx_evs):
     return idx_assoc_tr
 
 
-def psth_choice_cond(cl, e_data, b_data, session, ax, ev='stim_ttl_strt',
-                     std_conv=20, margin_psth=1000, fixtn_time=.3, evs_mrgn=1e-2):
+def preprocess_events(b_data, e_data, ev, evs_mrgn, fixtn_time):
     # pass times to seconds
     trial_times = ut.date_2_secs(b_data.fix_onset_dt)
     # get events
@@ -107,46 +107,145 @@ def psth_choice_cond(cl, e_data, b_data, session, ax, ev='stim_ttl_strt',
     # indx of regular trials
     indx_good_evs = np.logical_and.reduce((synchr_cond, idx_good_trs,
                                            idx_assoc_tr))
+    return filt_evs, indx_good_evs
+
+
+def psth_choice_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt', spk_offset=0,
+                     std_conv=20, margin_psth=1000, fixtn_time=.3,
+                     evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1):
+    # get spikes
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
-    choice = b_data['R_response'].values
+    # select trials
+    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
+                                                ev=ev, evs_mrgn=evs_mrgn,
+                                                fixtn_time=fixtn_time)
+    # further filtering
+    if mask is not None:
+        indx_good_evs = np.logical_and(indx_good_evs, mask)
+    # get choices
+    choice = b_data['R_response'].shift(periods=1*prev_choice).values
+    lbls = ['Right', 'Left']
+    for i_c, ch in enumerate([0, 1]):
+        # plot psth for right trials
+        indx_ch = np.logical_and(choice == ch, indx_good_evs)
+        evs = filt_evs[indx_ch]
+        if len(evs) > 0:
+            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=colors[i_c],
+                         margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
+            plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                      margin_psth=margin_psth, lbl=lbls[i_c], color=colors[i_c],
+                      alpha=alpha)
+        spk_offset += len(evs)
+    return spk_offset
 
-    # plot psth for right trials
-    indx_ch = np.logical_and(choice > .5, indx_good_evs)
-    evs = filt_evs[indx_ch]
-    if len(evs) > 0:
-        assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-        plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
-                     color=colors[0])
-        plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                  margin_psth=margin_psth, lbl='Right', color=colors[0])
-    spk_offset = len(evs)
-    # plot psth for left trials
-    indx_ch = np.logical_and(choice < .5, indx_good_evs)
-    evs = filt_evs[indx_ch]
-    if len(evs) > 0:
-        assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-        plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
-                     color=colors[1], offset=spk_offset)
-        plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                  margin_psth=margin_psth, lbl='Left', color=colors[1])
+
+def psth_coh_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt', std_conv=20,
+                  margin_psth=1000, fixtn_time=.3, evs_mrgn=1e-2):
+    cohs = [0., 0.3, 0.4, 0.5, 0.6, 0.7, 1.]
+    # get spikes
+    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
+    # select trials
+    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
+                                                ev=ev, evs_mrgn=evs_mrgn,
+                                                fixtn_time=fixtn_time)
+    # get cohs
+    coh_vals = b_data['coh'].values
+    spk_offset = 0
+    for i_c, coh in enumerate(cohs):
+        indx_ch = np.logical_and(coh_vals == coh, indx_good_evs)
+        evs = filt_evs[indx_ch]
+        if len(evs) > 0:
+            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, offset=spk_offset,
+                         margin_psth=margin_psth, color=grad_colors[i_c])
+            plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                      margin_psth=margin_psth, lbl=str(coh),
+                      color=grad_colors[i_c])
+        spk_offset += len(evs)
 
 
-if __name__ == '__main__':
-    plt.close('all')
-    std_conv = 20
-    margin_psth = 1000
-    home = 'molano'
-    main_folder = '/home/'+home+'/fof_data/'
-    if home == 'manuel':
-        sv_folder = main_folder+'/psths/'
-    elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
-    inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
-    sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE104_2021-05-17_12-02-40']  # ['LE104_2021-06-02_13-14-24']
-    # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
-    # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
-    home = 'molano'
+def psth_outc_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt',
+                   std_conv=20, margin_psth=1000, fixtn_time=.3,
+                   evs_mrgn=1e-2, prev_outc=False, alpha=1):
+    # get spikes
+    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
+    # select trials
+    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
+                                                ev=ev, evs_mrgn=evs_mrgn,
+                                                fixtn_time=fixtn_time)
+    # get outcomes
+    outcome = b_data['hithistory'].shift(periods=1*prev_outc).values
+    spk_offset = 0
+    lbls = ['Prev. error', 'Prev. correct']
+    for i_o, outc in enumerate([0, 1]):
+        # plot psth for right trials
+        indx_outc = np.logical_and(outcome == outc, indx_good_evs)
+        evs = filt_evs[indx_outc]
+        if len(evs) > 0:
+            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=colors[i_o],
+                         margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
+            plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                      margin_psth=margin_psth, lbl=lbls[i_o], color=colors[i_o],
+                      alpha=alpha)
+        spk_offset += len(evs)
+
+
+def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
+                std_conv=20, margin_psth=1000):
+    prev_choice = (cond == 'cond_prev_ch')
+    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(12, 8), sharey='row')
+    ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
+    for i_e, ev in enumerate(ev_keys):
+        if 'prev_outc_and_ch' in cond:
+            prev_outc = b_data['hithistory'].shift().values
+            mask = prev_outc == 0.
+            alpha = 0.5
+            offset = psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                                      ax=ax[:, i_e], std_conv=std_conv,
+                                      margin_psth=margin_psth, mask=mask,
+                                      alpha=alpha, prev_choice=prev_choice)
+            mask = prev_outc == 1.
+            alpha = 1
+            psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                             ax=ax[:, i_e], std_conv=std_conv,
+                             margin_psth=margin_psth, mask=mask, alpha=alpha,
+                             prev_choice=prev_choice, spk_offset=offset)
+        elif 'ch' in cond:
+            psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                             ax=ax[:, i_e], std_conv=std_conv,
+                             margin_psth=margin_psth,
+                             prev_choice=prev_choice)
+        elif cond == 'coh':
+            psth_coh_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                          ax=ax[:, i_e], std_conv=std_conv,
+                          margin_psth=margin_psth)
+        elif 'outc' in cond:
+            psth_outc_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                           ax=ax[:, i_e], std_conv=std_conv,
+                           margin_psth=margin_psth,
+                           prev_outc=(cond == 'cond_prev_outc'))
+    ax[0, 0].set_ylabel('Trial')
+    ax[1, 0].set_ylabel('Firing rate (Hz)')
+    ax[1, 0].set_xlabel('Peri-fixation time (s)')
+    ax[1, 1].set_xlabel('Peri-stim time (s)')
+    ax[1, 2].set_xlabel('Peri-outcome time (s)')
+    for a in ax.flatten():
+        ut.rm_top_right_lines(a)
+        a.legend()
+    num_spks = np.sum(e_data['clsts'] == cl)
+    f.suptitle(str(cl)+' / #spks: '+str(num_spks)+' / qlt: '+cl_qlt)
+    if not os.path.exists(sv_folder+cl_qlt+'/'+cond):
+        os.makedirs(sv_folder+cl_qlt+'/'+cond)
+    print(sv_folder+cl_qlt+'/'+cond+'/'+str(cl)+'_'+session+'_'+'.png')
+    f.savefig(sv_folder+cl_qlt+'/'+cond+'/'+str(cl)+'_'+session+'_' +
+              '.png')
+    plt.close(f)
+
+
+def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
+               sel_sess=[], sel_rats=[], name='cond_ch', sel_qlts=['good']):
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
@@ -176,43 +275,39 @@ if __name__ == '__main__':
             e_data = np.load(e_file, allow_pickle=1)
             sel_clstrs = e_data['sel_clstrs']
             print(inv['sess_class'][idx[0]])
+            print('Number of cluster: ', len(sel_clstrs))
             if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
                 b_file = sess+'/df_trials'
                 b_data = pd.read_pickle(b_file)
                 for i_cl, cl in enumerate(sel_clstrs):
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
-                    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(12, 4),
-                                         sharey='row')
-                    ev = 'fix_strt'
-                    print(ev)
-                    psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                     session=session, ev=ev, std_conv=std_conv,
-                                     ax=ax[:, 0], margin_psth=margin_psth)
-                    ev = 'stim_ttl_strt'
-                    print(ev)
-                    psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                     session=session, ev=ev, std_conv=std_conv,
-                                     ax=ax[:, 1], margin_psth=margin_psth)
-                    ev = 'outc_strt'
-                    print(ev)
-                    psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                     session=session, ev=ev, std_conv=std_conv,
-                                     ax=ax[:, 2], margin_psth=margin_psth)
-                    # ev = 'stim_anlg_strt'
-                    # print(ev)
-                    # psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                    #                  session=session, ev=ev, std_conv=std_conv,
-                    #                  ax=ax[:, 1], margin_psth=margin_psth)
-                    ax[0, 0].set_ylabel('Trial')
-                    ax[1, 0].set_ylabel('Firing rate (Hz)')
-                    ax[1, 0].set_xlabel('Peri-fixation time (s)')
-                    ax[1, 1].set_xlabel('Peri-stim time (s)')
-                    ax[1, 2].set_xlabel('Peri-outcome time (s)')
-                    for a in ax.flatten():
-                        ut.rm_top_right_lines(a)
-                        a.legend()
-                    num_spks = np.sum(e_data['clsts'] == cl)
-                    f.suptitle(str(cl)+' / #spks: '+str(num_spks) +
-                               ' / qlt: '+cl_qlt)
-                    f.savefig(sv_folder+cl_qlt+'/'+str(cl)+'_'+session+'.png')
-                    plt.close(f)
+                    if cl_qlt in sel_qlts:
+                        plot_figure(e_data=e_data, b_data=b_data, cl=cl,
+                                    cl_qlt=cl_qlt, session=session,
+                                    std_conv=std_conv, cond=cond,
+                                    margin_psth=margin_psth,
+                                    sv_folder=sv_folder)
+
+
+if __name__ == '__main__':
+    plt.close('all')
+    std_conv = 20
+    margin_psth = 1000
+    home = 'molano'
+    cond = 'coh'  # 'cond_prev_ch'  # 'cond_ch' 'coh'
+    main_folder = '/home/'+home+'/fof_data/'
+    if home == 'manuel':
+        sv_folder = main_folder+'/psths/'
+    elif home == 'molano':
+        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
+    inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
+    sel_rats = []  # ['LE113']  # 'LE101'
+    sel_sess = []  # ['LE104_2021-05-17_12-02-40']  # ['LE104_2021-06-02_13-14-24']
+    # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
+    # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
+    home = 'molano'
+    for cond in ['prev_outc', 'prev_outc_and_ch', 'coh',
+                 'cond_prev_ch', 'cond_ch', 'outc']:
+        batch_plot(inv=inv, main_folder=main_folder, cond=cond, std_conv=std_conv,
+                   margin_psth=margin_psth, sel_sess=sel_sess, sv_folder=sv_folder,
+                   sel_rats=sel_rats)

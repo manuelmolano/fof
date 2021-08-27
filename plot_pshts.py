@@ -33,6 +33,7 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 grad_colors = [[0.8*g for g in gc] for gc in grad_colors]
 
+
 def plt_psths(spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
               color='k', alpha=1):
     ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
@@ -43,9 +44,10 @@ def plt_psths(spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
         xs = xs/1000
         ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')', color=color,
                 alpha=alpha)
+    return psth_cnv
 
 
-def plot_scatter(ax, spk_tms, evs, margin_psth, color, offset=0, alpha=1):
+def plot_scatter(ax, spk_tms, evs, margin_psth, color='k', offset=0, alpha=1):
     spk_raster = 1000*spk_tms
     evs = 1000*evs
     for i_ev, ev in enumerate(evs):
@@ -123,8 +125,8 @@ def preprocess_events(b_data, e_data, ev, evs_mrgn, fixtn_time):
     return filt_evs, indx_good_evs
 
 
-def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0,
-                     std_conv=20, margin_psth=1000, fixtn_time=.3,
+def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
+                     std_conv=20, margin_psth=1000, fixtn_time=.3, lbls=None,
                      evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1):
     """
     Plot raster-plots and psths conditioned on (prev) choice.
@@ -175,8 +177,8 @@ def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0,
         indx_good_evs = np.logical_and(indx_good_evs, mask)
     # get choices
     choice = b_data['R_response'].shift(periods=1*prev_choice).values
-    lbls = ['Right', 'Left']
-    clrs = [verde, morado]
+    lbls = ['Right', 'Left'] if lbls is None else lbls
+    clrs = [verde, morado] if clrs is None else clrs
     for i_c, ch in enumerate([0, 1]):
         # plot psth for right trials
         indx_ch = np.logical_and(choice == ch, indx_good_evs)
@@ -273,13 +275,35 @@ def psth_context_cond(cl, e_data, b_data, ax, ev, std_conv=20, margin_psth=1000,
         spk_offset += len(evs)
 
 
+def psth(cl, e_data, b_data, ax, ev, std_conv=20, margin_psth=1000,
+         fixtn_time=.3, evs_mrgn=1e-2):
+    # get spikes
+    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
+    # select trials
+    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
+                                                ev=ev, evs_mrgn=evs_mrgn,
+                                                fixtn_time=fixtn_time)
+    # plot psth
+    evs = filt_evs[indx_good_evs]
+    if len(evs) > 0:
+        assert len(np.unique(evs)) == len(evs), 'Repeated events!'
+        plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs,
+                     margin_psth=margin_psth)
+        trace = plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                          margin_psth=margin_psth)
+    else:
+        trace = np.zeros((2*margin_psth))
+    return trace
+
+
 def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                 std_conv=20, margin_psth=1000):
-    prev_choice = (cond == 'prev_ch')
     f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 10), sharey='row')
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
+    traces = []
     for i_e, ev in enumerate(ev_keys):
         if 'prev_outc_and_ch' in cond:
+            prev_choice = True
             prev_outc = b_data['hithistory'].shift().values
             mask = prev_outc == 0.
             alpha = 0.5
@@ -293,7 +317,29 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                              ax=ax[:, i_e], std_conv=std_conv,
                              margin_psth=margin_psth, mask=mask, alpha=alpha,
                              prev_choice=prev_choice, spk_offset=offset)
+        elif 'prev_ch_and_context' in cond:
+            prev_choice = True
+            context = b_data['prob_repeat'].values
+            mask = context == np.unique(context)[0]
+            alpha = 0.5
+            clrs = [morado, verde]
+            lbls = ['Alt to left', 'Alt to right']
+            offset = psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                                      ax=ax[:, i_e], std_conv=std_conv, clrs=clrs,
+                                      margin_psth=margin_psth, mask=mask,
+                                      alpha=alpha, prev_choice=prev_choice,
+                                      lbls=lbls)
+            mask = context == np.unique(context)[1]
+            alpha = 1
+            clrs = [verde, morado]
+            lbls = ['Rep right', 'Rep left']
+            psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                             ax=ax[:, i_e], std_conv=std_conv, clrs=clrs,
+                             margin_psth=margin_psth, mask=mask, alpha=alpha,
+                             prev_choice=prev_choice, spk_offset=offset,
+                             lbls=lbls)
         elif 'ch' in cond:
+            prev_choice = (cond == 'prev_ch')
             psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
                              ax=ax[:, i_e], std_conv=std_conv,
                              margin_psth=margin_psth,
@@ -312,6 +358,11 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
             psth_context_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
                               ax=ax[:, i_e], std_conv=std_conv,
                               margin_psth=margin_psth)
+        elif cond == 'no_cond':
+            psth_trace = psth(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                              ax=ax[:, i_e], std_conv=std_conv,
+                              margin_psth=margin_psth)
+            traces.append(psth_trace)
 
     ax[0, 0].set_ylabel('Trial')
     ax[1, 0].set_ylabel('Firing rate (Hz)')
@@ -323,12 +374,14 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
         a.legend()
     num_spks = np.sum(e_data['clsts'] == cl)
     f.suptitle(str(cl)+' / #spks: '+str(num_spks)+' / qlt: '+cl_qlt)
-    if not os.path.exists(sv_folder+cl_qlt+'/'+cond):
-        os.makedirs(sv_folder+cl_qlt+'/'+cond)
-    print(sv_folder+cl_qlt+'/'+cond+'/'+str(cl)+'_'+session+'_'+'.png')
-    f.savefig(sv_folder+cl_qlt+'/'+cond+'/'+str(cl)+'_'+session+'_' +
+    sv_f = sv_folder+cl_qlt+'/'+cond
+    if not os.path.exists(sv_f):
+        os.makedirs(sv_f)
+    print(sv_f+'/'+str(cl)+'_'+session+'_'+'.png')
+    f.savefig(sv_f+'/'+str(cl)+'_'+session+'_' +
               '.png')
     plt.close(f)
+    return traces
 
 
 def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
@@ -336,6 +389,7 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
+        all_traces = {}
         sessions = glob.glob(r+'/LE*')
         for sess in sessions:
             session = os.path.basename(sess)
@@ -369,11 +423,15 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                 for i_cl, cl in enumerate(sel_clstrs):
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
                     if cl_qlt in sel_qlts:
-                        plot_figure(e_data=e_data, b_data=b_data, cl=cl,
-                                    cl_qlt=cl_qlt, session=session,
-                                    std_conv=std_conv, cond=cond,
-                                    margin_psth=margin_psth,
-                                    sv_folder=sv_folder)
+                        traces = plot_figure(e_data=e_data, b_data=b_data, cl=cl,
+                                             cl_qlt=cl_qlt, session=session,
+                                             std_conv=std_conv, cond=cond,
+                                             margin_psth=margin_psth,
+                                             sv_folder=sv_folder)
+                if cond == 'no_cond':
+                    all_traces[str(cl)+'_'+session] = traces
+
+        np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 
 
 if __name__ == '__main__':
@@ -392,7 +450,8 @@ if __name__ == '__main__':
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     home = 'molano'
-    for cond in ['context']:  #, 'prev_outc', 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']:
+    # 'context' 'prev_outc', 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc'
+    for cond in ['no_cond']:  # ['prev_ch_and_context']:
         batch_plot(inv=inv, main_folder=main_folder, cond=cond, std_conv=std_conv,
                    margin_psth=margin_psth, sel_sess=sel_sess, sv_folder=sv_folder,
                    sel_rats=sel_rats)

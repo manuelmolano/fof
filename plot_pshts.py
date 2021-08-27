@@ -17,10 +17,23 @@ import seaborn as sns
 # import sys
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 import utils as ut
-colors = sns.color_palette()
-grad_colors = sns.color_palette("vlag", 7)
+rojo = np.array((228, 26, 28))/255
+azul = np.array((55, 126, 184))/255
+verde = np.array((77, 175, 74))/255
+morado = np.array((152, 78, 163))/255
+naranja = np.array((255, 127, 0))/255
+marron = np.array((166, 86, 40))/255
+amarillo = np.array((155, 155, 51))/255
+rosa = np.array((247, 129, 191))/255
+cyan = np.array((0, 1, 1))
+gris = np.array((.5, .5, 0.5))
+azul_2 = np.array([56, 108, 176])/255
+rojo_2 = np.array([240, 2, 127])/255
 
-def plt_psths(cl, spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
+grad_colors = sns.diverging_palette(145, 300, n=7)
+grad_colors = [[0.8*g for g in gc] for gc in grad_colors]
+
+def plt_psths(spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
               color='k', alpha=1):
     ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
     psth_cnv = ut.convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
@@ -110,9 +123,47 @@ def preprocess_events(b_data, e_data, ev, evs_mrgn, fixtn_time):
     return filt_evs, indx_good_evs
 
 
-def psth_choice_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt', spk_offset=0,
+def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0,
                      std_conv=20, margin_psth=1000, fixtn_time=.3,
                      evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1):
+    """
+    Plot raster-plots and psths conditioned on (prev) choice.
+
+    Parameters
+    ----------
+    cl : int
+        cluster to plot.
+    e_data : dict
+        dictionary containing spikes info (times, clusters, quality..).
+    b_data : dataframe
+        contains behavioral info.
+    ax : axis
+        where to plot the rasterplots (ax[0]) and the psths (ax[1]).
+    ev : str
+        event to align to: fix_strt, stim_ttl_strt, outc_strt, stim_anlg_strt
+    spk_offset : int, optional
+        offset to plot spikes in the raster-plot (0)
+    std_conv : float, optional
+        std for gaussian used to produce firing rates (20 ms)
+    margin_psth : int, optional
+        pre and post event time to plot rasters and psths (1000 ms)
+    fixtn_time : float, optional
+        fixation time (.3 s)
+    evs_mrgn : float, optional
+        max missmatch allowed between csv and ttl events (1e-2)
+    prev_choice : boolean, optional
+        whether to condition on previous instead of current choice (False)
+    mask : array, optional
+        mask to further filter trials (None)
+    alpha : float, optional
+        alpha for plotting (1)
+
+    Returns
+    -------
+    spk_offset : int
+        spikes offset for next raster-plots
+
+    """
     # get spikes
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
     # select trials
@@ -125,22 +176,23 @@ def psth_choice_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt', spk_offset=0,
     # get choices
     choice = b_data['R_response'].shift(periods=1*prev_choice).values
     lbls = ['Right', 'Left']
+    clrs = [verde, morado]
     for i_c, ch in enumerate([0, 1]):
         # plot psth for right trials
         indx_ch = np.logical_and(choice == ch, indx_good_evs)
         evs = filt_evs[indx_ch]
         if len(evs) > 0:
             assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=colors[i_c],
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_c],
                          margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
-            plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                      margin_psth=margin_psth, lbl=lbls[i_c], color=colors[i_c],
+            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                      margin_psth=margin_psth, lbl=lbls[i_c], color=clrs[i_c],
                       alpha=alpha)
         spk_offset += len(evs)
     return spk_offset
 
 
-def psth_coh_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt', std_conv=20,
+def psth_coh_cond(cl, e_data, b_data, ax, ev, std_conv=20,
                   margin_psth=1000, fixtn_time=.3, evs_mrgn=1e-2):
     cohs = [0., 0.3, 0.4, 0.5, 0.6, 0.7, 1.]
     # get spikes
@@ -159,13 +211,13 @@ def psth_coh_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt', std_conv=20,
             assert len(np.unique(evs)) == len(evs), 'Repeated events!'
             plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, offset=spk_offset,
                          margin_psth=margin_psth, color=grad_colors[i_c])
-            plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
                       margin_psth=margin_psth, lbl=str(coh),
                       color=grad_colors[i_c])
         spk_offset += len(evs)
 
 
-def psth_outc_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt',
+def psth_outc_cond(cl, e_data, b_data, ax, ev,
                    std_conv=20, margin_psth=1000, fixtn_time=.3,
                    evs_mrgn=1e-2, prev_outc=False, alpha=1):
     # get spikes
@@ -177,25 +229,54 @@ def psth_outc_cond(cl, e_data, b_data, ax, ev='stim_ttl_strt',
     # get outcomes
     outcome = b_data['hithistory'].shift(periods=1*prev_outc).values
     spk_offset = 0
-    lbls = ['Prev. error', 'Prev. correct']
+    lbls = ['Prev. error', 'Prev. correct'] if prev_outc else ['Error', 'Correct']
+    clrs = ['k', naranja]
     for i_o, outc in enumerate([0, 1]):
         # plot psth for right trials
         indx_outc = np.logical_and(outcome == outc, indx_good_evs)
         evs = filt_evs[indx_outc]
         if len(evs) > 0:
             assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=colors[i_o],
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_o],
                          margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
-            plt_psths(cl=cl, spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                      margin_psth=margin_psth, lbl=lbls[i_o], color=colors[i_o],
+            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                      margin_psth=margin_psth, lbl=lbls[i_o], color=clrs[i_o],
                       alpha=alpha)
+        spk_offset += len(evs)
+
+
+def psth_context_cond(cl, e_data, b_data, ax, ev, std_conv=20, margin_psth=1000,
+                      fixtn_time=.3, evs_mrgn=1e-2, alpha=1):
+    # get spikes
+    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
+    # select trials
+    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
+                                                ev=ev, evs_mrgn=evs_mrgn,
+                                                fixtn_time=fixtn_time)
+    # get contexts
+    context = b_data['prob_repeat'].values
+    assert len(np.unique(context)) == 2
+    spk_offset = 0
+    lbls = ['Alt.', 'Rep.']
+    clrs = [rojo, azul]
+    for i_c, ctxt in enumerate(np.unique(context)):
+        # plot psth for right trials
+        indx_ctxt = np.logical_and(context == ctxt, indx_good_evs)
+        evs = filt_evs[indx_ctxt]
+        if len(evs) > 0:
+            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_c],
+                         margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
+            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
+                      margin_psth=margin_psth, lbl=lbls[i_c]+' '+str(ctxt),
+                      color=clrs[i_c], alpha=alpha)
         spk_offset += len(evs)
 
 
 def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                 std_conv=20, margin_psth=1000):
-    prev_choice = (cond == 'cond_prev_ch')
-    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(12, 8), sharey='row')
+    prev_choice = (cond == 'prev_ch')
+    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 10), sharey='row')
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     for i_e, ev in enumerate(ev_keys):
         if 'prev_outc_and_ch' in cond:
@@ -222,10 +303,16 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                           ax=ax[:, i_e], std_conv=std_conv,
                           margin_psth=margin_psth)
         elif 'outc' in cond:
+            prev_outc = (cond == 'prev_outc')
             psth_outc_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
                            ax=ax[:, i_e], std_conv=std_conv,
                            margin_psth=margin_psth,
-                           prev_outc=(cond == 'cond_prev_outc'))
+                           prev_outc=prev_outc)
+        elif 'context' in cond:
+            psth_context_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                              ax=ax[:, i_e], std_conv=std_conv,
+                              margin_psth=margin_psth)
+
     ax[0, 0].set_ylabel('Trial')
     ax[1, 0].set_ylabel('Firing rate (Hz)')
     ax[1, 0].set_xlabel('Peri-fixation time (s)')
@@ -245,7 +332,7 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
 
 
 def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
-               sel_sess=[], sel_rats=[], name='cond_ch', sel_qlts=['good']):
+               sel_sess=[], sel_rats=[], name='ch', sel_qlts=['good']):
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
@@ -291,10 +378,9 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
 
 if __name__ == '__main__':
     plt.close('all')
-    std_conv = 20
+    std_conv = 50
     margin_psth = 1000
     home = 'molano'
-    cond = 'coh'  # 'cond_prev_ch'  # 'cond_ch' 'coh'
     main_folder = '/home/'+home+'/fof_data/'
     if home == 'manuel':
         sv_folder = main_folder+'/psths/'
@@ -302,12 +388,11 @@ if __name__ == '__main__':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
     inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE104_2021-05-17_12-02-40']  # ['LE104_2021-06-02_13-14-24']
+    sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     home = 'molano'
-    for cond in ['prev_outc', 'prev_outc_and_ch', 'coh',
-                 'cond_prev_ch', 'cond_ch', 'outc']:
+    for cond in ['context']:  #, 'prev_outc', 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']:
         batch_plot(inv=inv, main_folder=main_folder, cond=cond, std_conv=std_conv,
                    margin_psth=margin_psth, sel_sess=sel_sess, sv_folder=sv_folder,
                    sel_rats=sel_rats)

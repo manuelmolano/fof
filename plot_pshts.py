@@ -302,7 +302,7 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     traces = []
     for i_e, ev in enumerate(ev_keys):
-        if 'prev_outc_and_ch' in cond:
+        if cond == 'prev_outc_and_ch':
             prev_choice = True
             prev_outc = b_data['hithistory'].shift().values
             mask = prev_outc == 0.
@@ -317,7 +317,7 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                              ax=ax[:, i_e], std_conv=std_conv,
                              margin_psth=margin_psth, mask=mask, alpha=alpha,
                              prev_choice=prev_choice, spk_offset=offset)
-        elif 'prev_ch_and_context' in cond:
+        elif cond == 'prev_ch_and_context':
             prev_choice = True
             context = b_data['prob_repeat'].values
             mask = context == np.unique(context)[0]
@@ -354,15 +354,16 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                            ax=ax[:, i_e], std_conv=std_conv,
                            margin_psth=margin_psth,
                            prev_outc=prev_outc)
-        elif 'context' in cond:
+        elif cond == 'context':
             psth_context_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
                               ax=ax[:, i_e], std_conv=std_conv,
                               margin_psth=margin_psth)
         elif cond == 'no_cond':
-            psth_trace = psth(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                              ax=ax[:, i_e], std_conv=std_conv,
-                              margin_psth=margin_psth)
-            traces.append(psth_trace)
+            psth_tr = psth(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
+                           ax=ax[:, i_e], std_conv=std_conv,
+                           margin_psth=margin_psth)
+            psth_tr = np.zeros((2*margin_psth)) if len(psth_tr) == 0 else psth_tr
+            traces.append(psth_tr)
 
     ax[0, 0].set_ylabel('Trial')
     ax[1, 0].set_ylabel('Firing rate (Hz)')
@@ -428,8 +429,8 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                                              std_conv=std_conv, cond=cond,
                                              margin_psth=margin_psth,
                                              sv_folder=sv_folder)
-                if cond == 'no_cond':
-                    all_traces[str(cl)+'_'+session] = traces
+                        if cond == 'no_cond':
+                            all_traces[str(cl)+'_'+session] = traces
 
         np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 

@@ -101,7 +101,7 @@ def convolve_psth(spk_times, events, std=20, margin=1000):
             psth = []
     else:
         psth = []
-    return psth
+    return psth, peri_evs
 
 
 def get_behavior(main_folder, subject):

@@ -8,7 +8,7 @@ Created on Mon Aug  9 17:26:32 2021
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-# from scipy.stats import norm
+import itertools
 import pandas as pd
 import glob
 import seaborn as sns
@@ -34,17 +34,17 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 grad_colors = [[0.8*g for g in gc] for gc in grad_colors]
 
 
-def plt_psths(spk_tms, evs, ax, margin_psth=1000, std_conv=20, lbl='',
-              color='k', alpha=1):
-    ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
-    psth_cnv = ut.convolve_psth(spk_times=spk_tms, events=evs, std=std_conv,
-                                margin=margin_psth)
-    if len(psth_cnv) > 0:
+def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
+              color='k', alpha=1, plot=True):
+    psth_cnv, peri_ev = ut.convolve_psth(spk_times=spk_tms, events=evs,
+                                         std=std_conv, margin=margin_psth)
+    if plot and len(psth_cnv) > 0:
+        ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
         xs = np.arange(2*margin_psth)-margin_psth
         xs = xs/1000
         ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')', color=color,
                 alpha=alpha)
-    return psth_cnv
+    return psth_cnv, peri_ev
 
 
 def plot_scatter(ax, spk_tms, evs, margin_psth, color='k', offset=0, alpha=1):
@@ -123,6 +123,95 @@ def preprocess_events(b_data, e_data, ev, evs_mrgn, fixtn_time):
     indx_good_evs = np.logical_and.reduce((synchr_cond, idx_good_trs,
                                            idx_assoc_tr))
     return filt_evs, indx_good_evs
+
+
+def get_label(cs):
+    ch_lbl = ['Right', 'Left', '-']
+    prev_ch_lbl = ['Prev. right', 'Prev left', '-']
+    outc_lbl = ['Error', 'Correct', '-']
+    prev_outc_lbl = ['Prev. error', 'Prev. correct', '-']
+    prev_tr_lbl = ['Prev. Alt.', 'Prev. Rep.', '-']
+    return ch_lbl[cs[0]]+' / '+prev_ch_lbl[cs[1]]+' / '+outc_lbl[cs[2]]+' / ' +\
+        prev_outc_lbl[cs[3]]+' / '+prev_tr_lbl[cs[4]]
+
+
+def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
+                    margin_psth=1000, std_conv=20, conditioning={}):
+    # get spikes
+    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
+    # select trials
+    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
+                                                ev=ev, evs_mrgn=evs_mrgn,
+                                                fixtn_time=fixtn_time)
+    cond = {'ch': True, 'prev_ch': True, 'outc': False, 'prev_outc': True,
+            'prev_tr': False}
+    cond.update(conditioning)
+    num_tr = len(b_data)
+    if cond['ch']:
+        ch_mat = b_data['R_response'].values
+        ch = [0, 1]
+    else:
+        ch_mat = np.zeros((num_tr))-1
+        ch = [-1]
+
+    if cond['prev_ch']:
+        prev_ch_mat = b_data['R_response'].shift(periods=1).values
+        prev_ch = [0, 1]
+    else:
+        prev_ch_mat = np.zeros((num_tr))-1
+        prev_ch = [-1]
+
+    if cond['outc']:
+        outc_mat = b_data['hithistory'].values
+        outc = [0, 1]
+    else:
+        outc_mat = np.zeros((num_tr))-1
+        outc = [-1]
+
+    if cond['prev_outc']:
+        prev_outc_mat = b_data['hithistory'].shift(periods=1).values
+        prev_outc = [0, 1]
+    else:
+        prev_outc_mat = np.zeros((num_tr))-1
+        prev_outc = [-1]
+
+    if cond['prev_tr']:
+        prev_tr_mat = b_data['rep_response'].shift(periods=1).values
+        prev_tr = [0, 1]
+    else:
+        prev_tr_mat = np.zeros((num_tr))-1
+        prev_tr = [-1]
+    # cond_trials
+    # cond_trials = []
+    # biases = []
+    # n_trials = []
+    # labels = []
+    conditions = []
+    cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr)
+    active_idx = [i for i, v in enumerate(cond.values()) if v]
+    shape = [1000]+len(active_idx)*[2]+[2*margin_psth]
+    trialR = np.zeros(shape)
+    for i_c, case in enumerate(cases):
+        conditions.append(case)
+        choice = case[0]
+        prev_choice = case[1]
+        outcome = case[2]
+        prev_outcome = case[3]
+        prev_trans = case[4]
+        print(get_label(case))
+        mask = np.logical_and.reduce((indx_good_evs,
+                                      ch_mat == choice,
+                                      prev_ch_mat == prev_choice,
+                                      outc_mat == outcome,
+                                      prev_outc_mat == prev_outcome,
+                                      prev_tr_mat == prev_trans))
+        evs = filt_evs[mask]
+        psth, peri_ev = plt_psths(spk_tms=spk_tms, evs=evs, std_conv=std_conv,
+                                  margin_psth=margin_psth, plot=False)
+        idx = [np.arange(len(peri_ev))]+[case[i] for i in active_idx]
+        trialR[idx] = peri_ev
+        print(np.sum(mask))
+    return trialR
 
 
 def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
@@ -364,7 +453,6 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                            margin_psth=margin_psth)
             psth_tr = np.zeros((2*margin_psth)) if len(psth_tr) == 0 else psth_tr
             traces.append(psth_tr)
-
     ax[0, 0].set_ylabel('Trial')
     ax[1, 0].set_ylabel('Firing rate (Hz)')
     ax[1, 0].set_xlabel('Peri-fixation time (s)')
@@ -435,8 +523,29 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
         np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 
 
+def dPCA(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
+         std_conv=20, margin_psth=1000):
+    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 10), sharey='row')
+    ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
+    all_trialsR = []
+    for i_e, ev in enumerate(ev_keys):
+        trialR = get_cond_trials(b_data=b_data, e_data=e_data, ev=ev, cl=cl,
+                                 margin_psth=margin_psth, std_conv=std_conv)
+        all_trialsR.append(trialR)
+
+
 if __name__ == '__main__':
     plt.close('all')
+    # sess = '/home/molano/fof_data/LE113/LE113_2021-06-05_12-38-09'
+    # e_file = sess+'/e_data.npz'
+    # e_data = np.load(e_file, allow_pickle=1)
+    # b_file = sess+'/df_trials'
+    # b_data = pd.read_pickle(b_file)
+    # get_cond_trials(b_data=b_data)
+    # get_cond_trials(b_data=b_data, e_data=e_data, ev, cl, ax, evs_mrgn=1e-2,
+    #                 fixtn_time=.3, clrs=None, lbls=None, alpha=1,
+    #                 conditioning={})
+    
     std_conv = 50
     margin_psth = 1000
     home = 'molano'
@@ -452,7 +561,7 @@ if __name__ == '__main__':
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     home = 'molano'
     # 'context' 'prev_outc', 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc'
-    for cond in ['no_cond']:  # ['prev_ch_and_context']:
+    for cond in ['dpca']:  # ['no_cond']:  # ['prev_ch_and_context']:
         batch_plot(inv=inv, main_folder=main_folder, cond=cond, std_conv=std_conv,
                    margin_psth=margin_psth, sel_sess=sel_sess, sv_folder=sv_folder,
                    sel_rats=sel_rats)

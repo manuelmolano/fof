@@ -596,6 +596,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                 for i_d, dim in enumerate(lbls_to_plot):
                     for cond in conditions:
                         idx = [i_c]+list(cond)+[np.arange(2*margin_psth)]
+                        print(idx)
                         ax[i_c, i_d].plot(time, Z[dim][idx], label=str(cond))
                 ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
                                        str(np.round(var_exp[dim][i_c], 2)))

@@ -595,12 +595,15 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
             for i_c in range(num_comps):
                 for i_d, dim in enumerate(lbls_to_plot):
                     for cond in dpcp(conditions):
+                        print(cond)
+                        print(cond[cond != -1])
                         cond = list(cond[cond != -1])
                         idx = [i_c]+cond+[np.arange(2*margin_psth)]
                         print(idx)
                         ax[i_c, i_d].plot(time, Z[dim][idx], label=str(cond))
                 ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
                                        str(np.round(var_exp[dim][i_c], 2)))
+                ax[i_c, i_d].legend()
             name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
             f.savefig(main_folder+rat+'_'+name+'.png')
 

@@ -167,7 +167,7 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
     else:
         prev_tr_mat = np.zeros((num_tr))-1
     active_idx = [i for i, v in enumerate(cond.values()) if v]
-    shape = [1000]+len(active_idx)*[2]+[2*margin_psth]
+    shape = [200]+len(active_idx)*[2]+[2*margin_psth]
     trialR = np.empty(shape)
     trialR[:] = np.nan
     min_num_tr = 1e6

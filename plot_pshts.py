@@ -171,7 +171,6 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
     trialR[:] = np.nan
     min_num_tr = 1e6
     for i_c, case in enumerate(conditions):
-        conditions.append(case)
         choice = case[0]
         prev_choice = case[1]
         outcome = case[2]
@@ -192,7 +191,7 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
             trialR[idx] = peri_ev
         min_num_tr = min(min_num_tr, len(peri_ev))
 
-    return trialR, min_num_tr, conditions
+    return trialR, min_num_tr
 
 
 def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,

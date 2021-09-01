@@ -590,9 +590,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
             dpca.protect = ['t']
             all_trR = all_trR[:min_num_tr]
             print(min_num_tr)
-            print(all_trR.shape)
-            print(R.shape)
-            print(lbls_cps)
+            print(all_trR)
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
             f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))

@@ -531,7 +531,7 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
 
 
 def compute_dPCA(main_folder, sel_sess, sel_rats, inv, std_conv=20,
-                 margin_psth=1000, sel_qlts=['good']):
+                 margin_psth=1000, sel_qlts=['good'], conditioning={}):
     time = np.arange(2*margin_psth)
     num_comps = 2
     num_cols = 4
@@ -568,7 +568,8 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                             trR, min_n_tr =\
                                 get_cond_trials(b_data=b_data, e_data=e_data,
                                                 ev=ev, cl=cl, std_conv=std_conv,
-                                                margin_psth=margin_psth)
+                                                margin_psth=margin_psth,
+                                                conditioning=conditioning)
                             if min_n_tr > 10:
                                 all_trR.append(trR)
                                 min_num_tr = min(min_num_tr, min_n_tr)
@@ -617,6 +618,8 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                                      ' v. expl.: ' +
                                      str(np.round(var_exp['cpt'][i_c], 2)))
             print(all_trR.shape)
+            name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
+            f.savefig(main_folder+rat+'_'+name+'.png')
 
 
 if __name__ == '__main__':
@@ -633,8 +636,12 @@ if __name__ == '__main__':
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
+    cond = {'ch': False, 'prev_ch': True, 'outc': False, 'prev_outc': True,
+            'prev_tr': True}
+
     compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
-                 margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats)
+                 margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
+                 conditioning=cond)
     import sys
     sys.exit()
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'

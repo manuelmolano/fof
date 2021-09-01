@@ -51,8 +51,9 @@ for i_r, rat1 in enumerate(rats):
     f = plt.figure()
     plt.hist([corrs_within_rat, corrs_between_rats], 20)
     f.savefig(main_folder+'/psth_corrs/'+rat1+'_corrs_hist.png')
-
+    plt.close(f)
 corrs = np.array(corrs)
-plt.figure()
+f = plt.figure()
 plt.imshow(corrs, aspect='auto')
 f.savefig(main_folder+'/psth_corrs/corrs_mat.png')
+plt.close(f)

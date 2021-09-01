@@ -101,6 +101,7 @@ def convolve_psth(spk_times, events, std=20, margin=1000):
             psth = []
     else:
         psth = []
+        peri_evs = []
     return psth, peri_evs
 
 

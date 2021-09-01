@@ -12,6 +12,7 @@ import itertools
 import pandas as pd
 import glob
 import seaborn as sns
+from dPCA import dPCA
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
@@ -143,7 +144,7 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
     filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
                                                 ev=ev, evs_mrgn=evs_mrgn,
                                                 fixtn_time=fixtn_time)
-    cond = {'ch': True, 'prev_ch': True, 'outc': False, 'prev_outc': True,
+    cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
             'prev_tr': False}
     cond.update(conditioning)
     num_tr = len(b_data)
@@ -190,7 +191,9 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
     cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr)
     active_idx = [i for i, v in enumerate(cond.values()) if v]
     shape = [1000]+len(active_idx)*[2]+[2*margin_psth]
-    trialR = np.zeros(shape)
+    trialR = np.empty(shape)
+    trialR[:] = np.nan
+    min_num_tr = 1e6
     for i_c, case in enumerate(cases):
         conditions.append(case)
         choice = case[0]
@@ -198,7 +201,7 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
         outcome = case[2]
         prev_outcome = case[3]
         prev_trans = case[4]
-        print(get_label(case))
+        # print(get_label(case))
         mask = np.logical_and.reduce((indx_good_evs,
                                       ch_mat == choice,
                                       prev_ch_mat == prev_choice,
@@ -209,9 +212,11 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
         psth, peri_ev = plt_psths(spk_tms=spk_tms, evs=evs, std_conv=std_conv,
                                   margin_psth=margin_psth, plot=False)
         idx = [np.arange(len(peri_ev))]+[case[i] for i in active_idx]
-        trialR[idx] = peri_ev
-        print(np.sum(mask))
-    return trialR
+        if len(peri_ev) > 0:
+            trialR[idx] = peri_ev
+        min_num_tr = min(min_num_tr, len(peri_ev))
+
+    return trialR, min_num_tr
 
 
 def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
@@ -472,6 +477,8 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
     plt.close(f)
     return traces
 
+# TODO: separate computing from plotting
+
 
 def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                sel_sess=[], sel_rats=[], name='ch', sel_qlts=['good']):
@@ -523,29 +530,97 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
         np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 
 
-def dPCA(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
-         std_conv=20, margin_psth=1000):
-    f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 10), sharey='row')
+def compute_dPCA(main_folder, sel_sess, sel_rats, inv, std_conv=20,
+                 margin_psth=1000, sel_qlts=['good']):
+    time = np.arange(2*margin_psth)
+    num_comps = 2
+    num_cols = 4
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
-    all_trialsR = []
-    for i_e, ev in enumerate(ev_keys):
-        trialR = get_cond_trials(b_data=b_data, e_data=e_data, ev=ev, cl=cl,
-                                 margin_psth=margin_psth, std_conv=std_conv)
-        all_trialsR.append(trialR)
+    rats = glob.glob(main_folder+'LE*')
+    for r in rats:
+        rat = os.path.basename(r)
+        sessions = glob.glob(r+'/LE*')
+        all_trR = []
+        min_num_tr = 1e6
+        for sess in sessions:
+            session = os.path.basename(sess)
+            print('----')
+            print(session)
+            if session not in sel_sess and rat not in sel_rats and\
+               (len(sel_sess) != 0 or len(sel_rats) != 0):
+                continue
+            idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
+            if len(idx) != 1:
+                print(str(idx))
+                continue
+            e_file = sess+'/e_data.npz'
+            e_data = np.load(e_file, allow_pickle=1)
+            sel_clstrs = e_data['sel_clstrs']
+            print(inv['sess_class'][idx[0]])
+            print('Number of cluster: ', len(sel_clstrs))
+            if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
+                b_file = sess+'/df_trials'
+                b_data = pd.read_pickle(b_file)
+                for i_cl, cl in enumerate(sel_clstrs):
+                    cl_qlt = e_data['clstrs_qlt'][i_cl]
+                    if cl_qlt in sel_qlts:
+                        for i_e, ev in enumerate(ev_keys):
+                            trR, min_n_tr =\
+                                get_cond_trials(b_data=b_data, e_data=e_data,
+                                                ev=ev, cl=cl, std_conv=std_conv,
+                                                margin_psth=margin_psth)
+                            if min_n_tr > 10:
+                                all_trR.append(trR)
+                                min_num_tr = min(min_num_tr, min_n_tr)
+        if len(all_trR) > 0:
+            all_trR = np.array(all_trR)
+            all_trR = np.swapaxes(all_trR, 0, 1)
+            # trial-average data
+            R = np.nanmean(all_trR, 0)
+            # center data
+            R -= np.mean(R.reshape((R.shape[0], -1)), 1)[:, None, None, None]
+            dpca = dPCA.dPCA(labels='cpt', regularizer='auto')
+            dpca.protect = ['t']
+            all_trR = all_trR[:min_num_tr]
+            Z = dpca.fit_transform(R, all_trR)
+            var_exp = dpca.explained_variance_ratio_
+            f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))
+            colors = [verde, morado]
+            alphas = [0.5, 1]
+            for i_c in range(num_comps):
+                for c in range(2):
+                    for p in range(2):
+                        ax[i_c, 0].plot(time, Z['t'][i_c, c, p, :],
+                                        color=colors[c], alpha=alphas[p])
+                ax[i_c, 0].set_title('time C' + str(i_c+1) + ' v. expl.: ' +
+                                     str(np.round(var_exp['t'][i_c], 2)))
+
+                for c in range(2):
+                    for p in range(2):
+                        ax[i_c, 1].plot(time, Z['c'][i_c, c, p, :],
+                                        color=colors[c], alpha=alphas[p])
+                ax[i_c, 1].set_title('Choice C' + str(i_c+1)+' v. expl.: ' +
+                                     str(np.round(var_exp['c'][i_c], 2)))
+
+                for c in range(2):
+                    for p in range(2):
+                        ax[i_c, 2].plot(time, Z['p'][i_c, c, p, :],
+                                        color=colors[c], alpha=alphas[p])
+                ax[i_c, 2].set_title('Prev. Outcome C' + str(i_c+1)+' v. expl.: ' +
+                                     str(np.round(var_exp['p'][i_c], 2)))
+
+                for c in range(2):
+                    for p in range(2):
+                        ax[i_c, 3].plot(time, Z['cpt'][i_c, c, p, :],
+                                        color=colors[c], alpha=alphas[p])
+                ax[i_c, 3].set_title('Interaction mix. C' + str(i_c+1) +
+                                     ' v. expl.: ' +
+                                     str(np.round(var_exp['cpt'][i_c], 2)))
+            print(all_trR.shape)
 
 
 if __name__ == '__main__':
     plt.close('all')
-    # sess = '/home/molano/fof_data/LE113/LE113_2021-06-05_12-38-09'
-    # e_file = sess+'/e_data.npz'
-    # e_data = np.load(e_file, allow_pickle=1)
-    # b_file = sess+'/df_trials'
-    # b_data = pd.read_pickle(b_file)
-    # get_cond_trials(b_data=b_data)
-    # get_cond_trials(b_data=b_data, e_data=e_data, ev, cl, ax, evs_mrgn=1e-2,
-    #                 fixtn_time=.3, clrs=None, lbls=None, alpha=1,
-    #                 conditioning={})
-    
     std_conv = 50
     margin_psth = 1000
     home = 'molano'
@@ -558,10 +633,13 @@ if __name__ == '__main__':
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
+    compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
+                 margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats)
+    import sys
+    sys.exit()
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
-    home = 'molano'
     # 'context' 'prev_outc', 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc'
-    for cond in ['dpca']:  # ['no_cond']:  # ['prev_ch_and_context']:
+    for cond in ['no_cond']:  # ['prev_ch_and_context']:
         batch_plot(inv=inv, main_folder=main_folder, cond=cond, std_conv=std_conv,
                    margin_psth=margin_psth, sel_sess=sel_sess, sv_folder=sv_folder,
                    sel_rats=sel_rats)

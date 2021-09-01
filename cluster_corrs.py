@@ -48,8 +48,11 @@ for i_r, rat1 in enumerate(rats):
                     if rat1 != rat2:
                         print(k1[0][:-9]+'  '+k2[0][:-9])
         corrs.append(corrs_tmp)
-    plt.figure()
+    f = plt.figure()
     plt.hist([corrs_within_rat, corrs_between_rats], 20)
+    f.savefig(main_folder+'/psth_corrs/'+rat1+'_corrs_hist.png')
+
 corrs = np.array(corrs)
 plt.figure()
 plt.imshow(corrs, aspect='auto')
+f.savefig(main_folder+'/psth_corrs/corrs_mat.png')

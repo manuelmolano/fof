@@ -136,65 +136,41 @@ def get_label(cs):
         prev_outc_lbl[cs[3]]+' / '+prev_tr_lbl[cs[4]]
 
 
-def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
-                    margin_psth=1000, std_conv=20, conditioning={}):
+def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
+                    fixtn_time=.3, margin_psth=1000, std_conv=20):
     # get spikes
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
     # select trials
     filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
                                                 ev=ev, evs_mrgn=evs_mrgn,
                                                 fixtn_time=fixtn_time)
-    cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
-            'prev_tr': False}
-    cond.update(conditioning)
     num_tr = len(b_data)
     if cond['ch']:
         ch_mat = b_data['R_response'].values
-        ch = [0, 1]
     else:
         ch_mat = np.zeros((num_tr))-1
-        ch = [-1]
-
     if cond['prev_ch']:
         prev_ch_mat = b_data['R_response'].shift(periods=1).values
-        prev_ch = [0, 1]
     else:
         prev_ch_mat = np.zeros((num_tr))-1
-        prev_ch = [-1]
-
     if cond['outc']:
         outc_mat = b_data['hithistory'].values
-        outc = [0, 1]
     else:
         outc_mat = np.zeros((num_tr))-1
-        outc = [-1]
-
     if cond['prev_outc']:
         prev_outc_mat = b_data['hithistory'].shift(periods=1).values
-        prev_outc = [0, 1]
     else:
         prev_outc_mat = np.zeros((num_tr))-1
-        prev_outc = [-1]
-
     if cond['prev_tr']:
         prev_tr_mat = b_data['rep_response'].shift(periods=1).values
-        prev_tr = [0, 1]
     else:
         prev_tr_mat = np.zeros((num_tr))-1
-        prev_tr = [-1]
-    # cond_trials
-    # cond_trials = []
-    # biases = []
-    # n_trials = []
-    # labels = []
-    conditions = []
-    cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr)
     active_idx = [i for i, v in enumerate(cond.values()) if v]
     shape = [1000]+len(active_idx)*[2]+[2*margin_psth]
     trialR = np.empty(shape)
     trialR[:] = np.nan
     min_num_tr = 1e6
-    for i_c, case in enumerate(cases):
+    for i_c, case in enumerate(conditions):
         conditions.append(case)
         choice = case[0]
         prev_choice = case[1]
@@ -216,7 +192,7 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, fixtn_time=.3,
             trialR[idx] = peri_ev
         min_num_tr = min(min_num_tr, len(peri_ev))
 
-    return trialR, min_num_tr
+    return trialR, min_num_tr, conditions
 
 
 def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
@@ -530,11 +506,38 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
         np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 
 
-def compute_dPCA(main_folder, sel_sess, sel_rats, inv, std_conv=20,
+def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                  margin_psth=1000, sel_qlts=['good'], conditioning={}):
+    def get_conds(num_tr, conditioning={}):
+        cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
+                'prev_tr': False}
+        cond.update(conditioning)
+        if cond['ch']:
+            ch = [0, 1]
+        else:
+            ch = [-1]
+        if cond['prev_ch']:
+            prev_ch = [0, 1]
+        else:
+            prev_ch = [-1]
+        if cond['outc']:
+            outc = [0, 1]
+        else:
+            outc = [-1]
+        if cond['prev_outc']:
+            prev_outc = [0, 1]
+        else:
+            prev_outc = [-1]
+        if cond['prev_tr']:
+            prev_tr = [0, 1]
+        else:
+            prev_tr = [-1]
+        cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr)
+        return cases
+    conditions = get_conds(conditioning=conditioning)
     time = np.arange(2*margin_psth)
     num_comps = 2
-    num_cols = 4
+    num_cols = len(lbls_cps)+1
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
@@ -569,54 +572,35 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                                 get_cond_trials(b_data=b_data, e_data=e_data,
                                                 ev=ev, cl=cl, std_conv=std_conv,
                                                 margin_psth=margin_psth,
-                                                conditioning=conditioning)
+                                                conditions=conditions)
                             if min_n_tr > 10:
                                 all_trR.append(trR)
                                 min_num_tr = min(min_num_tr, min_n_tr)
         if len(all_trR) > 0:
+            conditions = get_conds(conditioning=conditioning)
             all_trR = np.array(all_trR)
             all_trR = np.swapaxes(all_trR, 0, 1)
             # trial-average data
             R = np.nanmean(all_trR, 0)
             # center data
-            R -= np.mean(R.reshape((R.shape[0], -1)), 1)[:, None, None, None]
-            dpca = dPCA.dPCA(labels='cpt', regularizer='auto')
+            mean_acr_tr = np.mean(R.reshape((R.shape[0], -1)), 1)
+            for l in range(len(lbls_cps)):
+                mean_acr_tr = mean_acr_tr[:, None]
+            R -= mean_acr_tr
+            dpca = dPCA.dPCA(labels=lbls_cps, regularizer='auto')
             dpca.protect = ['t']
             all_trR = all_trR[:min_num_tr]
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
             f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))
-            colors = [verde, morado]
-            alphas = [0.5, 1]
+            lbls_to_plot = list(lbls_cps)+[lbls_cps]
             for i_c in range(num_comps):
-                for c in range(2):
-                    for p in range(2):
-                        ax[i_c, 0].plot(time, Z['t'][i_c, c, p, :],
-                                        color=colors[c], alpha=alphas[p])
-                ax[i_c, 0].set_title('time C' + str(i_c+1) + ' v. expl.: ' +
-                                     str(np.round(var_exp['t'][i_c], 2)))
-
-                for c in range(2):
-                    for p in range(2):
-                        ax[i_c, 1].plot(time, Z['c'][i_c, c, p, :],
-                                        color=colors[c], alpha=alphas[p])
-                ax[i_c, 1].set_title('Choice C' + str(i_c+1)+' v. expl.: ' +
-                                     str(np.round(var_exp['c'][i_c], 2)))
-
-                for c in range(2):
-                    for p in range(2):
-                        ax[i_c, 2].plot(time, Z['p'][i_c, c, p, :],
-                                        color=colors[c], alpha=alphas[p])
-                ax[i_c, 2].set_title('Prev. Outcome C' + str(i_c+1)+' v. expl.: ' +
-                                     str(np.round(var_exp['p'][i_c], 2)))
-
-                for c in range(2):
-                    for p in range(2):
-                        ax[i_c, 3].plot(time, Z['cpt'][i_c, c, p, :],
-                                        color=colors[c], alpha=alphas[p])
-                ax[i_c, 3].set_title('Interaction mix. C' + str(i_c+1) +
-                                     ' v. expl.: ' +
-                                     str(np.round(var_exp['cpt'][i_c], 2)))
+                for i_d, dim in enumerate(lbls_to_plot):
+                    for cond in conditions:
+                        idx = [i_c]+cond+[np.arange(2*margin_psth)]
+                        ax[i_c, i_d].plot(time, Z[dim][idx], label=str(cond))
+                ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
+                                       str(np.round(var_exp[dim][i_c], 2)))
             print(all_trR.shape)
             name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
             f.savefig(main_folder+rat+'_'+name+'.png')
@@ -638,10 +622,10 @@ if __name__ == '__main__':
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     cond = {'ch': False, 'prev_ch': True, 'outc': False, 'prev_outc': True,
             'prev_tr': True}
-
+    lbls_cps = 'cort'
     compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
                  margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
-                 conditioning=cond)
+                 conditioning=cond, lbls_cps=lbls_cps)
     import sys
     sys.exit()
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'

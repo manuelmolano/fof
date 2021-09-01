@@ -505,7 +505,8 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
 
 
 def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
-                 margin_psth=1000, sel_qlts=['good'], conditioning={}):
+                 margin_psth=1000, sel_qlts=['good'], conditioning={},
+                 sv_folder=''):
     def get_conds(conditioning={}):
         cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
                 'prev_tr': False}
@@ -602,7 +603,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                                        str(np.round(var_exp[dim][i_c], 2)))
                 ax[i_c, i_d].legend()
             name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
-            f.savefig(main_folder+rat+'_'+name+'.png')
+            f.savefig(sv_folder+rat+'_'+name+'.png')
 
 
 if __name__ == '__main__':
@@ -624,7 +625,7 @@ if __name__ == '__main__':
     lbls_cps = 'cprt'
     compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
                  margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
-                 conditioning=cond, lbls_cps=lbls_cps)
+                 conditioning=cond, lbls_cps=lbls_cps, sv_folder=sv_folder)
     import sys
     sys.exit()
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'

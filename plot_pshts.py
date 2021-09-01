@@ -189,6 +189,9 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
         idx = [np.arange(len(peri_ev))]+[case[i] for i in active_idx]
         if len(peri_ev) > 0:
             trialR[idx] = peri_ev
+        print(len(peri_ev))
+        print(peri_ev)
+        print('------------------')
         min_num_tr = min(min_num_tr, len(peri_ev))
 
     return trialR, min_num_tr

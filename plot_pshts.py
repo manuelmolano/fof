@@ -193,7 +193,7 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
         print(peri_ev)
         print('------------------')
         min_num_tr = min(min_num_tr, len(peri_ev))
-
+    print(trialR)
     return trialR, min_num_tr
 
 
@@ -592,8 +592,6 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
             dpca = dPCA.dPCA(labels=lbls_cps, regularizer='auto')
             dpca.protect = ['t']
             all_trR = all_trR[:min_num_tr]
-            print(min_num_tr)
-            print(all_trR)
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
             f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))
@@ -605,7 +603,6 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                         ax[i_c, i_d].plot(time, Z[dim][idx], label=str(cond))
                 ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
                                        str(np.round(var_exp[dim][i_c], 2)))
-            print(all_trR.shape)
             name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
             f.savefig(main_folder+rat+'_'+name+'.png')
 

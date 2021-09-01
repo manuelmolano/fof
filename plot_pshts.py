@@ -13,6 +13,7 @@ import pandas as pd
 import glob
 import seaborn as sns
 from dPCA import dPCA
+from copy import deepcopy as dpcp
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
@@ -176,7 +177,6 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
         outcome = case[2]
         prev_outcome = case[3]
         prev_trans = case[4]
-        # print(get_label(case))
         mask = np.logical_and.reduce((indx_good_evs,
                                       ch_mat == choice,
                                       prev_ch_mat == prev_choice,
@@ -189,11 +189,7 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
         idx = [np.arange(len(peri_ev))]+[case[i] for i in active_idx]
         if len(peri_ev) > 0:
             trialR[idx] = peri_ev
-        print(len(peri_ev))
-        print(peri_ev)
-        print('------------------')
         min_num_tr = min(min_num_tr, len(peri_ev))
-    print(trialR)
     return trialR, min_num_tr
 
 
@@ -574,7 +570,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                                 get_cond_trials(b_data=b_data, e_data=e_data,
                                                 ev=ev, cl=cl, std_conv=std_conv,
                                                 margin_psth=margin_psth,
-                                                conditions=conditions)
+                                                conditions=dpcp(conditions))
                             if min_n_tr > 10:
                                 all_trR.append(trR)
                                 min_num_tr = min(min_num_tr, min_n_tr)

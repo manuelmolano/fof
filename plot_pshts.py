@@ -599,9 +599,9 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                         i_cond = [c for c in cond if c != -1]
                         idx = [i_c]+i_cond+[np.arange(2*margin_psth)]
                         ax[i_c, i_d].plot(time, Z[dim][idx], label=str(i_cond))
-                ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
-                                       str(np.round(var_exp[dim][i_c], 2)))
-                ax[i_c, i_d].legend()
+                    ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
+                                           str(np.round(var_exp[dim][i_c], 2)))
+            ax[i_c, i_d].legend()
             name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
             f.savefig(sv_folder+rat+'_'+name+'.png')
 

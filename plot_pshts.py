@@ -592,6 +592,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
             print(min_num_tr)
             print(all_trR.shape)
             print(R.shape)
+            print(lbls_cps)
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
             f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))
@@ -624,7 +625,7 @@ if __name__ == '__main__':
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     cond = {'ch': False, 'prev_ch': True, 'outc': False, 'prev_outc': True,
             'prev_tr': True}
-    lbls_cps = 'cort'
+    lbls_cps = 'cprt'
     compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
                  margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
                  conditioning=cond, lbls_cps=lbls_cps)

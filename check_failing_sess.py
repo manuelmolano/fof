@@ -44,9 +44,8 @@ print(len(no_behav))
 for f in no_behav:
     print('---------------')
     print(f)
-    rat_num = f[f.find('/LE')+3:]
+    rat_num = f[f.find('/LE')+3:f.rfind('/LE')]
     bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
-    # check that the behav folder exists
     bhv_f = get_bhv_folder(bhv_f)
 
     print(glob.glob(bhv_f+'/*.csv'))
@@ -60,9 +59,8 @@ print(len(nan))
 for f in nan:
     print('---------------')
     print(f)
-    rat_num = f[f.find('/LE')+3:]
+    rat_num = f[f.find('/LE')+3:f.rfind('/LE')]
     bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
-    # check that the behav folder exists
     bhv_f = get_bhv_folder(bhv_f)
 
     print(glob.glob(bhv_f+'/*.csv'))

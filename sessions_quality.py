@@ -19,7 +19,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 colors = sns.color_palette()
 
 
-def set_title(ax, inv, inv_sbsmpld):
+def set_title(ax, session, inv, inv_sbsmpld):
     """
     Set title and check inv and subsampled inv are equivalent.
 
@@ -38,11 +38,15 @@ def set_title(ax, inv, inv_sbsmpld):
 
     """
     i = idx[0]
-    ax.set_title(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
-                 str(np.round(inv['sil_per'][i], 3))+' /// ' +
+    ax.set_title('Sess:'+session +
+                 ' /// . #evs. csv: ' +
+                 str(np.round(inv['num_stms_csv'][i], 3))+' / Sil. per.: ' +
+                 str(np.round(inv['sil_per'][i], 3)) +
+                 ' /// #evs. ttl: ' +
                  str(np.round(inv['num_stim_ttl'][i], 3))+' / ' +
                  str(np.round(inv['stim_ttl_dists_med'][i], 3))+' / ' +
-                 str(np.round(inv['stim_ttl_dists_max'][i], 3))+' /// ' +
+                 str(np.round(inv['stim_ttl_dists_max'][i], 3)) +
+                 ' /// #evs. anlg: ' +
                  str(np.round(inv_sbsmpld['num_stim_analogue'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][i], 3)))
@@ -188,6 +192,7 @@ if __name__ == '__main__':
     # ['LE104_2021-03-31_14-14-20'] ['LE81_2021-02-09_11-34-47']
     # ['LE113_2021-06-02_14-28-00'] ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
+    pdf_selected = PdfPages(sv_folder+"selected.pdf")
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
@@ -223,7 +228,8 @@ if __name__ == '__main__':
                 f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
                 ax.remove()
                 ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-                set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
+                set_title(ax=ax_traces, session=session, inv=inv,
+                          inv_sbsmpld=inv_sbsmpld)
                 # PLOT TRACES AND HISTOGRAMS
                 idx_max = plot_traces_and_hists(samples=samples,
                                                 ax_traces=ax_traces,
@@ -240,10 +246,12 @@ if __name__ == '__main__':
                 fldr, prob, obs = get_input(ignore=ignore_input)
             if plot_fig:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
+            ax_traces.text(idx_max, 4.25, prob+': '+obs)
+            ax_traces.set_ylim([-.1, 4.5])
             if plot_fig and fldr == 'bad':
-                ax_traces.text(idx_max, 4.25, prob+': '+obs)
-                ax_traces.set_ylim([-.1, 4.5])
                 pdf_issues.savefig(f.number)
+            elif plot_fig and fldr == 'good':
+                pdf_selected.savefig(f.number)
             plt.close(f)
 
             # SAVE DATA
@@ -256,9 +264,11 @@ if __name__ == '__main__':
                 np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
+                pdf_selected.close()
                 import sys
                 sys.exit()
     pdf_issues.close()
+    pdf_selected.close()
     #
     #
     #

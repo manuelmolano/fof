@@ -188,6 +188,7 @@ if __name__ == '__main__':
     # ['LE104_2021-03-31_14-14-20'] ['LE81_2021-02-09_11-34-47']
     # ['LE113_2021-06-02_14-28-00'] ['LE113_2021-06-05_12-38-09']
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
+    pdf_selected = PdfPages(sv_folder+"selected.pdf")
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
@@ -240,10 +241,12 @@ if __name__ == '__main__':
                 fldr, prob, obs = get_input(ignore=ignore_input)
             if plot_fig:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
+            ax_traces.text(idx_max, 4.25, prob+': '+obs)
+            ax_traces.set_ylim([-.1, 4.5])
             if plot_fig and fldr == 'bad':
-                ax_traces.text(idx_max, 4.25, prob+': '+obs)
-                ax_traces.set_ylim([-.1, 4.5])
                 pdf_issues.savefig(f.number)
+            elif plot_fig and fldr == 'good':
+                pdf_selected.savefig(f.number)
             plt.close(f)
 
             # SAVE DATA
@@ -256,9 +259,11 @@ if __name__ == '__main__':
                 np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
+                pdf_selected.close()
                 import sys
                 sys.exit()
     pdf_issues.close()
+    pdf_selected.close()
     #
     #
     #

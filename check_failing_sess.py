@@ -55,7 +55,7 @@ for f in no_behav:
         print('Session folder:')
         print(glob.glob(b_f[0]+'/*.csv'))
     else:
-        print('NO session folder:')
+        print('NO session folder for date: ', date)
 
 
 # N.C.
@@ -77,4 +77,4 @@ for f in nan:
         print('Session folder:')
         print(glob.glob(b_f[0]+'/*.csv'))
     else:
-        print('NO session folder:')
+        print('NO session folder for date: ', date)

@@ -9,6 +9,20 @@ Created on Thu Sep  2 11:33:08 2021
 import numpy as np
 import glob
 import inventory
+import os
+
+
+def get_bhv_folder(bhv_f):
+    assert len(bhv_f) > 0
+    if len(bhv_f) > 1:
+        oks = []
+        for f in bhv_f:
+            oks.append(os.path.exists(f+'/sessions'))
+        assert np.sum(oks) == 1
+        bhv_f = np.array(bhv_f)[np.where(np.array(oks))[0]]
+    return bhv_f[0]
+
+
 behav_folder = '/archive/rat/behavioral_data/'
 inv = np.load('/home/molano/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
 

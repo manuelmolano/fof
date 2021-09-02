@@ -50,8 +50,12 @@ for f in no_behav:
     print(bhv_f)
     dt_indx = f.find(rat_num+'_20')+len(rat_num)+1
     date = f[dt_indx:dt_indx+10]
-    b_f = [f for f in glob.glob(bhv_f+'/*') if f.find(date) != -1]
-    print(glob.glob(b_f+'/*.csv'))
+    b_f = [f for f in glob.glob(bhv_f+'/sessions/*') if f.find(date) != -1]
+    print(b_f)
+    print(bhv_f)
+    print(glob.glob(bhv_f+'/sessions/*'))
+    if len(b_f) > 0:
+        print(glob.glob(b_f[0]+'/*.csv'))
 
 
 # N.C.

@@ -261,6 +261,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 b_f = [f for f in p.available if f.find(date) != -1]
                 # Load behavioral data
                 b_f = get_bhv_session(b_f)
+                inventory['bhv_session'][-1] = b_f
                 if b_f is None:
                     continue
                 # load load behavior
@@ -273,7 +274,6 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                     continue
                 if df is None:
                     continue
-                inventory['bhv_session'][-1] = b_f
                 # get start-sound times
                 bhv_strt_stim_sec = ut.get_startSound_times(df=df)
                 assert len(bhv_strt_stim_sec) > 0, str(len(bhv_strt_stim_sec))

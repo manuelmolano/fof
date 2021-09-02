@@ -19,7 +19,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 colors = sns.color_palette()
 
 
-def set_title(ax, inv, inv_sbsmpld):
+def set_title(ax, session, inv, inv_sbsmpld):
     """
     Set title and check inv and subsampled inv are equivalent.
 
@@ -38,11 +38,15 @@ def set_title(ax, inv, inv_sbsmpld):
 
     """
     i = idx[0]
-    ax.set_title(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
-                 str(np.round(inv['sil_per'][i], 3))+' /// ' +
+    ax.set_title('Sess:'+session +
+                 ' /// . #evs. csv: ' +
+                 str(np.round(inv['num_stms_csv'][i], 3))+' / Sil. per.: ' +
+                 str(np.round(inv['sil_per'][i], 3)) +
+                 ' /// #evs. ttl: ' +
                  str(np.round(inv['num_stim_ttl'][i], 3))+' / ' +
                  str(np.round(inv['stim_ttl_dists_med'][i], 3))+' / ' +
-                 str(np.round(inv['stim_ttl_dists_max'][i], 3))+' /// ' +
+                 str(np.round(inv['stim_ttl_dists_max'][i], 3)) +
+                 ' /// #evs. anlg: ' +
                  str(np.round(inv_sbsmpld['num_stim_analogue'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
                  str(np.round(inv['stim_analogue_dists_max'][i], 3)))
@@ -224,7 +228,8 @@ if __name__ == '__main__':
                 f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
                 ax.remove()
                 ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-                set_title(ax=ax_traces, inv=inv, inv_sbsmpld=inv_sbsmpld)
+                set_title(ax=ax_traces, session=session, inv=inv,
+                          inv_sbsmpld=inv_sbsmpld)
                 # PLOT TRACES AND HISTOGRAMS
                 idx_max = plot_traces_and_hists(samples=samples,
                                                 ax_traces=ax_traces,

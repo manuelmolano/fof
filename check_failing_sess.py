@@ -51,11 +51,11 @@ for f in no_behav:
     dt_indx = f.find(rat_num+'_20')+len(rat_num)+1
     date = f[dt_indx:dt_indx+10]
     b_f = [f for f in glob.glob(bhv_f+'/sessions/*') if f.find(date) != -1]
-    print(b_f)
-    print(bhv_f)
-    print(glob.glob(bhv_f+'/sessions/*'))
     if len(b_f) > 0:
+        print('Session folder:')
         print(glob.glob(b_f[0]+'/*.csv'))
+    else:
+        print('NO session folder:')
 
 
 # N.C.
@@ -69,5 +69,12 @@ for f in nan:
     rat_num = f[f.find('/LE')+3:f.rfind('/LE')]
     bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
     bhv_f = get_bhv_folder(bhv_f)
-
-    print(glob.glob(bhv_f+'/*.csv'))
+    print(bhv_f)
+    dt_indx = f.find(rat_num+'_20')+len(rat_num)+1
+    date = f[dt_indx:dt_indx+10]
+    b_f = [f for f in glob.glob(bhv_f+'/sessions/*') if f.find(date) != -1]
+    if len(b_f) > 0:
+        print('Session folder:')
+        print(glob.glob(b_f[0]+'/*.csv'))
+    else:
+        print('NO session folder:')

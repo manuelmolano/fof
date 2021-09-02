@@ -361,7 +361,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 if __name__ == '__main__':
     default = True
     redo = True
-    use_subsampled_electro = True
+    use_subsampled_electro = False
     if default:
         inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:

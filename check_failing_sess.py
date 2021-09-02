@@ -8,22 +8,24 @@ Created on Thu Sep  2 11:33:08 2021
 
 import numpy as np
 import glob
-inv = np.load('/home/manuel/fof_data/sess_inv_extended.npz', allow_pickle=1)
+inv = np.load('/home/molano/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
 
 # NO TTTLS
 print('==============================')
 print('NO TTLS')
 no_ttls = [s for s, c in zip(inv['session'], inv['state']) if c == 'no_ttls']
-
+print(len(no_ttls))
 for f in no_ttls:
     print('---------------')
-    print(glob.glob(f+'/*'))
+    print(f)
+    print(glob.glob(f+'/*.dat'))
 
 # NO BEHAVIOR
 print('==============================')
 print('NO BEHAVIOR')
-no_ttls = [s for s, c in zip(inv['session'], inv['state']) if c == 'no_behavior']
-
-for f in no_ttls:
+no_behav = [s for s, c in zip(inv['session'], inv['state']) if c == 'no_behavior']
+print(len(no_behav))
+for f in no_behav:
     print('---------------')
-    print(glob.glob(f+'/*'))
+    print(f)
+    print(glob.glob(f+'/*.csv'))

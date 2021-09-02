@@ -29,3 +29,14 @@ for f in no_behav:
     print('---------------')
     print(f)
     print(glob.glob(f+'/*.csv'))
+
+
+# N.C.
+print('==============================')
+print('NAN')
+nan = [s for s, c in zip(inv['session'], inv['state']) if c == 'nan']
+print(len(nan))
+for f in nan:
+    print('---------------')
+    print(f)
+    print(glob.glob(f+'/*.csv'))

@@ -188,9 +188,9 @@ if __name__ == '__main__':
         issue = ['']*len(inv['session'])
         observations = ['']*len(inv['session'])
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE101_2021-05-31_12-34-48']
-    # ['LE104_2021-03-31_14-14-20'] ['LE81_2021-02-09_11-34-47']
-    # ['LE113_2021-06-02_14-28-00'] ['LE113_2021-06-05_12-38-09']
+    sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
+    # ['LE81_2021-02-09_11-34-47'] ['LE113_2021-06-02_14-28-00']
+    used_indx = []
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     pdf_selected = PdfPages(sv_folder+"selected.pdf")
     rats = glob.glob(main_folder+'LE*')
@@ -209,7 +209,8 @@ if __name__ == '__main__':
                 print('Could not find associated session in inventory')
                 print(idx)
                 continue
-
+            assert idx[0] not in used_indx, str(idx[0])
+            used_indx.append(idx[0])
             if not redo:
                 fldr = sess_classif[idx[0]]
                 prob = issue[idx[0]]
@@ -259,6 +260,7 @@ if __name__ == '__main__':
             issue[idx[0]] = prob
             sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
+            print(fldr)
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)

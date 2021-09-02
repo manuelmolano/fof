@@ -47,10 +47,11 @@ for f in no_behav:
     rat_num = f[f.find('/LE')+3:f.rfind('/LE')]
     bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
     bhv_f = get_bhv_folder(bhv_f)
-    print(behav_folder)
     print(bhv_f)
-    print(rat_num)
-    print(glob.glob(bhv_f+'/*.csv'))
+    dt_indx = f.find(rat_num+'_20')+len(rat_num)+1
+    date = f[dt_indx:dt_indx+10]
+    b_f = [f for f in glob.glob(bhv_f+'/*') if f.find(date) != -1]
+    print(glob.glob(b_f+'/*.csv'))
 
 
 # N.C.

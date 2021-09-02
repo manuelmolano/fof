@@ -206,6 +206,7 @@ if __name__ == '__main__':
                 continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
             if len(idx) != 1:
+                print('Could not find associated session in inventory')
                 print(idx)
                 continue
 

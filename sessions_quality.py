@@ -168,7 +168,7 @@ if __name__ == '__main__':
     if home == 'manuel':
         sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths/'
+        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths_bis/'
 
     inv = np.load('/home/'+home+'/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
     inv_sbsmpld = inv  # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',

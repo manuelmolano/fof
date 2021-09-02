@@ -8,7 +8,6 @@ Created on Thu Sep  2 11:33:08 2021
 
 import numpy as np
 import glob
-import inventory
 import os
 
 
@@ -48,7 +47,7 @@ for f in no_behav:
     rat_num = f[f.find('/LE')+3:]
     bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
     # check that the behav folder exists
-    bhv_f = inventory.get_bhv_folder(bhv_f)
+    bhv_f = get_bhv_folder(bhv_f)
 
     print(glob.glob(bhv_f+'/*.csv'))
 
@@ -64,6 +63,6 @@ for f in nan:
     rat_num = f[f.find('/LE')+3:]
     bhv_f = glob.glob(behav_folder+'*'+str(rat_num))
     # check that the behav folder exists
-    bhv_f = inventory.get_bhv_folder(bhv_f)
+    bhv_f = get_bhv_folder(bhv_f)
 
     print(glob.glob(bhv_f+'/*.csv'))

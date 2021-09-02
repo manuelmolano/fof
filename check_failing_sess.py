@@ -23,7 +23,8 @@ for f in no_ttls:
 # NO BEHAVIOR
 print('==============================')
 print('NO BEHAVIOR')
-no_behav = [s for s, c in zip(inv['session'], inv['state']) if c == 'no_behavior']
+no_behav = [s for s, c in zip(inv['bhv_session'], inv['state'])
+            if c == 'no_behavior']
 print(len(no_behav))
 for f in no_behav:
     print('---------------')
@@ -34,7 +35,7 @@ for f in no_behav:
 # N.C.
 print('==============================')
 print('NAN')
-nan = [s for s, c in zip(inv['session'], inv['state']) if c == 'nan']
+nan = [s for s, c in zip(inv['bhv_session'], inv['state']) if c == 'nan']
 print(len(nan))
 for f in nan:
     print('---------------')

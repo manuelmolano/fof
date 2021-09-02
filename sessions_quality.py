@@ -206,6 +206,7 @@ if __name__ == '__main__':
                 continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
             if len(idx) != 1:
+                print('Could not find associated session in inventory')
                 print(idx)
                 continue
 
@@ -258,10 +259,9 @@ if __name__ == '__main__':
             issue[idx[0]] = prob
             sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
-            if not ignore_input:
-                extended_inv = get_extended_inv(inv, sess_classif, issue,
-                                                observations)
-                np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
+            extended_inv = get_extended_inv(inv, sess_classif, issue,
+                                            observations)
+            np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
                 pdf_selected.close()

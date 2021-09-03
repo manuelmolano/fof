@@ -17,9 +17,11 @@ from matplotlib.backends.backend_pdf import PdfPages
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 # import utils as ut
 colors = sns.color_palette()
+AX_SIZE = 0.17  # for hist and psth axes
+MARGIN = .06  # for hist and psth axes
 
 
-def set_title(ax, session, inv, inv_sbsmpld):
+def set_title(ax, session, inv, inv_sbsmpld, i):
     """
     Set title and check inv and subsampled inv are equivalent.
 
@@ -37,7 +39,6 @@ def set_title(ax, session, inv, inv_sbsmpld):
     None.
 
     """
-    i = idx[0]
     ax.set_title('Sess:'+session +
                  ' /// . #evs. csv: ' +
                  str(np.round(inv['num_stms_csv'][i], 3))+' / Sil. per.: ' +
@@ -62,15 +63,41 @@ def set_title(ax, session, inv, inv_sbsmpld):
             assert inv[k][i] == inv_sbsmpld[k][i], str(inv[k][i]-inv_sbsmpld[k][i])
 
 
-def plot_psths(samples, e_data, offset, margin_psth, xs,
-               ax_size=0.17, margin=.06):
+def plot_psths(samples, e_data, offset, margin_psth):
+    """
+    Plot peri-event histograms for the different events (stim, fix, outcome,
+                                                         analogue-stim).
+
+    Parameters
+    ----------
+    samples : array
+        TTL signals corresponding to the last 4 channels (if there is no image).
+    e_data : dict
+        dictionary containing the event times.
+    offset : float
+        offset (in second) that was subtracted from the event times. It corresponds
+        to the time of the first TTL stim event - first CSV stim event.
+    margin_psth : int
+        time (in ms) to plot before and after the event.
+    AX_SIZE : float, optional
+        size of panels(0.17)
+
+    Returns
+    -------
+    None.
+
+    """
+    # Xs to plot the peri-ev hist
+    xs = np.arange(2*margin_psth)-margin_psth
+    xs = xs/1000
+    # this is just to adjust the panels position
     # PSTHs
     evs_lbls = ['stim_ttl_strt', 'fix_strt', 'outc_strt', 'stim_anlg_strt']
     for i_e, ev in enumerate(evs_lbls):
         aux1 = i_e % 2 != 0
         aux2 = i_e > 1
-        ax_loc = [.55+(ax_size+margin)*aux1, .05+(ax_size+margin)*aux2,
-                  ax_size, ax_size]
+        ax_loc = [.55+(AX_SIZE+MARGIN)*aux1, .05+(AX_SIZE+MARGIN)*aux2,
+                  AX_SIZE, AX_SIZE]
         ax_psth = plt.axes(ax_loc)
         ax_psth.set_title(ev)
         chnls = [0, 1] if i_e < 3 else [2, 3]
@@ -100,15 +127,32 @@ def plot_psths(samples, e_data, offset, margin_psth, xs,
                 print(e)
 
 
-def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5), ax_size=0.17,
-                          margin=.06):
+def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
+    """
+    Plot two different samples from the TTL signals and their histograms.
+
+    Parameters
+    ----------
+    samples : array
+        TTL signals corresponding to the last 4 channels (if there is no image).
+    ax_traces : axis
+        where to plot the sample traces.
+    num_ps : int, optional
+        number of points to plot per sample (int(1e5)).
+
+    Returns
+    -------
+    idx_max : int
+        index for the maximum value of samples[:, 0].
+
+    """
     idx_max = np.where(samples[:, 0] == np.max(samples[:, 0]))[0][0]
     idx_midd = int(samples.shape[0]/2)
     for ttl in range(4):
         aux1 = ttl % 2 != 0
         aux2 = ttl > 1
-        ax_loc = [.05+(ax_size+margin)*aux1, .05+(ax_size+margin)*aux2,
-                  ax_size, ax_size]
+        ax_loc = [.05+(AX_SIZE+MARGIN)*aux1, .05+(AX_SIZE+MARGIN)*aux2,
+                  AX_SIZE, AX_SIZE]
         ax_hist = plt.axes(ax_loc)
         sample = samples[:, ttl]
         ax_hist.hist(sample, 100)
@@ -128,6 +172,29 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5), ax_size=0.17,
 
 
 def get_input(ignore=False):
+    """
+    Get feedback from user about: classification of session, issue, observations.
+
+    Parameters
+    ----------
+    ignore : boolean, optional
+        if True, the fn will return 'revisit', '', '' (False)
+
+    Raises
+    ------
+    ValueError
+        error if the classification is not: 'y' (good), 'n' (bad), ' ' (revisit)
+
+    Returns
+    -------
+    fldr : str
+        classification of the session.
+    prob : str
+        issue.
+    obs : str
+        observations.
+
+    """
     if ignore:
         fldr, prob, obs = 'revisit', '', ''
     else:
@@ -146,6 +213,26 @@ def get_input(ignore=False):
 
 
 def get_extended_inv(inv, sess_classif, issue, observations):
+    """
+    Build extended inventory from inv and the classifications.
+
+    Parameters
+    ----------
+    inv : dict
+        original inventory.
+    sess_classif : str
+        classification of the session.
+    issue : str
+        issue.
+    observations : str
+        observations.
+
+    Returns
+    -------
+    extended_inv : dict
+        extended inventory.
+
+    """
     extended_inv = {}
     for it in inv.items():
         extended_inv[it[0]] = it[1]
@@ -155,28 +242,60 @@ def get_extended_inv(inv, sess_classif, issue, observations):
     return extended_inv
 
 
-if __name__ == '__main__':
-    plt.close('all')
-    redo = False  # whether to rewrite comments
-    ignore_input = True  # whether to input comments (or just save the figures)
-    plot_fig = True  # whether to plot the figures
-    std_conv = 20
-    margin_psth = 2000
-    xs = np.arange(2*margin_psth)-margin_psth
-    xs = xs/1000
-    num_ps = int(1e5)  # for traces plot
-    ax_size = 0.17  # for hist and psth axes
-    margin = .06  # for hist and psth axes
-    home = 'molano'  # 'manuel'
-    main_folder = '/home/'+home+'/fof_data/'
-    if home == 'manuel':
-        sv_folder = main_folder+'/ttl_psths/'
-    elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths_bis/'
+def build_figure(samples, e_data, offset, session, inv, inv_sbsmpld, margin_psth,
+                 sv_folder, num_ps, indx):
+    f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
+    ax.remove()
+    ax_traces = plt.axes([.05, 0.55, 0.9, .4])
+    set_title(ax=ax_traces, session=session, inv=inv, inv_sbsmpld=inv_sbsmpld,
+              i=indx)
+    # PLOT TRACES AND HISTOGRAMS
+    idx_max = plot_traces_and_hists(samples=samples, ax_traces=ax_traces,
+                                    num_ps=num_ps)
+    # PLOT TTL PSTHs
+    plot_psths(samples=samples, e_data=e_data, offset=offset,
+               margin_psth=margin_psth)
+    f.savefig(sv_folder+'/'+session+'.png')
+    return f, ax_traces, idx_max
 
-    inv = np.load('/home/'+home+'/fof_data/sess_inv_sbsFalse.npz', allow_pickle=1)
-    inv_sbsmpld = inv  # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz',
-    # allow_pickle=1)
+
+def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
+                   sel_rats=[], plot_fig=True, inv_sbsmpld=None, margin_psth=2e3,
+                   num_ps=int(1e5), ignore_input=False):
+    """
+    Check and classify sessions and store figures in png and pdfs.
+
+    Parameters
+    ----------
+    main_folder : str
+        folder where the data is.
+    sv_folder : str
+        where to save the figures and pdfs.
+    inv : dict
+        inventory.
+    redo : boolean, optional
+        whether to update the comments (False)
+    sel_sess : list, optional
+        list of selected sessions. ([])
+    sel_rats : list, optional
+        list of selected rats ([])
+    plot_fig : boolean, optional
+        whether to plot the figures (True)
+    inv_sbsmpld : dict, optional
+        inventory obtained from subsampled TTL signals (None)
+    margin_psth : int
+        time (in ms) to plot before and after the event (2e3)
+    num_ps : int, optional
+        number of points to plot per sample (int(1e5)).
+    ignore_input : boolean, optional
+        whether to ask for input from user (False)
+
+    Returns
+    -------
+    None.
+
+    """
+    inv_sbsmpld = inv if inv_sbsmpld is None else inv_sbsmpld
     if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
         old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz',
                                    allow_pickle=1)
@@ -187,13 +306,11 @@ if __name__ == '__main__':
         sess_classif = ['n.c.']*len(inv['session'])
         issue = ['']*len(inv['session'])
         observations = ['']*len(inv['session'])
-    sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
-    # ['LE81_2021-02-09_11-34-47'] ['LE113_2021-06-02_14-28-00']
-    used_indx = []
+
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     pdf_selected = PdfPages(sv_folder+"selected.pdf")
     rats = glob.glob(main_folder+'LE*')
+    used_indx = []
     for r in rats:
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
@@ -220,29 +337,18 @@ if __name__ == '__main__':
             else:
                 fldr, prob, obs = 'n.c.', '', ''
             if plot_fig:
-                # GET DTA
+                # GET DATA
                 offset = inv['offset'][idx[0]]
                 e_file = sess+'/e_data.npz'
                 e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
                 samples = samples['samples']
                 # BUILD FIGURE
-                f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
-                ax.remove()
-                ax_traces = plt.axes([.05, 0.55, 0.9, .4])
-                set_title(ax=ax_traces, session=session, inv=inv,
-                          inv_sbsmpld=inv_sbsmpld)
-                # PLOT TRACES AND HISTOGRAMS
-                idx_max = plot_traces_and_hists(samples=samples,
-                                                ax_traces=ax_traces,
-                                                num_ps=num_ps, ax_size=ax_size,
-                                                margin=margin)
-                # PLOT TTL PSTHs
-                plot_psths(samples=samples, e_data=e_data, offset=offset,
-                           margin_psth=margin_psth,  xs=xs, ax_size=ax_size,
-                           margin=margin)
-                f.savefig(sv_folder+'/'+session+'.png')
-
+                f, ax_traces, idx_max =\
+                    build_figure(samples=samples, e_data=e_data, offset=offset,
+                                 session=session, inv=inv, inv_sbsmpld=inv_sbsmpld,
+                                 margin_psth=margin_psth, num_ps=num_ps,
+                                 sv_folder=sv_folder, indx=idx[0])
             # INPUT INFO
             if fldr == 'n.c.':
                 fldr, prob, obs = get_input(ignore=ignore_input)
@@ -261,6 +367,7 @@ if __name__ == '__main__':
             sess_classif[idx[0]] = fldr
             observations[idx[0]] = obs
             print(fldr)
+            assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
@@ -271,6 +378,51 @@ if __name__ == '__main__':
                 sys.exit()
     pdf_issues.close()
     pdf_selected.close()
+
+
+if __name__ == '__main__':
+    plt.close('all')
+    redo = False  # whether to rewrite comments
+    ignore_input = True  # whether to input comments (or just save the figures)
+    plot_fig = True  # whether to plot the figures
+    margin_psth = 2000
+    num_ps = int(1e5)  # for traces plot
+    home = 'molano'  # 'manuel'
+    main_folder = '/home/'+home+'/fof_data/'
+    if home == 'manuel':
+        sv_folder = main_folder+'/ttl_psths/'
+    elif home == 'molano':
+        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths_bis/'
+
+    inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
+    # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
+    inv_sbsmpld = None
+    sel_rats = []  # ['LE113']  # 'LE101'
+    sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
+
+    batch_sessions(main_folder=main_folder, sv_folder=sv_folder, inv=inv,
+                   redo=redo, sel_sess=sel_sess, sel_rats=sel_rats,
+                   plot_fig=plot_fig, inv_sbsmpld=inv_sbsmpld,
+                   margin_psth=margin_psth, num_ps=num_ps,
+                   ignore_input=ignore_input)
+    # # LOAD EXTENDED INVENTORY to get existing comments
+    # if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
+    #     old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz',
+    #                                allow_pickle=1)
+    #     sess_classif = old_inv_extended['sess_class']
+    #     issue = old_inv_extended['issue']
+    #     observations = old_inv_extended['observations']
+    # else:
+    #     sess_classif = ['n.c.']*len(inv['session'])
+    #     issue = ['']*len(inv['session'])
+    #     observations = ['']*len(inv['session'])
+    # # selected rats or sessions
+    # sel_rats = []  # ['LE113']  # 'LE101'
+    # sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
+    # # ['LE81_2021-02-09_11-34-47'] ['LE113_2021-06-02_14-28-00']
+    # # keeps track of the sessions indexes visited
+    # used_indx = []
+    # pdfs to store selected and discarded sessions
     #
     #
     #

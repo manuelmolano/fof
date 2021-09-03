@@ -16,6 +16,20 @@ VERBOSE = True
 
 
 def order_by_sufix(file_list):
+    """
+    Sort list by sufix.
+
+    Parameters
+    ----------
+    file_list : list
+        list to sort.
+
+    Returns
+    -------
+    sorted_list : list
+        sorted list.
+
+    """
     file_list = [os.path.basename(x) for x in file_list]
     sfx = [int(x[-6:]) for x in file_list]
     sorted_list = [x for _, x in sorted(zip(sfx, file_list))]
@@ -24,6 +38,36 @@ def order_by_sufix(file_list):
 
 def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
                         evs='stim_ttl', offset=None):
+    """
+    Check distances between events found in samples and evs in evs_comp.
+
+    Parameters
+    ----------
+    samples : array
+        TTL signals corresponding to the last 4 channels (if there is no image).
+    s_rate : int
+        sampling rate of recordings.
+    evs_comp : array
+        reference events for comparison.
+    inventory : dict
+        inventory.
+    chnls : list, optional
+        channels to find events ([35, 36])
+    evs : str, optional
+        events to find ('stim_ttl')
+    offset : int, optional
+        if not None, offset to subtract from events (None)
+
+    Returns
+    -------
+    stim_strt : list
+        offset-subtracted events.
+    offset : int
+        offset.
+    state : str
+        tag indicating whether the session is ok or there are no ttls.
+
+    """
     state = 'no_ttls'
     # get stim from ttls
     stim_strt, _, _ = ut.find_events(samples=samples, chnls=chnls,
@@ -56,11 +100,42 @@ def check_evs_alignment(samples, s_rate, evs_comp, inventory, chnls=[35, 36],
 
 
 def compute_signal_stats(samples, inventory):
+    """
+    Compute median and std of ttl signals.
+
+    Parameters
+    ----------
+    samples : array
+        TTL signals corresponding to the last 4 channels (if there is no image).
+    inventory : dict
+        inventory.
+
+    Returns
+    -------
+    None.
+
+    """
     inventory['sgnl_stts'][-1] = [np.median(samples[:, 35:39], axis=0),
                                   np.std(samples[:, 35:39], axis=0)]
 
 
 def checked(dic, session):
+    """
+    Check whether a session was already processed.
+
+    Parameters
+    ----------
+    dic : dict
+        inventory.
+    session : str
+        session.
+
+    Returns
+    -------
+    checked : boolean
+        whether a session was already processed..
+
+    """
     checked = False
     if len(dic['session']) > 0:
         indx = np.where(np.array(dic['session']) == session)[0]
@@ -73,22 +148,6 @@ def checked(dic, session):
                 print('Session ', dic['session'][indx[0]])
                 print('Offset ', dic['offset'][indx[0]])
     return checked
-
-
-def add_tms_to_df(df, csv_tms, ttl_tms, col):
-    start = time.time()
-    ttl_indx = np.searchsorted(csv_tms, ttl_tms)
-    ttl_indx = ttl_indx[ttl_indx < len(df)]
-    if VERBOSE:
-        print('---')
-        print(time.time() - start)
-        print(ttl_tms.shape)
-        print(ttl_tms[:10])
-        print(ttl_indx[:10])
-        print(csv_tms[:10])
-        print(col)
-    df[col] = np.nan
-    df[col][ttl_indx] = 1
 
 
 def get_spks(path, limit, s_rate, offset):

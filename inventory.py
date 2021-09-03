@@ -12,6 +12,13 @@ import utils as ut
 import numpy as np
 import pandas as pd
 VERBOSE = True
+INVENTORY = {'rat': [], 'session': [], 'bhv_session': [], 'sgnl_stts': [],
+             'state': [], 'date': [],  'sil_per': [], 'offset': [],
+             'num_stms_csv': [], 'num_stim_analogue': [],
+             'num_stim_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
+             'stim_ttl_dists_med': [], 'stim_ttl_dists_max': [],
+             'stim_analogue_dists_med': [], 'stim_analogue_dists_max': [],
+             'num_clstrs': []}
 
 
 def order_by_sufix(file_list):
@@ -282,6 +289,21 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
     def create_folder(f):
         if not os.path.exists(f):
             os.mkdir(f)
+    def create_e_dict():
+        e_dict = {}
+        e_dict['stim_ttl_strt'] = stim_ttl_strt
+        e_dict['stim_anlg_strt'] = stim_anlg_strt
+        e_dict['fix_strt'] = fix_strt
+        e_dict['outc_strt'] = outc_strt
+        e_dict['spks'] = spks
+        e_dict['clsts'] = clsts
+        e_dict['sel_clstrs'] = sel_clstrs
+        e_dict['clstrs_qlt'] = clstrs_qlt
+        e_dict['s_rate'] = s_rate
+        e_dict['s_rate_eff'] = s_rate_eff
+        e_dict['code'] = 'inventory.py'
+        return e_dict
+
     # folders
     if spks_sort_folder is None:
         spks_sort_folder = '/archive/lbektic/AfterClustering/'
@@ -302,13 +324,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
         for k in invtry_ref.keys():
             inventory[k] = invtry_ref[k].tolist()
     else:
-        inventory = {'rat': [], 'session': [], 'bhv_session': [], 'sgnl_stts': [],
-                     'state': [], 'date': [],  'sil_per': [], 'offset': [],
-                     'num_stms_csv': [], 'num_stim_analogue': [],
-                     'num_stim_ttl': [], 'num_fx_ttl': [], 'num_outc_ttl': [],
-                     'stim_ttl_dists_med': [], 'stim_ttl_dists_max': [],
-                     'stim_analogue_dists_med': [], 'stim_analogue_dists_max': [],
-                     'num_clstrs': []}
+        inventory = INVENTORY
     for r in rats:
         rat_name = os.path.basename(r)
         if rat_name not in sel_rats:
@@ -334,6 +350,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
             if VERBOSE:
                 print('-----------')
                 print(e_f)
+            # get date
             dt_indx = e_f.find(rat_num+'_20')+len(rat_num)+1
             date = e_f[dt_indx:dt_indx+10]
             e_f_bis = [f for f in e_fs_bis if f.find(date) != -1]
@@ -342,11 +359,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 # initialize entry
                 init_inventory(inv=inventory)
                 b_f = [f for f in p.available if f.find(date) != -1]
-                # Load behavioral data
+                # get behavioral folder
                 b_f = get_bhv_session(b_f)
                 if b_f is None:
                     continue
-                # load load behavior
+                # load behavior
                 try:
                     df = pd.read_pickle(sv_f_sess+'/df')
                     df_trials = pd.read_pickle(sv_f_sess+'/df_trials')
@@ -356,9 +373,10 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 if df is None:
                     continue
                 inventory['bhv_session'][-1] = b_f
-                # get start-sound times
+                # get start-sound times from CSV
                 bhv_strt_stim_sec = ut.get_startSound_times(df=df)
                 assert len(bhv_strt_stim_sec) > 0, str(len(bhv_strt_stim_sec))
+                # get csv offset
                 csv_offset = bhv_strt_stim_sec[0]
                 bhv_strt_stim_sec -= csv_offset
                 inventory['num_stms_csv'][-1] = len(bhv_strt_stim_sec)
@@ -366,14 +384,12 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 samples = load_electro(e_f=e_f)
                 if samples is None:
                     continue
+                # compute proportion of silent (i.e. wo signal) periods
                 sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
-
-                # pass pc-time to seconds
-                csv_tms = ut.date_2_secs(df['PC-TIME'])
-
+                # ELECTRO DATA
                 # ADD EVENT TIMES TO BEHAVIORAL DATA
                 # get stim ttl starts/ends
                 stim_ttl_strt, offset, state =\
@@ -384,34 +400,27 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 inventory['offset'][-1] = offset
                 inventory['state'][-1] = state
 
-                # ELECTRO DATA
-                e_dict = {}
-                # get stim starts from ttl signal
+                # add csv-offset to stim ttl times (ttl offset already subtracted)
                 stim_ttl_strt += csv_offset
-                e_dict['stim_ttl_strt'] = stim_ttl_strt
                 # get stims starts from analogue signal
                 stim_anlg_strt, _, _ =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
-                                        evs_comp=stim_ttl_strt,
-                                        inventory=inventory, chnls=[37, 38],
-                                        evs='stim_analogue', offset=offset)
-                e_dict['stim_anlg_strt'] = stim_anlg_strt
+                                        evs_comp=stim_ttl_strt, chnls=[37, 38],
+                                        inventory=inventory, evs='stim_analogue',
+                                        offset=offset)
                 # get fixations from ttl
                 fix_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                 s_rate=s_rate_eff, events='fix')
                 fix_strt -= offset
-                e_dict['fix_strt'] = fix_strt
                 # get outcome starts from ttl
                 outc_strt, _, _ = ut.find_events(samples=samples, chnls=[35, 36],
                                                  s_rate=s_rate_eff,
                                                  events='outcome')
                 outc_strt -= offset
-                e_dict['outc_strt'] = outc_strt
                 # add spikes
                 try:
                     spks, clsts, sel_clstrs, clstrs_qlt =\
-                        get_spks(path=e_f, limit=csv_tms[-1], s_rate=s_rate,
-                                 offset=offset)
+                        get_spks(path=e_f, s_rate=s_rate, offset=offset)
                 except (KeyError, ValueError, FileNotFoundError) as e:
                     print(e)
                     spks = []
@@ -419,16 +428,11 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                     sel_clstrs = []
                     clstrs_qlt = []
                 inventory['num_clstrs'][-1] = len(sel_clstrs)
-                e_dict['spks'] = spks
-                e_dict['clsts'] = clsts
-                e_dict['sel_clstrs'] = sel_clstrs
-                e_dict['clstrs_qlt'] = clstrs_qlt
-                e_dict['s_rate'] = s_rate
-                e_dict['s_rate_eff'] = s_rate_eff
-                e_dict['code'] = 'inventory.py'
                 create_folder(sv_f_sess)
                 df.to_pickle(sv_f_sess+'/df')
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
+                # get e-dict
+                e_dict = create_e_dict()
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
                 np.savez(sv_folder+'sess_inv_sbs'+str(sbsmpld_electr)+'.npz',
                          **inventory)

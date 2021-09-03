@@ -244,6 +244,43 @@ def get_extended_inv(inv, sess_classif, issue, observations):
 
 def build_figure(samples, e_data, offset, session, inv, inv_sbsmpld, margin_psth,
                  sv_folder, num_ps, indx):
+    """
+    Build figure, plot traces, histograms and peri-ev histograms, and save.
+
+    Parameters
+    ----------
+    samples : array
+        TTL signals corresponding to the last 4 channels (if there is no image).
+    e_data : dict
+        dictionary containing the event times.
+    offset : float
+        offset (in second) that was subtracted from the event times. It corresponds
+        to the time of the first TTL stim event - first CSV stim event.
+    session : str
+        current session.
+    inv : dict
+        inventory.
+    inv_sbsmpld : TYPE
+        DESCRIPTION.
+    margin_psth : int
+        time (in ms) to plot before and after the event (2e3)
+    sv_folder : str
+        where to save the figures and pdfs.
+    num_ps : int, optional
+        number of points to plot per sample (int(1e5)).
+    indx : int
+        index in inv of associated session.
+
+    Returns
+    -------
+    f : fig
+        figure.
+    ax_traces : axis
+        ax to plot traces.
+    idx_max : int
+        index for the maximum value of samples[:, 0].
+
+    """
     f, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 8))
     ax.remove()
     ax_traces = plt.axes([.05, 0.55, 0.9, .4])
@@ -405,59 +442,3 @@ if __name__ == '__main__':
                    plot_fig=plot_fig, inv_sbsmpld=inv_sbsmpld,
                    margin_psth=margin_psth, num_ps=num_ps,
                    ignore_input=ignore_input)
-    # # LOAD EXTENDED INVENTORY to get existing comments
-    # if not redo and os.path.exists(main_folder+'/sess_inv_extended.npz'):
-    #     old_inv_extended = np.load(main_folder+'/sess_inv_extended.npz',
-    #                                allow_pickle=1)
-    #     sess_classif = old_inv_extended['sess_class']
-    #     issue = old_inv_extended['issue']
-    #     observations = old_inv_extended['observations']
-    # else:
-    #     sess_classif = ['n.c.']*len(inv['session'])
-    #     issue = ['']*len(inv['session'])
-    #     observations = ['']*len(inv['session'])
-    # # selected rats or sessions
-    # sel_rats = []  # ['LE113']  # 'LE101'
-    # sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
-    # # ['LE81_2021-02-09_11-34-47'] ['LE113_2021-06-02_14-28-00']
-    # # keeps track of the sessions indexes visited
-    # used_indx = []
-    # pdfs to store selected and discarded sessions
-    #
-    #
-    #
-    # fltr_k = None
-    # trace1 = samples[:, 0]
-    # trace1 = trace1/np.max(trace1)
-    # trace1_filt = ss.medfilt(trace1, fltr_k) if fltr_k is not None else trace1
-    # trace2 = samples[:, 1]
-    # trace2 = trace2/np.max(trace2)
-    # trace2_filt = ss.medfilt(trace2, fltr_k) if fltr_k is not None else trace2
-    # signal = 1*((trace1_filt-trace2_filt) > 0.5)
-
-    # # stim starts/ends
-    # stim_starts = np.where(np.diff(signal) > 0.9)[0]
-    # ttl_stim_strt = stim_starts/e_data['s_rate_eff']
-    # ttl_stim_strt = e_data['s_rate_eff']*ttl_stim_strt
-    # ttl_stim_strt = ttl_stim_strt.astype(int)
-    # print(ttl_stim_strt[:10])
-    # print(ttl_stim_strt[-10:])
-    # for i in range(100):
-    #     plt.plot(samples[ttl_stim_strt[i]-20:ttl_stim_strt[i]+100, 0],
-    #              color=colors[0])
-    #     plt.plot(samples[ttl_stim_strt[i]-20:ttl_stim_strt[i]+100, 1],
-    #              color=colors[1])
-
-    # signal = 1*((trace2_filt-trace1_filt) > 0.5)
-    # stim_starts = np.where(np.diff(signal) > 0.9)[0]
-    # ttl_stim_strt = stim_starts/e_data['s_rate_eff']
-    # ttl_stim_strt = e_data['s_rate_eff']*ttl_stim_strt
-    # ttl_stim_strt = ttl_stim_strt.astype(int)
-    # print('------------------------')
-    # print(ttl_stim_strt[:10])
-    # print(ttl_stim_strt[-10:])
-    # for i in range(100):
-    #     plt.plot(samples[ttl_stim_strt[i]-20:ttl_stim_strt[i]+100, 0],
-    #              color=colors[0])
-    #     plt.plot(samples[ttl_stim_strt[i]-20:ttl_stim_strt[i]+100, 1],
-    #              color=colors[1])

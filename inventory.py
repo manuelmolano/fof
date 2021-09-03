@@ -10,7 +10,6 @@ import glob
 import os
 import utils as ut
 import numpy as np
-import time
 import pandas as pd
 VERBOSE = True
 
@@ -150,7 +149,32 @@ def checked(dic, session):
     return checked
 
 
-def get_spks(path, limit, s_rate, offset):
+def get_spks(path, s_rate, offset):
+    """
+    Get spike times, corresponding clusters, and quality.
+
+    Parameters
+    ----------
+    path : str
+        where to get the data.
+    s_rate : int
+        sampling rate of recordings.
+    offset : float
+        offset (in second) to subtract from the spike times. It corresponds
+        to the time of the first TTL stim event - first CSV stim event.
+
+    Returns
+    -------
+    spks : list
+        spike times.
+    clsts : list
+        cluster corresponding to each spike times.
+    sel_clstrs : list
+        selected clusters.
+    clstrs_qlt : list
+        quality of each cluster.
+
+    """
     spike_times, spike_clusters, sel_clstrs, clstrs_qlt = ut.get_spikes(path=path)
     spike_times = spike_times.flatten()
     if len(spike_times) != len(spike_clusters):

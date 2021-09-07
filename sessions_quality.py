@@ -19,6 +19,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
+ISSUES = np.array(['', '25 trls', 'electro', 'few csv', 'few ttl', 'no  ttl',
+                   'no ttl ', 'no ttls', 'sil per', 'strange', 'weird s'])
+ISSS_CLR = np.array(['k', 'm', 'r', 'm', 'few ttl', 'b', 'b', 'c', 'g', 'r', 'r'])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
@@ -347,35 +350,42 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     pdf_issues = PdfPages(sv_folder+"issues.pdf")
     pdf_selected = PdfPages(sv_folder+"selected.pdf")
     rats = glob.glob(main_folder+'LE*')
+    rats = [x for x in rats if x[-4] != '.']
     used_indx = []
-    for r in rats:
+    dates_eq = []
+    f_tmln, ax_tmln = plt.subplots() 
+    for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
         for sess in sessions:
             session = os.path.basename(sess)
+            date = session[session.find('202'):session.find('202')+10]
+            days = 365*int(date[2:4])+30.4*int(date[5:7])+int(date[8:10])
+            dates_eq.append([days, date])
             print('----')
             print(session)
             if session not in sel_sess and rat not in sel_rats and\
                (len(sel_sess) != 0 or len(sel_rats) != 0):
                 continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
+            idx_sess = idx[0]
             if len(idx) != 1:
                 print('Could not find associated session in inventory')
                 print(idx)
                 continue
-            assert idx[0] not in used_indx, str(idx[0])
-            used_indx.append(idx[0])
+            assert idx_sess not in used_indx, str(idx_sess)
+            used_indx.append(idx_sess)
             if not redo:
-                fldr = sess_classif[idx[0]]
-                prob = issue[idx[0]]
-                obs = observations[idx[0]]
+                fldr = sess_classif[idx_sess]
+                prob = issue[idx_sess]
+                obs = observations[idx_sess]
                 if obs.endswith('EXIT'):
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
             if plot_fig:
                 # GET DATA
-                offset = inv['offset'][idx[0]]
+                offset = inv['offset'][idx_sess]
                 e_file = sess+'/e_data.npz'
                 e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
@@ -385,7 +395,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     build_figure(samples=samples, e_data=e_data, offset=offset,
                                  session=session, inv=inv, inv_sbsmpld=inv_sbsmpld,
                                  margin_psth=margin_psth, num_ps=num_ps,
-                                 sv_folder=sv_folder, indx=idx[0])
+                                 sv_folder=sv_folder, indx=idx_sess)
             # INPUT INFO
             if fldr == 'n.c.':
                 fldr, prob, obs = get_input(ignore=ignore_input)
@@ -398,11 +408,12 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             elif plot_fig and fldr == 'good':
                 pdf_selected.savefig(f.number)
             plt.close(f)
-
+            color = ISSS_CLR[np.where(ISSUES == issue[idx_sess])[0]][0]
+            ax_tmln.plot(days, i_r, '.', color=color)
             # SAVE DATA
-            issue[idx[0]] = prob
-            sess_classif[idx[0]] = fldr
-            observations[idx[0]] = obs
+            issue[idx_sess] = prob
+            sess_classif[idx_sess] = fldr
+            observations[idx_sess] = obs
             print(fldr)
             assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,

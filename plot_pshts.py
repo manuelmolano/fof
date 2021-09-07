@@ -455,7 +455,7 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
 
 
 def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
-               sel_sess=[], sel_rats=[], name='ch', sel_qlts=['good']):
+               sel_sess=[], sel_rats=[], name='ch', sel_qlts=['good', 'mua']):
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
         rat = os.path.basename(r)
@@ -511,28 +511,14 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
         cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
                 'prev_tr': False}
         cond.update(conditioning)
-        if cond['ch']:
-            ch = [0, 1]
-        else:
-            ch = [-1]
-        if cond['prev_ch']:
-            prev_ch = [0, 1]
-        else:
-            prev_ch = [-1]
-        if cond['outc']:
-            outc = [0, 1]
-        else:
-            outc = [-1]
-        if cond['prev_outc']:
-            prev_outc = [0, 1]
-        else:
-            prev_outc = [-1]
-        if cond['prev_tr']:
-            prev_tr = [0, 1]
-        else:
-            prev_tr = [-1]
+        ch = [0, 1] if cond['ch'] else [-1]
+        prev_ch = [0, 1] if cond['prev_ch'] else [-1]
+        outc = [0, 1] if cond['outc'] else [-1]
+        prev_outc = [0, 1] if cond['prev_outc'] else [-1]
+        prev_tr = [0, 1] if cond['prev_tr'] else [-1]
         cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr)
         return cases
+
     conditions = get_conds(conditioning=conditioning)
     time = np.arange(2*margin_psth)
     num_comps = 2
@@ -608,6 +594,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
 
 if __name__ == '__main__':
     plt.close('all')
+    analysis_type = 'psth'
     std_conv = 50
     margin_psth = 1000
     home = 'molano'
@@ -620,17 +607,18 @@ if __name__ == '__main__':
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
-    cond = {'ch': False, 'prev_ch': True, 'outc': False, 'prev_outc': True,
-            'prev_tr': True}
-    lbls_cps = 'cprt'
-    compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
-                 margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
-                 conditioning=cond, lbls_cps=lbls_cps, sv_folder=sv_folder)
-    import sys
-    sys.exit()
-    # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
-    # 'context' 'prev_outc', 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc'
-    for cond in ['no_cond']:  # ['prev_ch_and_context']:
-        batch_plot(inv=inv, main_folder=main_folder, cond=cond, std_conv=std_conv,
-                   margin_psth=margin_psth, sel_sess=sel_sess, sv_folder=sv_folder,
-                   sel_rats=sel_rats)
+    if analysis_type == 'dpca':
+        cond = {'ch': False, 'prev_ch': True, 'outc': False, 'prev_outc': True,
+                'prev_tr': True}
+        lbls_cps = 'cprt'
+        compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
+                     margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
+                     conditioning=cond, lbls_cps=lbls_cps, sv_folder=sv_folder)
+    elif analysis_type == 'psth':
+        # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
+        conditions = ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
+                      'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
+        for cond in conditions:
+            batch_plot(inv=inv, main_folder=main_folder, cond=cond,
+                       std_conv=std_conv, margin_psth=margin_psth,
+                       sel_sess=sel_sess, sv_folder=sv_folder, sel_rats=sel_rats)

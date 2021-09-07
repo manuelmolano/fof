@@ -592,6 +592,68 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
             f.savefig(sv_folder+rat+'_'+name+'.png')
 
 
+def units_stats(inv, main_folder, sv_folder, name='ch'):
+    rats = glob.glob(main_folder+'LE*')
+    rats = [x for x in rats if x[-4] != '.']
+    f, ax = plt.subplots(nrows=2, ncols=3, figsize=(8, 6))  # , sharex=1, sharey=1)
+    ax = ax.flatten()
+    for i_r, r in enumerate(rats):
+        rat = os.path.basename(r)
+        sessions = glob.glob(r+'/LE*')
+        num_unts = []
+        for sess in sessions:
+            session = os.path.basename(sess)
+            print('----')
+            print(session)
+            if session not in sel_sess and rat not in sel_rats and\
+               (len(sel_sess) != 0 or len(sel_rats) != 0):
+                continue
+            idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
+            if len(idx) != 1:
+                print(str(idx))
+                continue
+            else:
+                i = idx[0]
+                print(str(np.round(inv['num_stms_csv'][i], 3))+' / ' +
+                      str(np.round(inv['sil_per'][i], 3))+' /// ' +
+                      str(np.round(inv['num_stim_ttl'][i], 3))+' / ' +
+                      str(np.round(inv['stim_ttl_dists_med'][i], 3))+' / ' +
+                      str(np.round(inv['stim_ttl_dists_max'][i], 3))+' /// ' +
+                      str(np.round(inv['num_stim_analogue'][i], 3))+' / ' +
+                      str(np.round(inv['stim_analogue_dists_med'][i], 3))+' / ' +
+                      str(np.round(inv['stim_analogue_dists_max'][i], 3)))
+            e_file = sess+'/e_data.npz'
+            e_data = np.load(e_file, allow_pickle=1)
+            sel_clstrs = e_data['sel_clstrs']
+            clstrs_qlt = e_data['clstrs_qlt']
+            print(inv['sess_class'][idx[0]])
+            print('Total number of cluster: ', len(sel_clstrs))
+            print('Number single units: ', np.sum(clstrs_qlt == 'good'))
+            print('Number MUAs: ', np.sum(clstrs_qlt == 'mua'))
+            num_unts.append([np.sum(clstrs_qlt == 'good'),
+                             np.sum(clstrs_qlt == 'mua')])
+        num_unts = np.array(num_unts)
+        means = np.mean(num_unts, axis=0)
+        sums = np.sum(num_unts, axis=0)
+        maxs = np.max(num_unts)
+        print('Numbers and counts of single units:')
+        print(np.unique(num_unts[:, 0], return_counts=1))
+        print('Numbers and counts of multi-units:')
+        print(np.unique(num_unts[:, 1], return_counts=1))
+        if maxs > 0:
+            ax[i_r].hist(num_unts, np.arange(maxs+2)-0.5)
+            ax[i_r].set_title(rat)
+            ax[i_r].legend(['SU ('+str(np.round(means[0], 2)) +
+                            ', '+str(sums[0])+')',
+                            'MUA ('+str(np.round(means[1], 2)) +
+                            ', '+str(sums[1])+')'])
+            if i_r == 0 or i_r == 3:
+                ax[i_r].set_ylabel('Number of sessions')
+            if i_r > 2:
+                ax[i_r].set_xlabel('Number of units per session')
+        # if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
+
+
 if __name__ == '__main__':
     plt.close('all')
     analysis_type = 'psth'
@@ -622,3 +684,5 @@ if __name__ == '__main__':
             batch_plot(inv=inv, main_folder=main_folder, cond=cond,
                        std_conv=std_conv, margin_psth=margin_psth,
                        sel_sess=sel_sess, sv_folder=sv_folder, sel_rats=sel_rats)
+    elif analysis_type == 'stats':
+        units_stats(inv=inv, main_folder=main_folder, sv_folder=sv_folder)

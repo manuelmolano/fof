@@ -410,6 +410,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             plt.close(f)
             color = ISSS_CLR[np.where(ISSUES == issue[idx_sess])[0]][0]
             ax_tmln.plot(days, i_r, '.', color=color)
+            f_tmln.savefig(sv_folder+fldr+'/sessions_timeline.png')
             # SAVE DATA
             issue[idx_sess] = prob
             sess_classif[idx_sess] = fldr
@@ -430,8 +431,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 
 if __name__ == '__main__':
     plt.close('all')
-    redo = False  # whether to rewrite comments
-    ignore_input = True  # whether to input comments (or just save the figures)
+    redo = True  # whether to rewrite comments
+    ignore_input = False  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot

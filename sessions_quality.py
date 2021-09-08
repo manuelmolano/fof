@@ -19,9 +19,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
-ISSUES = np.array(['', '25 trls', 'electro', 'few csv', 'few ttl', 'no  ttl',
-                   'no ttl ', 'no ttls', 'sil per', 'strange', 'weird s'])
-ISSS_CLR = np.array(['k', 'm', 'r', 'm', 'few ttl', 'b', 'b', 'c', 'g', 'r', 'r'])
+ISSUES = np.array(['', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
+                   'sil per'])
+ISSS_CLR = np.array(['k', 'r', 'm', 'm', 'b', 'c', 'g'])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
@@ -396,6 +396,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                                  session=session, inv=inv, inv_sbsmpld=inv_sbsmpld,
                                  margin_psth=margin_psth, num_ps=num_ps,
                                  sv_folder=sv_folder, indx=idx_sess)
+                plt.show(block=False)
             # INPUT INFO
             if fldr == 'n.c.':
                 fldr, prob, obs = get_input(ignore=ignore_input)
@@ -431,7 +432,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 
 if __name__ == '__main__':
     plt.close('all')
-    redo = True  # whether to rewrite comments
+    redo = False  # whether to rewrite comments
     ignore_input = False  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000

@@ -353,17 +353,20 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     rats = [x for x in rats if x[-4] != '.']
     used_indx = []
     dates_eq = []
-    f_tmln, ax_tmln = plt.subplots() 
+    f_tmln, ax_tmln = plt.subplots()
+    counter = 0
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
         for sess in sessions:
+            counter += 1
             session = os.path.basename(sess)
             date = session[session.find('202'):session.find('202')+10]
             days = 365*int(date[2:4])+30.4*int(date[5:7])+int(date[8:10])
             dates_eq.append([days, date])
             print('----')
             print(session)
+            print(counter)
             if session not in sel_sess and rat not in sel_rats and\
                (len(sel_sess) != 0 or len(sel_rats) != 0):
                 continue

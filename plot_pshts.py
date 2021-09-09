@@ -597,6 +597,7 @@ def units_stats(inv, main_folder, sv_folder, name='ch'):
     rats = [x for x in rats if x[-4] != '.']
     f, ax = plt.subplots(nrows=2, ncols=4, figsize=(10, 6))  # , sharex=1, sharey=1)
     ax = ax.flatten()
+    total_sums = np.zeros((2))
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
@@ -635,6 +636,7 @@ def units_stats(inv, main_folder, sv_folder, name='ch'):
         num_unts = np.array(num_unts)
         means = np.mean(num_unts, axis=0)
         sums = np.sum(num_unts, axis=0)
+        total_sums += sums
         maxs = np.max(num_unts)
         print('Numbers and counts of single units:')
         print(np.unique(num_unts[:, 0], return_counts=1))
@@ -651,6 +653,8 @@ def units_stats(inv, main_folder, sv_folder, name='ch'):
                 ax[i_r].set_ylabel('Number of sessions')
             if i_r > 2:
                 ax[i_r].set_xlabel('Number of units per session')
+    print('Total number of SU and MUA:')
+    print(total_sums)
     f.savefig(sv_folder+'num_units_per_sess_and_rat.png')
         # if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
 

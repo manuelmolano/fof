@@ -595,7 +595,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
 def units_stats(inv, main_folder, sv_folder, name='ch'):
     rats = glob.glob(main_folder+'LE*')
     rats = [x for x in rats if x[-4] != '.']
-    f, ax = plt.subplots(nrows=2, ncols=3, figsize=(8, 6))  # , sharex=1, sharey=1)
+    f, ax = plt.subplots(nrows=2, ncols=4, figsize=(10, 6))  # , sharex=1, sharey=1)
     ax = ax.flatten()
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
@@ -651,12 +651,13 @@ def units_stats(inv, main_folder, sv_folder, name='ch'):
                 ax[i_r].set_ylabel('Number of sessions')
             if i_r > 2:
                 ax[i_r].set_xlabel('Number of units per session')
+    f.savefig(sv_folder+'num_units_per_sess_and_rat.png')
         # if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
 
 
 if __name__ == '__main__':
     plt.close('all')
-    analysis_type = 'psth'
+    analysis_type = 'stats'
     std_conv = 50
     margin_psth = 1000
     home = 'molano'

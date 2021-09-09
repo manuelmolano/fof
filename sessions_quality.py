@@ -19,9 +19,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
-ISSUES = np.array(['', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
+ISSUES = np.array(['', ' ', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
                    'sil per'])
-ISSS_CLR = np.array(['k', 'r', 'm', 'm', 'b', 'c', 'g'])
+ISSS_CLR = np.array(['k', 'k', 'r', 'm', 'm', 'b', 'c', 'g'])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
@@ -415,7 +415,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                                  session=session, inv=inv, inv_sbsmpld=inv_sbsmpld,
                                  margin_psth=margin_psth, num_ps=num_ps,
                                  sv_folder=sv_folder, indx=idx_ss)
-                plt.show(block=False)
+                if ignore_input:
+                    plt.show(block=False)
             # INPUT INFO
             if fldr == 'n.c.':
                 defs = {'class': '', 'issue': '', 'obs': ''}
@@ -441,7 +442,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             print(issue[idx_ss])
             color = ISSS_CLR[np.where(ISSUES == issue[idx_ss])[0]][0]
             ax_tmln.plot(days, i_r, '.', color=color)
-            f_tmln.savefig(sv_folder+fldr+'/sessions_timeline.png')
+            f_tmln.savefig(sv_folder+'/sessions_timeline.png')
             # SAVE DATA
             issue[idx_ss] = prob
             sess_classif[idx_ss] = fldr
@@ -463,7 +464,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 if __name__ == '__main__':
     plt.close('all')
     redo = False  # whether to rewrite comments
-    ignore_input = False  # whether to input comments (or just save the figures)
+    ignore_input = True  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot

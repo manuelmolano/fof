@@ -199,7 +199,16 @@ def get_input(ignore=False, defaults={'class':'', 'issue': '', 'obs': ''}):
 
     """
     if ignore:
-        fldr, prob, obs = 'revisit', '', ''
+        if defaults['class'] == 'y':
+            fldr = 'good'
+        elif defaults['class'] == 'n':
+            fldr = 'bad'
+        elif defaults['class'] == ' ':
+            fldr = 'revisit'
+        else:
+            raise ValueError('Specify the quality of the session with y/n')
+        prob = defaults['issue']
+        obs = defaults['obs']
     else:
         sess_class = input("Is this session good? (def: "+defaults['class']+') ')
         if sess_class == '':
@@ -392,7 +401,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
-            if plot_fig:
+            plt_f = (fldr == 'n.c.' and plot_fig) or (ignore_input and plot_fig)
+            if plt_f:
                 # GET DATA
                 offset = inv['offset'][idx_ss]
                 e_file = sess+'/e_data.npz'
@@ -417,15 +427,16 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     defs['issue'] = 'noise 1'
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
                 fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
-            if plot_fig:
+            if plt_f:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
-            ax_traces.text(idx_max, 4.25, prob+': '+obs)
-            ax_traces.set_ylim([-.1, 4.5])
-            if plot_fig and fldr == 'bad':
+                ax_traces.text(idx_max, 4.25, prob+': '+obs)
+                ax_traces.set_ylim([-.1, 4.5])
+            if plt_f and fldr == 'bad':
                 pdf_issues.savefig(f.number)
-            elif plot_fig and fldr == 'good':
+            elif plt_f and fldr == 'good':
                 pdf_selected.savefig(f.number)
-            plt.close(f)
+            if plt_f:
+                plt.close(f)
             print(observations[idx_ss])
             print(issue[idx_ss])
             color = ISSS_CLR[np.where(ISSUES == issue[idx_ss])[0]][0]

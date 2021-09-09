@@ -201,16 +201,15 @@ def get_input(ignore=False, defaults={'class':'', 'issue': '', 'obs': ''}):
     if ignore:
         fldr, prob, obs = 'revisit', '', ''
     else:
-        good = input("Is this session good? (def: "+defaults['class']+') ')
-        if good == 'y':
+        sess_class = input("Is this session good? (def: "+defaults['class']+') ')
+        if sess_class == '':
+            sess_class = defaults['class']
+        if sess_class == 'y':
             fldr = 'good'
-        elif good == 'n':
+        elif sess_class == 'n':
             fldr = 'bad'
-        elif good == ' ':
+        elif sess_class == ' ':
             fldr = 'revisit'
-        elif good == '':
-            print('asdasddas')
-            fldr = defaults['class']
         else:
             raise ValueError('Specify the quality of the session with y/n')
         prob = input("issue (def: "+defaults['issue']+') ')
@@ -378,24 +377,24 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                (len(sel_sess) != 0 or len(sel_rats) != 0):
                 continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
-            idx_sess = idx[0]
+            idx_ss = idx[0]
             if len(idx) != 1:
                 print('Could not find associated session in inventory')
                 print(idx)
                 continue
-            assert idx_sess not in used_indx, str(idx_sess)
-            used_indx.append(idx_sess)
+            assert idx_ss not in used_indx, str(idx_ss)
+            used_indx.append(idx_ss)
             if not redo:
-                fldr = sess_classif[idx_sess]
-                prob = issue[idx_sess]
-                obs = observations[idx_sess]
+                fldr = sess_classif[idx_ss]
+                prob = issue[idx_ss]
+                obs = observations[idx_ss]
                 if obs.endswith('EXIT'):
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
             if plot_fig:
                 # GET DATA
-                offset = inv['offset'][idx_sess]
+                offset = inv['offset'][idx_ss]
                 e_file = sess+'/e_data.npz'
                 e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
@@ -405,11 +404,19 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     build_figure(samples=samples, e_data=e_data, offset=offset,
                                  session=session, inv=inv, inv_sbsmpld=inv_sbsmpld,
                                  margin_psth=margin_psth, num_ps=num_ps,
-                                 sv_folder=sv_folder, indx=idx_sess)
+                                 sv_folder=sv_folder, indx=idx_ss)
                 plt.show(block=False)
             # INPUT INFO
             if fldr == 'n.c.':
-                fldr, prob, obs = get_input(ignore=ignore_input)
+                defs = {'class': '', 'issue': '', 'obs': ''}
+                if inv['sil_per'][idx_ss] > 0.01:
+                    defs['issue'] = 'sil per'
+                elif inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
+                    defs['issue'] = 'no ttl'
+                elif np.max(samples) > 1000:
+                    defs['issue'] = 'noise 1'
+                defs['class'] = 'y' if defs['issue'] == '' else 'n'
+                fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
             if plot_fig:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
             ax_traces.text(idx_max, 4.25, prob+': '+obs)
@@ -419,15 +426,15 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             elif plot_fig and fldr == 'good':
                 pdf_selected.savefig(f.number)
             plt.close(f)
-            print(observations[idx_sess])
-            print(issue[idx_sess])
-            color = ISSS_CLR[np.where(ISSUES == issue[idx_sess])[0]][0]
+            print(observations[idx_ss])
+            print(issue[idx_ss])
+            color = ISSS_CLR[np.where(ISSUES == issue[idx_ss])[0]][0]
             ax_tmln.plot(days, i_r, '.', color=color)
             f_tmln.savefig(sv_folder+fldr+'/sessions_timeline.png')
             # SAVE DATA
-            issue[idx_sess] = prob
-            sess_classif[idx_sess] = fldr
-            observations[idx_sess] = obs
+            issue[idx_ss] = prob
+            sess_classif[idx_ss] = fldr
+            observations[idx_ss] = obs
             print(fldr)
             assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,

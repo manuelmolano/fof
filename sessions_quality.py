@@ -174,7 +174,7 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
     return idx_max
 
 
-def get_input(ignore=False):
+def get_input(ignore=False, defaults={'class':'', 'issue': '', 'obs': ''}):
     """
     Get feedback from user about: classification of session, issue, observations.
 
@@ -201,17 +201,24 @@ def get_input(ignore=False):
     if ignore:
         fldr, prob, obs = 'revisit', '', ''
     else:
-        good = input("Is this session good?")
+        good = input("Is this session good? (def: "+defaults['class']+') ')
         if good == 'y':
             fldr = 'good'
         elif good == 'n':
             fldr = 'bad'
         elif good == ' ':
             fldr = 'revisit'
+        elif good == '':
+            print('asdasddas')
+            fldr = defaults['class']
         else:
             raise ValueError('Specify the quality of the session with y/n')
-        prob = input("issue:")
-        obs = input("Observations:")
+        prob = input("issue (def: "+defaults['issue']+') ')
+        if prob == '':
+            prob = defaults['issue']
+        obs = input("Observations (def: "+defaults['obs']+') ')
+        if obs == '':
+            obs = defaults['obs']
     return fldr, prob, obs
 
 
@@ -412,6 +419,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             elif plot_fig and fldr == 'good':
                 pdf_selected.savefig(f.number)
             plt.close(f)
+            print(observations[idx_sess])
+            print(issue[idx_sess])
             color = ISSS_CLR[np.where(ISSUES == issue[idx_sess])[0]][0]
             ax_tmln.plot(days, i_r, '.', color=color)
             f_tmln.savefig(sv_folder+fldr+'/sessions_timeline.png')

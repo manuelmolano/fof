@@ -46,7 +46,11 @@ def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
         xs = xs/1000
         ax.plot(xs, psth_cnv, label=lbl+' (n: '+str(len(evs))+')', color=color,
                 alpha=alpha)
-    return psth_cnv, peri_ev
+    features = {}
+    features['conv_psth'] = psth_cnv
+    features['peri_ev'] = peri_ev
+    features['aligned_spks'] = [np.where(pe)[0]-margin_psth for pe in peri_ev]
+    return features
 
 
 def plot_scatter(ax, spk_tms, evs, margin_psth, color='k', offset=0, alpha=1):
@@ -193,8 +197,8 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
     return trialR, min_num_tr
 
 
-def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
-                     std_conv=20, margin_psth=1000, fixtn_time=.3, lbls=None,
+def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
+                     std_conv=20, margin_psth=1000, fixtn_time=.3,
                      evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1,
                      sign_w=100):
     """
@@ -245,27 +249,23 @@ def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
     if mask is not None:
         indx_good_evs = np.logical_and(indx_good_evs, mask)
     # get choices
-    choice = b_data['R_response'].shift(periods=1*prev_choice).values
-    lbls = ['Right', 'Left'] if lbls is None else lbls
-    clrs = [verde, morado] if clrs is None else clrs
-    resps = []
-    psths = []
-    for i_c, ch in enumerate([0, 1]):
+    features = {'conv_psth': [], 'aligned_spks': [], 'peri_ev': []}
+    for i_v, v in enumerate(np.unique(mat)):
         # plot psth for right trials
-        indx_ch = np.logical_and(choice == ch, indx_good_evs)
+        indx_ch = np.logical_and(mat == v, indx_good_evs)
         evs = filt_evs[indx_ch]
         if len(evs) > 0:
             assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_c],
+            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_v],
                          margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
-            psth, resp = plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1],
-                                   std_conv=std_conv, margin_psth=margin_psth,
-                                   lbl=lbls[i_c], color=clrs[i_c], alpha=alpha)
-            resps.append(resp)
-            psths.append(psth)
+            feats = plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1],
+                              std_conv=std_conv, margin_psth=margin_psth,
+                              lbl=lbls[i_v], color=clrs[i_v], alpha=alpha)
+            ut.append_features(features=features, new_data=feats)
         spk_offset += len(evs)
     # assess significance
     ylim = ax[1].get_ylim()
+    resps = features['peri_ev']
     sign_mat = ut.significance(mat=resps, window=sign_w)
     edges = np.linspace(0, resps[0].shape[1], int(resps[0].shape[1]/sign_w)+1)
     for i_e in range(len(edges)-1):
@@ -273,182 +273,26 @@ def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
             sign_per = (np.array([edges[i_e], edges[i_e+1]])-margin_psth)/1e3
             print(sign_per)
             ax[1].plot(sign_per, [ylim[1], ylim[1]], 'k')
-    return spk_offset, psths, sign_mat
-
-
-def psth_coh_cond(cl, e_data, b_data, ax, ev, std_conv=20,
-                  margin_psth=1000, fixtn_time=.3, evs_mrgn=1e-2):
-    cohs = [0., 0.3, 0.4, 0.5, 0.6, 0.7, 1.]
-    # get spikes
-    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
-    # select trials
-    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
-                                                ev=ev, evs_mrgn=evs_mrgn,
-                                                fixtn_time=fixtn_time)
-    # get cohs
-    coh_vals = b_data['coh'].values
-    spk_offset = 0
-    for i_c, coh in enumerate(cohs):
-        indx_ch = np.logical_and(coh_vals == coh, indx_good_evs)
-        evs = filt_evs[indx_ch]
-        if len(evs) > 0:
-            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, offset=spk_offset,
-                         margin_psth=margin_psth, color=grad_colors[i_c])
-            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                      margin_psth=margin_psth, lbl=str(coh),
-                      color=grad_colors[i_c])
-        spk_offset += len(evs)
-
-
-def psth_outc_cond(cl, e_data, b_data, ax, ev,
-                   std_conv=20, margin_psth=1000, fixtn_time=.3,
-                   evs_mrgn=1e-2, prev_outc=False, alpha=1):
-    # get spikes
-    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
-    # select trials
-    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
-                                                ev=ev, evs_mrgn=evs_mrgn,
-                                                fixtn_time=fixtn_time)
-    # get outcomes
-    outcome = b_data['hithistory'].shift(periods=1*prev_outc).values
-    spk_offset = 0
-    lbls = ['Prev. error', 'Prev. correct'] if prev_outc else ['Error', 'Correct']
-    clrs = ['k', naranja]
-    for i_o, outc in enumerate([0, 1]):
-        # plot psth for right trials
-        indx_outc = np.logical_and(outcome == outc, indx_good_evs)
-        evs = filt_evs[indx_outc]
-        if len(evs) > 0:
-            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_o],
-                         margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
-            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                      margin_psth=margin_psth, lbl=lbls[i_o], color=clrs[i_o],
-                      alpha=alpha)
-        spk_offset += len(evs)
-
-
-def psth_context_cond(cl, e_data, b_data, ax, ev, std_conv=20, margin_psth=1000,
-                      fixtn_time=.3, evs_mrgn=1e-2, alpha=1):
-    # get spikes
-    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
-    # select trials
-    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
-                                                ev=ev, evs_mrgn=evs_mrgn,
-                                                fixtn_time=fixtn_time)
-    # get contexts
-    context = b_data['prob_repeat'].values
-    assert len(np.unique(context)) == 2
-    spk_offset = 0
-    lbls = ['Alt.', 'Rep.']
-    clrs = [rojo, azul]
-    for i_c, ctxt in enumerate(np.unique(context)):
-        # plot psth for right trials
-        indx_ctxt = np.logical_and(context == ctxt, indx_good_evs)
-        evs = filt_evs[indx_ctxt]
-        if len(evs) > 0:
-            assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_c],
-                         margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
-            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                      margin_psth=margin_psth, lbl=lbls[i_c]+' '+str(ctxt),
-                      color=clrs[i_c], alpha=alpha)
-        spk_offset += len(evs)
-
-
-def psth(cl, e_data, b_data, ax, ev, std_conv=20, margin_psth=1000,
-         fixtn_time=.3, evs_mrgn=1e-2):
-    # get spikes
-    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
-    # select trials
-    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
-                                                ev=ev, evs_mrgn=evs_mrgn,
-                                                fixtn_time=fixtn_time)
-    # plot psth
-    evs = filt_evs[indx_good_evs]
-    if len(evs) > 0:
-        assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-        plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs,
-                     margin_psth=margin_psth)
-        trace = plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                          margin_psth=margin_psth)
-    else:
-        trace = np.zeros((2*margin_psth))
-    return trace
+    features['sign_mat'] = sign_mat
+    return spk_offset, features
 
 
 def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                 std_conv=20, margin_psth=1000):
     f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 10), sharey='row')
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
-    traces = []
+    features = {'conv_psth': [], 'aligned_spks': [], 'peri_ev': [], 'sign_mat': []}
     for i_e, ev in enumerate(ev_keys):
-        if cond == 'prev_outc_and_ch':
-            prev_choice = True
-            prev_outc = b_data['hithistory'].shift().values
-            mask = prev_outc == 0.
-            alpha = 0.5
-            offset = psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                                      ax=ax[:, i_e], std_conv=std_conv,
-                                      margin_psth=margin_psth, mask=mask,
-                                      alpha=alpha, prev_choice=prev_choice)
-            mask = prev_outc == 1.
-            alpha = 1
-            psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                             ax=ax[:, i_e], std_conv=std_conv,
-                             margin_psth=margin_psth, mask=mask, alpha=alpha,
-                             prev_choice=prev_choice, spk_offset=offset)
-        elif cond == 'prev_ch_and_context':
-            prev_choice = True
-            context = b_data['prob_repeat'].values
-            mask = context == np.unique(context)[0]
-            alpha = 0.5
-            clrs = [morado, verde]
-            lbls = ['Alt to left', 'Alt to right']
-            offset, _, _ = psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
-                                            ev=ev, ax=ax[:, i_e],
-                                            std_conv=std_conv, clrs=clrs,
-                                            margin_psth=margin_psth, mask=mask,
-                                            alpha=alpha, prev_choice=prev_choice,
-                                            lbls=lbls)
-            mask = context == np.unique(context)[1]
-            alpha = 1
-            clrs = [verde, morado]
-            lbls = ['Rep right', 'Rep left']
-            psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                             ax=ax[:, i_e], std_conv=std_conv, clrs=clrs,
-                             margin_psth=margin_psth, mask=mask, alpha=alpha,
-                             prev_choice=prev_choice, spk_offset=offset,
-                             lbls=lbls)
-        elif 'ch' in cond:
-            prev_choice = (cond == 'prev_ch')
-            _, psths, sign_mat = psth_choice_cond(cl=cl, e_data=e_data,
-                                                  b_data=b_data, ev=ev,
-                                                  ax=ax[:, i_e], std_conv=std_conv,
-                                                  margin_psth=margin_psth,
-                                                  prev_choice=prev_choice)
-            traces.append(np.array(psths))
-        elif cond == 'coh':
-            psth_coh_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                          ax=ax[:, i_e], std_conv=std_conv,
-                          margin_psth=margin_psth)
-        elif 'outc' in cond:
-            prev_outc = (cond == 'prev_outc')
-            psth_outc_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                           ax=ax[:, i_e], std_conv=std_conv,
-                           margin_psth=margin_psth,
-                           prev_outc=prev_outc)
-        elif cond == 'context':
-            psth_context_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                              ax=ax[:, i_e], std_conv=std_conv,
-                              margin_psth=margin_psth)
-        elif cond == 'no_cond':
-            psth_tr = psth(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                           ax=ax[:, i_e], std_conv=std_conv,
-                           margin_psth=margin_psth)
-            psth_tr = np.zeros((2*margin_psth)) if len(psth_tr) == 0 else psth_tr
-            traces.append(psth_tr)
+        prev_choice = (cond == 'prev_ch')
+        choice = b_data['R_response'].shift(periods=1*prev_choice).values
+        lbls = ['Right', 'Left']
+        clrs = [verde, morado]
+        _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
+                                    b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                    std_conv=std_conv, margin_psth=margin_psth,
+                                    prev_choice=prev_choice, lbls=lbls, clrs=clrs)
+        ut.append_features(features=features, new_data=feats)
+
     ax[0, 0].set_ylabel('Trial')
     ax[1, 0].set_ylabel('Firing rate (Hz)')
     ax[1, 0].set_xlabel('Peri-fixation time (s)')
@@ -465,7 +309,7 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
     f.savefig(sv_folder+'/'+cl_qlt+'_'+str(cl)+'_'+session+'_' +
               '.png')
     plt.close(f)
-    return traces
+    return features
 
 # TODO: separate computing from plotting
 
@@ -509,12 +353,12 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                 for i_cl, cl in enumerate(sel_clstrs):
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
                     if cl_qlt in sel_qlts:
-                        traces = plot_figure(e_data=e_data, b_data=b_data, cl=cl,
-                                             cl_qlt=cl_qlt, session=session,
-                                             std_conv=std_conv, cond=cond,
-                                             margin_psth=margin_psth,
-                                             sv_folder=sv_folder)
-                        all_traces[str(cl)+'_'+session] = traces
+                        features = plot_figure(e_data=e_data, b_data=b_data, cl=cl,
+                                               cl_qlt=cl_qlt, session=session,
+                                               std_conv=std_conv, cond=cond,
+                                               margin_psth=margin_psth,
+                                               sv_folder=sv_folder)
+                        all_traces[str(cl)+'_'+session] = features
 
         np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 

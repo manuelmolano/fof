@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 # import inventory as inv
 from scipy.stats import norm
-# from scipy import signal as sig
+from scipy import stats
 
 
 def iti_clean(times, min_ev_dur, bef_aft):
@@ -70,6 +70,18 @@ def histogram_psth(spk_times, events, bins, bin_size):
     hists = hists/bin_size
     psth = np.mean(hists, axis=0)
     return psth
+
+
+def significance(mat, window=100):
+    edges = np.linspace(0, mat[0].shape[1], int(mat[0].shape[1]/window)+1)
+    edges = edges.astype(int)
+    pvalues = []
+    for i_e in range(len(edges)-1):
+        fr1 = np.sum(mat[0][:, edges[i_e]:edges[i_e+1]], axis=1)
+        fr2 = np.sum(mat[1][:, edges[i_e]:edges[i_e+1]], axis=1)
+        _, pvalue = stats.ranksums(fr1, fr2)
+        pvalues.append(pvalue)
+    return pvalues
 
 
 def convolve_psth(spk_times, events, std=20, margin=1000):

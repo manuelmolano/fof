@@ -14,6 +14,11 @@ from scipy.stats import norm
 from scipy import stats
 
 
+def append_features(features, new_data):
+    for k in features.keys():
+        features[k].append(new_data[k])
+
+
 def iti_clean(times, min_ev_dur, bef_aft):
     if bef_aft == 'bef':
         times_ = np.insert(times, obj=0, values=0)

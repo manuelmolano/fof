@@ -195,7 +195,8 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
 
 def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
                      std_conv=20, margin_psth=1000, fixtn_time=.3, lbls=None,
-                     evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1):
+                     evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1,
+                     sign_w=100):
     """
     Plot raster-plots and psths conditioned on (prev) choice.
 
@@ -247,6 +248,8 @@ def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
     choice = b_data['R_response'].shift(periods=1*prev_choice).values
     lbls = ['Right', 'Left'] if lbls is None else lbls
     clrs = [verde, morado] if clrs is None else clrs
+    resps = []
+    psths = []
     for i_c, ch in enumerate([0, 1]):
         # plot psth for right trials
         indx_ch = np.logical_and(choice == ch, indx_good_evs)
@@ -255,11 +258,22 @@ def psth_choice_cond(cl, e_data, b_data, ax, ev, spk_offset=0, clrs=None,
             assert len(np.unique(evs)) == len(evs), 'Repeated events!'
             plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs, color=clrs[i_c],
                          margin_psth=margin_psth, alpha=alpha, offset=spk_offset)
-            plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1], std_conv=std_conv,
-                      margin_psth=margin_psth, lbl=lbls[i_c], color=clrs[i_c],
-                      alpha=alpha)
+            psth, resp = plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1],
+                                   std_conv=std_conv, margin_psth=margin_psth,
+                                   lbl=lbls[i_c], color=clrs[i_c], alpha=alpha)
+            resps.append(resp)
+            psths.append(psth)
         spk_offset += len(evs)
-    return spk_offset
+    # assess significance
+    ylim = ax[1].get_ylim()
+    sign_mat = ut.significance(mat=resps, window=sign_w)
+    edges = np.linspace(0, resps[0].shape[1], int(resps[0].shape[1]/sign_w)+1)
+    for i_e in range(len(edges)-1):
+        if sign_mat[i_e] < 0.01:
+            sign_per = (np.array([edges[i_e], edges[i_e+1]])-margin_psth)/1e3
+            print(sign_per)
+            ax[1].plot(sign_per, [ylim[1], ylim[1]], 'k')
+    return spk_offset, psths, sign_mat
 
 
 def psth_coh_cond(cl, e_data, b_data, ax, ev, std_conv=20,
@@ -392,11 +406,12 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
             alpha = 0.5
             clrs = [morado, verde]
             lbls = ['Alt to left', 'Alt to right']
-            offset = psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                                      ax=ax[:, i_e], std_conv=std_conv, clrs=clrs,
-                                      margin_psth=margin_psth, mask=mask,
-                                      alpha=alpha, prev_choice=prev_choice,
-                                      lbls=lbls)
+            offset, _, _ = psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data,
+                                            ev=ev, ax=ax[:, i_e],
+                                            std_conv=std_conv, clrs=clrs,
+                                            margin_psth=margin_psth, mask=mask,
+                                            alpha=alpha, prev_choice=prev_choice,
+                                            lbls=lbls)
             mask = context == np.unique(context)[1]
             alpha = 1
             clrs = [verde, morado]
@@ -408,10 +423,12 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                              lbls=lbls)
         elif 'ch' in cond:
             prev_choice = (cond == 'prev_ch')
-            psth_choice_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
-                             ax=ax[:, i_e], std_conv=std_conv,
-                             margin_psth=margin_psth,
-                             prev_choice=prev_choice)
+            _, psths, sign_mat = psth_choice_cond(cl=cl, e_data=e_data,
+                                                  b_data=b_data, ev=ev,
+                                                  ax=ax[:, i_e], std_conv=std_conv,
+                                                  margin_psth=margin_psth,
+                                                  prev_choice=prev_choice)
+            traces.append(np.array(psths))
         elif cond == 'coh':
             psth_coh_cond(cl=cl, e_data=e_data, b_data=b_data, ev=ev,
                           ax=ax[:, i_e], std_conv=std_conv,
@@ -442,11 +459,10 @@ def plot_figure(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
         a.legend()
     num_spks = np.sum(e_data['clsts'] == cl)
     f.suptitle(str(cl)+' / #spks: '+str(num_spks)+' / qlt: '+cl_qlt)
-    sv_f = sv_folder+cl_qlt+'/'+cond
-    if not os.path.exists(sv_f):
-        os.makedirs(sv_f)
-    print(sv_f+'/'+str(cl)+'_'+session+'_'+'.png')
-    f.savefig(sv_f+'/'+str(cl)+'_'+session+'_' +
+    if not os.path.exists(sv_folder):
+        os.makedirs(sv_folder)
+    print(sv_folder+'/'+cl_qlt+'_'+str(cl)+'_'+session+'_'+'.png')
+    f.savefig(sv_folder+'/'+cl_qlt+'_'+str(cl)+'_'+session+'_' +
               '.png')
     plt.close(f)
     return traces
@@ -498,8 +514,7 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                                              std_conv=std_conv, cond=cond,
                                              margin_psth=margin_psth,
                                              sv_folder=sv_folder)
-                        if cond == 'no_cond':
-                            all_traces[str(cl)+'_'+session] = traces
+                        all_traces[str(cl)+'_'+session] = traces
 
         np.savez(sv_folder+'/'+rat+'_traces.npz', **all_traces)
 
@@ -595,7 +610,7 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
 def units_stats(inv, main_folder, sv_folder, name='ch'):
     rats = glob.glob(main_folder+'LE*')
     rats = [x for x in rats if x[-4] != '.']
-    f, ax = plt.subplots(nrows=2, ncols=4, figsize=(10, 6))  # , sharex=1, sharey=1)
+    f, ax = plt.subplots(nrows=2, ncols=4, figsize=(10, 6))  # ,sharex=1, sharey=1)
     ax = ax.flatten()
     total_sums = np.zeros((2))
     for i_r, r in enumerate(rats):
@@ -656,12 +671,12 @@ def units_stats(inv, main_folder, sv_folder, name='ch'):
     print('Total number of SU and MUA:')
     print(total_sums)
     f.savefig(sv_folder+'num_units_per_sess_and_rat.png')
-        # if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
+    # if inv['sess_class'][idx[0]] == 'good' and len(sel_clstrs) > 0:
 
 
 if __name__ == '__main__':
     plt.close('all')
-    analysis_type = 'stats'
+    analysis_type = 'psth'
     std_conv = 50
     margin_psth = 1000
     home = 'molano'
@@ -683,11 +698,15 @@ if __name__ == '__main__':
                      conditioning=cond, lbls_cps=lbls_cps, sv_folder=sv_folder)
     elif analysis_type == 'psth':
         # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
-        conditions = ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
-                      'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
+        # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
+        # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
+        conditions = ['ch']
         for cond in conditions:
+            sv_f = sv_folder+'/'+cond+'/'
+            if not os.path.exists(sv_f):
+                os.makedirs(sv_f)
             batch_plot(inv=inv, main_folder=main_folder, cond=cond,
                        std_conv=std_conv, margin_psth=margin_psth,
-                       sel_sess=sel_sess, sv_folder=sv_folder, sel_rats=sel_rats)
+                       sel_sess=sel_sess, sv_folder=sv_f, sel_rats=sel_rats)
     elif analysis_type == 'stats':
         units_stats(inv=inv, main_folder=main_folder, sv_folder=sv_folder)

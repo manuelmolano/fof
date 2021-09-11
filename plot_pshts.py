@@ -233,10 +233,12 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
         features['sign_mat'] = sign_mat
         if PLOT:  # plot significance
             ylim = ax[1].get_ylim()
-            edges = np.linspace(0, resps[0].shape[1], int(resps[0].shape[1]/sign_w)+1)
+            edges = np.linspace(0, resps[0].shape[1],
+                                int(resps[0].shape[1]/sign_w)+1)
             for i_e in range(len(edges)-1):
                 if sign_mat[i_e] < 0.01:
-                    sign_per = (np.array([edges[i_e], edges[i_e+1]])-margin_psth)/1e3
+                    sign_per = (np.array([edges[i_e],
+                                          edges[i_e+1]])-margin_psth)/1e3
                     ax[1].plot(sign_per, [ylim[1], ylim[1]], 'k')
     else:
         features['sign_mat'] = []
@@ -280,6 +282,16 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                                         b_data=b_data, ev=ev, ax=ax[:, i_e],
                                         std_conv=std_conv, margin_psth=margin_psth,
                                         lbls=lbls, clrs=clrs)
+        elif cond == 'block':
+            context = b_data['prob_repeat'].values
+            assert len(np.unique(context)) == 2
+            lbls = ['Alt. Context', 'Rep. Context']
+            clrs = [rojo, azul]
+            _, feats = psth_binary_cond(cl=cl, mat=context, e_data=e_data,
+                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                        std_conv=std_conv, margin_psth=margin_psth,
+                                        lbls=lbls, clrs=clrs)
+
         if len(feats) > 0:
             ut.append_features(features=features, new_data=feats)
     if PLOT:
@@ -362,8 +374,8 @@ if __name__ == '__main__':
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
-    # ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr']
-    conditions = ['outc']
+    # ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr']
+    conditions = ['block']
     for cond in conditions:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):

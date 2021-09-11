@@ -204,8 +204,10 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
     # get choices
     features = {'conv_psth': [], 'peri_ev': []}
     feats_spks = {'aligned_spks': []}
-    vals = np.unique(mat)
-    vals = vals[~ np.isnan(vals)]
+    vals, counts = np.unique(mat, return_counts=1)
+    vals = vals[counts > np.sum(counts)/20]
+    assert len(vals) == 2, str(vals)
+    # vals = vals[~ np.isnan(vals)]
     for i_v, v in enumerate(vals):
         # plot psth for right trials
         indx_ch = np.logical_and(mat == v, indx_good_evs)
@@ -226,15 +228,18 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
     features.update(feats_spks)
     # assess significance
     resps = features['peri_ev']
-    sign_mat = ut.significance(mat=resps, window=sign_w)
-    features['sign_mat'] = sign_mat
-    if PLOT:  # plot significance
-        ylim = ax[1].get_ylim()
-        edges = np.linspace(0, resps[0].shape[1], int(resps[0].shape[1]/sign_w)+1)
-        for i_e in range(len(edges)-1):
-            if sign_mat[i_e] < 0.01:
-                sign_per = (np.array([edges[i_e], edges[i_e+1]])-margin_psth)/1e3
-                ax[1].plot(sign_per, [ylim[1], ylim[1]], 'k')
+    if (np.array([len(x) for x in resps]) > 0).all():
+        sign_mat = ut.significance(mat=resps, window=sign_w)
+        features['sign_mat'] = sign_mat
+        if PLOT:  # plot significance
+            ylim = ax[1].get_ylim()
+            edges = np.linspace(0, resps[0].shape[1], int(resps[0].shape[1]/sign_w)+1)
+            for i_e in range(len(edges)-1):
+                if sign_mat[i_e] < 0.01:
+                    sign_per = (np.array([edges[i_e], edges[i_e+1]])-margin_psth)/1e3
+                    ax[1].plot(sign_per, [ylim[1], ylim[1]], 'k')
+    else:
+        features['sign_mat'] = []
     return spk_offset, features
 
 

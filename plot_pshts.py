@@ -267,6 +267,14 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                                         b_data=b_data, ev=ev, ax=ax[:, i_e],
                                         std_conv=std_conv, margin_psth=margin_psth,
                                         lbls=lbls, clrs=clrs)
+        elif cond == 'prev_tr':
+            prev_tr_mat = b_data['rep_response'].shift(periods=1).values
+            lbls = ['Prev. Alt.', 'Prev. Rep.']
+            clrs = [rojo, azul]
+            _, feats = psth_binary_cond(cl=cl, mat=prev_tr_mat, e_data=e_data,
+                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                        std_conv=std_conv, margin_psth=margin_psth,
+                                        lbls=lbls, clrs=clrs)
         if len(feats) > 0:
             ut.append_features(features=features, new_data=feats)
     if PLOT:
@@ -349,7 +357,7 @@ if __name__ == '__main__':
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
-    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc']
+    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr']
     for cond in conditions:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):

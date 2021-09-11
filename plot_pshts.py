@@ -284,7 +284,7 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
 def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                sel_sess=[], sel_rats=[], name='ch', sel_qlts=['good', 'mua']):
     rats = glob.glob(main_folder+'LE*')
-    features = {'conv_psth': [], 'aligned_spks': [], 'peri_ev': [], 'sign_mat': []}
+    features = {'sign_mat': []}
     for r in rats:
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')

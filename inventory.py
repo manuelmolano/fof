@@ -289,6 +289,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
     def create_folder(f):
         if not os.path.exists(f):
             os.mkdir(f)
+
     def create_e_dict():
         e_dict = {}
         e_dict['stim_ttl_strt'] = stim_ttl_strt

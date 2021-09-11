@@ -144,7 +144,7 @@ def get_label(cs):
 
 def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
                      std_conv=20, margin_psth=1000, fixtn_time=.3,
-                     evs_mrgn=1e-2, prev_choice=False, mask=None, alpha=1,
+                     evs_mrgn=1e-2, mask=None, alpha=1,
                      sign_w=100):
     """
     Plot raster-plots and psths conditioned on (prev) choice.
@@ -177,8 +177,6 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
         fixation time (.3 s)
     evs_mrgn : float, optional
         max missmatch allowed between csv and ttl events (1e-2)
-    prev_choice : boolean, optional
-        whether to condition on previous instead of current choice (False)
     mask : array, optional
         mask to further filter trials (None)
     alpha : float, optional
@@ -249,14 +247,26 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     features = {'conv_psth': [], 'aligned_spks': [], 'peri_ev': [], 'sign_mat': []}
     for i_e, ev in enumerate(ev_keys):
-        prev_choice = (cond == 'prev_ch')
-        choice = b_data['R_response'].shift(periods=1*prev_choice).values
-        lbls = ['Right', 'Left']
-        clrs = [verde, morado]
-        _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
-                                    b_data=b_data, ev=ev, ax=ax[:, i_e],
-                                    std_conv=std_conv, margin_psth=margin_psth,
-                                    prev_choice=prev_choice, lbls=lbls, clrs=clrs)
+        if 'ch' in cond:
+            prev_choice = (cond == 'prev_ch')
+            choice = b_data['R_response'].shift(periods=1*prev_choice).values
+            lbls = ['Prev. Right', 'Prev. Left']\
+                if prev_choice else ['Right', 'Left']
+            clrs = [verde, morado]
+            _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
+                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                        std_conv=std_conv, margin_psth=margin_psth,
+                                        lbls=lbls, clrs=clrs)
+        elif 'outc' in cond:
+            prev_outc = (cond == 'prev_outc')
+            outcome = b_data['hithistory'].shift(periods=1*prev_outc).values
+            lbls = ['Prev. error', 'Prev. correct']\
+                if prev_outc else ['Error', 'Correct']
+            clrs = ['k', naranja]
+            _, feats = psth_binary_cond(cl=cl, mat=outcome, e_data=e_data,
+                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                        std_conv=std_conv, margin_psth=margin_psth,
+                                        lbls=lbls, clrs=clrs)
         if len(feats) > 0:
             ut.append_features(features=features, new_data=feats)
     if PLOT:
@@ -317,7 +327,8 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
                                               sv_folder=sv_folder)
                         ut.append_features(features=features, new_data=feats)
 
-    np.savez(sv_folder+'/'+rat+'_feats.npz', **features)
+    np.savez(sv_folder+'/feats.npz', **features)
+    return features
 
 
 if __name__ == '__main__':
@@ -338,7 +349,7 @@ if __name__ == '__main__':
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
-    conditions = ['ch']
+    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc']
     for cond in conditions:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):

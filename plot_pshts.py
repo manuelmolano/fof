@@ -31,7 +31,7 @@ rojo_2 = np.array([240, 2, 127])/255
 
 grad_colors = sns.diverging_palette(145, 300, n=7)
 grad_colors = [[0.8*g for g in gc] for gc in grad_colors]
-PLOT = False
+PLOT = True
 
 
 def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
@@ -362,7 +362,8 @@ if __name__ == '__main__':
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
-    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr']
+    # ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr']
+    conditions = ['outc']
     for cond in conditions:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):

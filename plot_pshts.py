@@ -302,7 +302,7 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
         ax[1, 2].set_xlabel('Peri-outcome time (s)')
         for a in ax.flatten():
             ut.rm_top_right_lines(a)
-        a[0].legend(loc=1)
+        ax[0].legend(loc=1)
         num_spks = np.sum(e_data['clsts'] == cl)
         f.suptitle(str(cl)+' / #spks: '+str(num_spks)+' / qlt: '+cl_qlt)
         if not os.path.exists(sv_folder):

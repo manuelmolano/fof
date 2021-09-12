@@ -233,7 +233,7 @@ def units_stats(inv, main_folder, sv_folder, name='ch'):
 
 if __name__ == '__main__':
     plt.close('all')
-    analysis_type = 'psth'
+    analysis_type = 'dpca'
     std_conv = 50
     margin_psth = 1000
     home = 'molano'

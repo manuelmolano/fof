@@ -78,7 +78,7 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
 
 
 def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
-                 margin_psth=1000, sel_qlts=['good'], conditioning={},
+                 margin_psth=1000, sel_qlts=['mua', 'good'], conditioning={},
                  sv_folder=''):
     def get_conds(conditioning={}):
         cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
@@ -98,11 +98,11 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
     num_cols = len(lbls_cps)+1
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     rats = glob.glob(main_folder+'LE*')
+    all_trR = []
+    min_num_tr = 1e6
     for r in rats:
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
-        all_trR = []
-        min_num_tr = 1e6
         for sess in sessions:
             session = os.path.basename(sess)
             print('----')
@@ -134,35 +134,35 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                             if min_n_tr > 10:
                                 all_trR.append(trR)
                                 min_num_tr = min(min_num_tr, min_n_tr)
-        if len(all_trR) > 0:
-            conditions = get_conds(conditioning=conditioning)
-            all_trR = np.array(all_trR)
-            all_trR = np.swapaxes(all_trR, 0, 1)
-            # trial-average data
-            R = np.nanmean(all_trR, 0)
-            # center data
-            mean_acr_tr = np.mean(R.reshape((R.shape[0], -1)), 1)
-            for l in range(len(lbls_cps)):
-                mean_acr_tr = mean_acr_tr[:, None]
-            R -= mean_acr_tr
-            dpca = dPCA.dPCA(labels=lbls_cps, regularizer='auto')
-            dpca.protect = ['t']
-            all_trR = all_trR[:min_num_tr]
-            Z = dpca.fit_transform(R, all_trR)
-            var_exp = dpca.explained_variance_ratio_
-            f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))
-            lbls_to_plot = list(lbls_cps)+[lbls_cps]
-            for i_c in range(num_comps):
-                for i_d, dim in enumerate(lbls_to_plot):
-                    for cond in dpcp(conditions):
-                        i_cond = [c for c in cond if c != -1]
-                        idx = [i_c]+i_cond+[np.arange(2*margin_psth)]
-                        ax[i_c, i_d].plot(time, Z[dim][idx], label=str(i_cond))
-                    ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
-                                           str(np.round(var_exp[dim][i_c], 2)))
-            ax[i_c, i_d].legend()
-            name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
-            f.savefig(sv_folder+rat+'_'+name+'.png')
+    if len(all_trR) > 0:
+        conditions = get_conds(conditioning=conditioning)
+        all_trR = np.array(all_trR)
+        all_trR = np.swapaxes(all_trR, 0, 1)
+        # trial-average data
+        R = np.nanmean(all_trR, 0)
+        # center data
+        mean_acr_tr = np.mean(R.reshape((R.shape[0], -1)), 1)
+        for l in range(len(lbls_cps)):
+            mean_acr_tr = mean_acr_tr[:, None]
+        R -= mean_acr_tr
+        dpca = dPCA.dPCA(labels=lbls_cps, regularizer='auto')
+        dpca.protect = ['t']
+        all_trR = all_trR[:min_num_tr]
+        Z = dpca.fit_transform(R, all_trR)
+        var_exp = dpca.explained_variance_ratio_
+        f, ax = plt.subplots(nrows=num_comps, ncols=num_cols, figsize=(16, 7))
+        lbls_to_plot = list(lbls_cps)+[lbls_cps]
+        for i_c in range(num_comps):
+            for i_d, dim in enumerate(lbls_to_plot):
+                for cond in dpcp(conditions):
+                    i_cond = [c for c in cond if c != -1]
+                    idx = [i_c]+i_cond+[np.arange(2*margin_psth)]
+                    ax[i_c, i_d].plot(time, Z[dim][idx], label=str(i_cond))
+                ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
+                                       str(np.round(var_exp[dim][i_c], 2)))
+        ax[i_c, i_d].legend()
+        name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
+        f.savefig(sv_folder+name+'.png')
 
 
 def units_stats(inv, main_folder, sv_folder, name='ch'):
@@ -248,8 +248,8 @@ if __name__ == '__main__':
     sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     if analysis_type == 'dpca':
-        cond = {'ch': True, 'prev_ch': True, 'outc': False, 'prev_outc': True,
-                'prev_tr': False}
+        cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
+                'prev_tr': True}
         lbls_cps = 'cprt'
         compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
                      margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,

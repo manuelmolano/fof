@@ -254,7 +254,30 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     features = {'conv_psth': [], 'aligned_spks': [], 'peri_ev': [], 'sign_mat': []}
     for i_e, ev in enumerate(ev_keys):
-        if 'ch' in cond:
+        if cond == 'ch_prev_ch':
+            choice = b_data['R_response'].values
+            prev_choice = b_data['R_response'].shift(periods=1).values
+            # prev. choice right
+            mask = prev_choice == 0
+            lbls = ['Prev. Right + Right', 'Prev. Righ + Left']
+            clrs = [verde, morado]
+            alp = 0.5
+            _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
+                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                        std_conv=std_conv, margin_psth=margin_psth,
+                                        lbls=lbls, clrs=clrs, mask=mask, alpha=alp)
+
+            # prev. choice left
+            mask = prev_choice == 1
+            lbls = ['Prev. Left + Right', 'Prev. Left+ Left']
+            clrs = [verde, morado]
+            alp = 1
+            _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
+                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
+                                        std_conv=std_conv, margin_psth=margin_psth,
+                                        lbls=lbls, clrs=clrs, mask=mask, alpha=alp)
+
+        elif 'ch' in cond:
             prev_choice = (cond == 'prev_ch')
             choice = b_data['R_response'].shift(periods=1*prev_choice).values
             lbls = ['Prev. Right', 'Prev. Left']\
@@ -378,8 +401,9 @@ if __name__ == '__main__':
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
     # ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr']
-    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr', 'block']
-    for cond in conditions:
+    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr',
+                  'block']
+    for cond in ['ch_prev_ch']:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):
             os.makedirs(sv_f)

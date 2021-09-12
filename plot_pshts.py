@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import glob
 import seaborn as sns
+import itertools
 # import utils as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
@@ -262,10 +263,11 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
             lbls = ['Prev. Right + Right', 'Prev. Righ + Left']
             clrs = [verde, morado]
             alp = 0.5
-            _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
-                                        b_data=b_data, ev=ev, ax=ax[:, i_e],
-                                        std_conv=std_conv, margin_psth=margin_psth,
-                                        lbls=lbls, clrs=clrs, mask=mask, alpha=alp)
+            spk_offset, feats =\
+                psth_binary_cond(cl=cl, mat=choice, e_data=e_data, b_data=b_data,
+                                 ev=ev, ax=ax[:, i_e], std_conv=std_conv,
+                                 margin_psth=margin_psth, lbls=lbls, clrs=clrs,
+                                 mask=mask, alpha=alp)
 
             # prev. choice left
             mask = prev_choice == 1
@@ -275,7 +277,8 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
             _, feats = psth_binary_cond(cl=cl, mat=choice, e_data=e_data,
                                         b_data=b_data, ev=ev, ax=ax[:, i_e],
                                         std_conv=std_conv, margin_psth=margin_psth,
-                                        lbls=lbls, clrs=clrs, mask=mask, alpha=alp)
+                                        lbls=lbls, clrs=clrs, mask=mask, alpha=alp,
+                                        spk_offset=spk_offset)
 
         elif 'ch' in cond:
             prev_choice = (cond == 'prev_ch')

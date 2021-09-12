@@ -375,7 +375,7 @@ if __name__ == '__main__':
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
     # ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr']
-    conditions = ['block']
+    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr', 'block']
     for cond in conditions:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):

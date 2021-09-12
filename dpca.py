@@ -247,8 +247,8 @@ if __name__ == '__main__':
     sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     if analysis_type == 'dpca':
-        cond = {'ch': False, 'prev_ch': True, 'outc': False, 'prev_outc': True,
-                'prev_tr': True}
+        cond = {'ch': True, 'prev_ch': True, 'outc': False, 'prev_outc': True,
+                'prev_tr': False}
         lbls_cps = 'cprt'
         compute_dPCA(inv=inv, main_folder=main_folder, std_conv=std_conv,
                      margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,

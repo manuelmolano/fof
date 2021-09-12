@@ -248,7 +248,7 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
 def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
                   std_conv=20, margin_psth=1000):
     if PLOT:
-        f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 10), sharey='row')
+        f, ax = plt.subplots(ncols=3, nrows=2, figsize=(10, 8), sharey='row')
     else:
         ax = np.zeros((2, 3))
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
@@ -302,7 +302,7 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
         ax[1, 2].set_xlabel('Peri-outcome time (s)')
         for a in ax.flatten():
             ut.rm_top_right_lines(a)
-            a.legend()
+        a[0].legend(loc=1)
         num_spks = np.sum(e_data['clsts'] == cl)
         f.suptitle(str(cl)+' / #spks: '+str(num_spks)+' / qlt: '+cl_qlt)
         if not os.path.exists(sv_folder):
@@ -369,7 +369,7 @@ if __name__ == '__main__':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
     inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE104_2021-04-12_11-38-47']  # ['LE104_2021-06-02_13-14-24']
+    sel_sess = ['LE113_2021-06-19_14-03-06']  # ['LE104_2021-04-12_11-38-47']  # ['LE104_2021-06-02_13-14-24']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',

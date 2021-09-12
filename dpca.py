@@ -67,8 +67,8 @@ def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
                                       prev_outc_mat == prev_outcome,
                                       prev_tr_mat == prev_trans))
         evs = filt_evs[mask]
-        psth, peri_ev = pp.ppsths(spk_tms=spk_tms, evs=evs, std_conv=std_conv,
-                                  margin_psth=margin_psth, plot=False)
+        psth, peri_ev = pp.plt_psths(spk_tms=spk_tms, evs=evs, std_conv=std_conv,
+                                     margin_psth=margin_psth, plot=False)
         idx = [np.arange(len(peri_ev))]+[case[i] for i in active_idx]
         if len(peri_ev) > 0:
             trialR[idx] = peri_ev

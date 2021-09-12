@@ -309,7 +309,9 @@ def get_responses(e_data, b_data, cl, cl_qlt, session, sv_folder, cond,
             os.makedirs(sv_folder)
         print(sv_folder+'/'+cl_qlt+'_'+str(cl)+'_'+session+'_'+'.png')
         f.savefig(sv_folder+'/'+cl_qlt+'_'+str(cl)+'_'+session+'_' +
-                  '.png')
+                  '.png', dpi=400, bbox_inches='tight')
+        f.savefig(sv_folder+'/'+cl_qlt+'_'+str(cl)+'_'+session+'_' +
+                  '.svg', dpi=400, bbox_inches='tight')
         plt.close(f)
     return features
 

@@ -397,7 +397,10 @@ if __name__ == '__main__':
         sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
     inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE113_2021-06-19_14-03-06', 'LE104_2021-06-19_12-54-47',
+    sel_sess = ['LE113_2021-06-04_14-07-43', 'LE81_2020-12-16_10-51-17',
+                'LE81_2020-12-22_10-41-16', 'LE81_2021-01-12_10-05-36',
+                'LE104_2021-06-19_12-54-47', 'LE113_2021-07-13_11-03-58']
+    # ['LE113_2021-06-19_14-03-06', 'LE104_2021-06-19_12-54-47',
     # 'LE113_2021-06-18_11-40-52']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
     # file = main_folder+'/'+rat+'/sessions/'+session+'/extended_df'

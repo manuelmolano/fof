@@ -32,14 +32,15 @@ rojo_2 = np.array([240, 2, 127])/255
 
 grad_colors = sns.diverging_palette(145, 300, n=7)
 grad_colors = [[0.8*g for g in gc] for gc in grad_colors]
-PLOT = True
+PLOT = False
 
 
 def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
-              color='k', alpha=1):
+              color='k', alpha=1, plot=None):
+    plot = plot or PLOT
     psth_cnv, peri_ev = ut.convolve_psth(spk_times=spk_tms, events=evs,
                                          std=std_conv, margin=margin_psth)
-    if PLOT and len(psth_cnv) > 0:
+    if plot and len(psth_cnv) > 0:
         ax.axvline(x=0, linestyle='--', color=(.7, .7, .7))
         xs = np.arange(2*margin_psth)-margin_psth
         xs = xs/1000

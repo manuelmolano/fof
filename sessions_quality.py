@@ -433,8 +433,10 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 ax_traces.text(idx_max, 4.25, prob+': '+obs)
                 ax_traces.set_ylim([-.1, 4.5])
             if plt_f and fldr == 'bad':
+                print('Saving into issues pdf')
                 pdf_issues.savefig(f.number)
             elif plt_f and fldr == 'good':
+                print('Saving into selected pdf')
                 pdf_selected.savefig(f.number)
             if plt_f:
                 plt.close(f)
@@ -464,7 +466,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 if __name__ == '__main__':
     plt.close('all')
     redo = False  # whether to rewrite comments
-    ignore_input = True  # whether to input comments (or just save the figures)
+    ignore_input = False  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot

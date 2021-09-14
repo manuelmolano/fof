@@ -20,7 +20,7 @@ import plot_pshts as pp
 # sys.path.remove('/home/molano/rewTrained_RNNs')
 
 
-def get_cond_trials(b_data, e_data, ev, cl, conditions, evs_mrgn=1e-2,
+def get_cond_trials(b_data, e_data, ev, cl, cond, conditions, evs_mrgn=1e-2,
                     fixtn_time=.3, margin_psth=1000, std_conv=20):
     # get spikes
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
@@ -130,7 +130,8 @@ def compute_dPCA(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                                 get_cond_trials(b_data=b_data, e_data=e_data,
                                                 ev=ev, cl=cl, std_conv=std_conv,
                                                 margin_psth=margin_psth,
-                                                conditions=dpcp(conditions))
+                                                conditions=dpcp(conditions),
+                                                cond=conditioning)
                             if min_n_tr > 10:
                                 all_trR.append(trR)
                                 min_num_tr = min(min_num_tr, min_n_tr)

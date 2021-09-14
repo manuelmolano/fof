@@ -87,35 +87,6 @@ def get_transition_mat(repeat, conv_w=5):
     transition_ev = np.concatenate((np.array([0]), transition[:-1]))
     return transition_ev
 
-
-def plot_masks_cond(ch, prev_rep=None, trans=None, num=50, start=0):
-    """
-    Plot mask with choices, performance and other variables.
-
-    Parameters
-    ----------
-    ch : array
-        array with choices.
-    prev_rep : array, optional
-        array with previous repeatitions (1 if repeating, 0 if alternating) (None)
-    zt: TYPE, optional
-        array indicating the exponential sum of previous transitions (None)
-
-    Returns
-    -------
-    None.
-
-    """
-    plt.subplots(figsize=(8, 8))
-    plt.plot(ch[start:start+num], '-+', label='choice', lw=1)
-    if prev_rep is not None:
-        plt.plot(prev_rep[start:start+num], '-+', label='prev. repeat', lw=1)
-        plt.plot(trans[start:start+num], '-+', label='transitions', lw=1)
-    for ind in range(num):
-        plt.plot([ind, ind], [-3, 3], '--', color=(.7, .7, .7))
-    plt.legend()
-
-
 def get_GLM_regressors(data, chck_corr=False):
     """
     Compute regressors.
@@ -292,17 +263,6 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, plot=False,
                                               ev=ev, evs_mrgn=evs_mrgn,
                                               fixtn_time=fixtn_time)
     filt_evs = evs[indx_good_evs]
-    ch_mat = b_data['R_response'].values[indx_good_evs]
-    prev_ch_mat = b_data['R_response'].shift(periods=1).values[indx_good_evs]
-    outc_mat = b_data['hithistory'].values[indx_good_evs]
-    prev_outc_mat = b_data['hithistory'].shift(periods=1).values[indx_good_evs]
-    prev_tr_mat = b_data['rep_response'].shift(periods=1).values[indx_good_evs]
-    zt = get_transition_mat(1*b_data['rep_response'], conv_w=5)[indx_good_evs]
-    if plot:
-        plot_masks_cond(ch=ch_mat, prev_repeat=prev_tr_mat, zt=zt, num=200,
-                        start=0)
-        import sys
-        sys.exit()
     resps = ut.scatter(spk_tms=spk_tms, evs=filt_evs, margin_psth=margin_psth,
                        plot=False)
     resps = [len(r) for r in resps['aligned_spks']]

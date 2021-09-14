@@ -466,7 +466,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 if __name__ == '__main__':
     plt.close('all')
     redo = False  # whether to rewrite comments
-    ignore_input = False  # whether to input comments (or just save the figures)
+    ignore_input = True  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot

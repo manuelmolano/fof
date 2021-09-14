@@ -47,21 +47,6 @@ def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
     return features
 
 
-def plot_scatter(ax, spk_tms, evs, margin_psth, color='k', offset=0, alpha=1):
-    spk_raster = 1000*spk_tms
-    evs = 1000*evs
-    feats_spks = {'aligned_spks': []}
-    for i_ev, ev in enumerate(evs):
-        spk_tmp = spk_raster-ev
-        spk_tmp = spk_tmp[np.logical_and(spk_tmp > -margin_psth,
-                                         spk_tmp < margin_psth)]
-        feats_spks['aligned_spks'].append(spk_tmp)
-        if PLOT:
-            ax.scatter(spk_tmp, np.ones((len(spk_tmp)))+i_ev+offset,
-                       color=color, s=1, alpha=alpha)
-    return feats_spks
-
-
 def find_repeated_evs(evs_dists, indx_evs):
     """
     Find repeated events in indx_evs and only keeps the ones with the minimum
@@ -84,8 +69,7 @@ def find_repeated_evs(evs_dists, indx_evs):
 
     """
     # remove repeated events (when 2 csv evs have the same ttl event associated)
-    evs_unq, indx, counts = np.unique(indx_evs, return_index=1,
-                                      return_counts=1)
+    evs_unq, indx, counts = np.unique(indx_evs, return_index=1, return_counts=1)
     idx_assoc_tr = np.ones((len(evs_dists),)) == 1
     indx_rep = np.where(counts > 1)[0]
     if len(indx_rep) > 0:  # if true, there are 2 csv evs w/ the same ttl ev assoc
@@ -113,6 +97,7 @@ def preprocess_events(b_data, e_data, ev, evs_mrgn, fixtn_time):
                     for tr in trial_times])
     evs_dists = aux[:, 0]
     indx_evs = aux[:, 1].astype(int)
+    # this selects for each csv ev the closest ttl ev. It isn't exactly filtering..
     filt_evs = events[indx_evs]
     # find repeated evs
     idx_assoc_tr = find_repeated_evs(evs_dists, indx_evs)
@@ -211,9 +196,9 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
         evs = filt_evs[indx_ch]
         if len(evs) > 0:
             assert len(np.unique(evs)) == len(evs), 'Repeated events!'
-            f_spks = plot_scatter(ax=ax[0], spk_tms=spk_tms, evs=evs,
-                                  color=clrs[i_v], margin_psth=margin_psth,
-                                  alpha=alpha, offset=spk_offset)
+            f_spks = ut.scatter(ax=ax[0], spk_tms=spk_tms, evs=evs,
+                                color=clrs[i_v], margin_psth=margin_psth,
+                                alpha=alpha, offset=spk_offset, plot=PLOT)
             ut.append_features(features=feats_spks, new_data=f_spks)
             feats = plt_psths(spk_tms=spk_tms, evs=evs, ax=ax[1],
                               std_conv=std_conv, margin_psth=margin_psth,

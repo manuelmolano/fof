@@ -89,6 +89,22 @@ def significance(mat, window=100):
     return pvalues
 
 
+def scatter(spk_tms, evs, margin_psth, ax=None, color='k', offset=0, alpha=1,
+            plot=True):
+    spk_raster = 1000*spk_tms
+    evs = 1000*evs
+    feats_spks = {'aligned_spks': []}
+    for i_ev, ev in enumerate(evs):
+        spk_tmp = spk_raster-ev
+        spk_tmp = spk_tmp[np.logical_and(spk_tmp > -margin_psth,
+                                         spk_tmp < margin_psth)]
+        feats_spks['aligned_spks'].append(spk_tmp)
+        if plot:
+            ax.scatter(spk_tmp, np.ones((len(spk_tmp)))+i_ev+offset,
+                       color=color, s=1, alpha=alpha)
+    return feats_spks
+
+
 def convolve_psth(spk_times, events, std=20, margin=1000):
     if len(events) > 0:
         krnl_len = 5*std

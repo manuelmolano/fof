@@ -453,6 +453,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
+            print(list(extended_inv))
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()

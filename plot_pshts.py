@@ -11,12 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import glob
 import seaborn as sns
-import itertools
-# import utils as ut
-# from scipy.ndimage import gaussian_filter1d
-# import sys
-# sys.path.remove('/home/molano/rewTrained_RNNs')
-import utils as ut
+import utils_fof as ut
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255

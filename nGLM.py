@@ -14,7 +14,7 @@ import pandas as pd
 import glob
 from copy import deepcopy as dpcp
 import plot_pshts as pp
-import utils as ut
+import utils_fof as ut
 # from scipy.ndimage import gaussian_filter1d
 # import sys
 # sys.path.remove('/home/molano/rewTrained_RNNs')

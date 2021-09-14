@@ -14,10 +14,6 @@ import glob
 from dPCA import dPCA
 from copy import deepcopy as dpcp
 import plot_pshts as pp
-# import utils as ut
-# from scipy.ndimage import gaussian_filter1d
-# import sys
-# sys.path.remove('/home/molano/rewTrained_RNNs')
 
 
 def get_cond_trials(b_data, e_data, ev, cl, cond, conditions, evs_mrgn=1e-2,

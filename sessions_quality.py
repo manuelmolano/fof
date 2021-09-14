@@ -11,11 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 from matplotlib.backends.backend_pdf import PdfPages
-# import utils as ut
-# from scipy.ndimage import gaussian_filter1d
-# import sys
-# sys.path.remove('/home/molano/rewTrained_RNNs')
-# import utils as ut
+
 colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes

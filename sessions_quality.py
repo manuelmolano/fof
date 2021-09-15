@@ -477,6 +477,7 @@ if __name__ == '__main__':
     inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
+    # specify rats/sessions to analyze
     sel_rats = []  # ['LE113']  # 'LE101'
     sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
 

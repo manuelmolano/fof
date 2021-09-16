@@ -16,12 +16,30 @@ from copy import deepcopy as dpcp
 import plot_pshts as pp
 from numpy import logical_and as and_
 # this is for PCA plots
-lbls_perf = ['error', 'correct', '-']
-lbls_cont = ['alt', 'rep', '-']
-lbls_last_trans = ['alt', 'rep', '-']
-lbls_side = ['left', 'right', '-']
-lbls_ev = ['low', 'high', '-']
+# XXX: the order of this is important
+lbls = [['left', 'right', ''], ['left', 'right', ''], 
+        ['error', 'correct', ''], ['error', 'correct', ''],
+        ['alt', 'rep', ''], ['Alt-R', 'Rep-R', 'Alt-L', 'Rep-L', '']]
 
+
+def get_conds(conditioning={}):
+    cond = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
+            'ctxt': 4}
+    cond.update(conditioning)
+    ch = [0, 1] if cond['ch'] != -1 else [-1]
+    prev_ch = [0, 1] if cond['prev_ch'] != -1 else [-1]
+    outc = [0, 1] if cond['outc'] != -1 else [-1]
+    prev_outc = [0, 1] if cond['prev_outc'] != -1 else [-1]
+    prev_tr = [0, 1] if cond['prev_tr'] != -1 else [-1]
+    ctxt = [0, 1, 2, 3] if cond['ctxt'] != -1 else [-1]
+    cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr, ctxt)
+    return cases
+
+
+def get_label(conds):
+    label = [lbls[c]+' ' for c in conds]
+    return label
+        
 
 def get_fig(display_mode=None, font=6, figsize=(8, 8)):
     import matplotlib
@@ -259,19 +277,6 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         max_num_tr = max(max_num_tr, n_evs)
     return trialR, min_num_tr
 
-def get_conds(conditioning={}):
-    cond = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
-            'ctxt': 4}
-    cond.update(conditioning)
-    ch = [0, 1] if cond['ch'] != -1 else [-1]
-    prev_ch = [0, 1] if cond['prev_ch'] != -1 else [-1]
-    outc = [0, 1] if cond['outc'] != -1 else [-1]
-    prev_outc = [0, 1] if cond['prev_outc'] != -1 else [-1]
-    prev_tr = [0, 1] if cond['prev_tr'] != -1 else [-1]
-    ctxt = [0, 1, 2, 3] if cond['ctxt'] != -1 else [-1]
-    cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr, ctxt)
-    return cases
-
 def compute_dPCA_exps(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                       margin_psth=1000, sel_qlts=['mua', 'good'], conditioning={},
                       sv_folder=''):
@@ -400,7 +405,8 @@ if __name__ == '__main__':
                     for cond in dpcp(conditions):
                         i_cond = [c for c in cond if c != -1]
                         idx = [i_c]+i_cond+[time]
-                        ax[i_c, i_d].plot(time, Z[dim][idx], label=str(i_cond))
+                        label = get_label(cond)
+                        ax[i_c, i_d].plot(time, Z[dim][idx], label=label)
                     ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
                                            str(np.round(var_exp[dim][i_c], 2)))
             ax[i_c, i_d].legend()

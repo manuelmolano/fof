@@ -23,12 +23,32 @@ lbls = [['L', 'R', ''], ['Prev. L', 'Prev. R', ''],
         ['Prev. Alt', 'Prev. Rep', ''], ['Alt ctxt + Prev. L',
                                          'Rep ctxt + Prev. L',
                                          'Alt ctxt + Prev. R',
-                                         'Rep ctxt + Prev. R', '']]
+                                         'Rep ctxt + Prev. R', ''],
+        ['Stim. L', 'Stim. R', '']]
 
+def get_color(cond, dim):
+    if dim == 'c':
+        clr = np.array([1*((cond[5] % 2) == 0), 0.7*((cond[5] > 1)),
+                        1*((cond[5] % 2) == 1)])
+    elif dim == 'd':
+        clr = np.array([cond[0], 1-cond[0], 0])
+    elif dim == 'o':
+        clr = np.array([cond[3], cond[3], 0])/1.1
+    elif dim == 'p':
+        clr = np.array([cond[1], 0, 1-cond[1]])
+    elif dim == 'r':
+        clr = np.array([cond[2], cond[2], 0])/1.1
+    elif dim == 'z':
+        clr = np.array([cond[4], 0, 1-cond[4]])
+    elif dim == 's':
+        clr = np.array([cond[6], 0, 1-cond[6]])
+    else:
+        clr = np.array([0, 0, 0])
+    return clr
 
 def get_conds(conditioning={}):
     cond = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
-            'ctxt': 4}
+            'ctxt': 4, 'ev': 2}
     cond.update(conditioning)
     ch = [0, 1] if cond['ch'] != -1 else [-1]
     prev_ch = [0, 1] if cond['prev_ch'] != -1 else [-1]
@@ -36,13 +56,14 @@ def get_conds(conditioning={}):
     prev_outc = [0, 1] if cond['prev_outc'] != -1 else [-1]
     prev_tr = [0, 1] if cond['prev_tr'] != -1 else [-1]
     ctxt = [0, 1, 2, 3] if cond['ctxt'] != -1 else [-1]
-    cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr, ctxt)
+    ev = [0, 1] if cond['ev'] != -1 else [-1]
+    cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr, ctxt, ev)
     return cases
 
 
 def get_label(conds):
     return ''.join([lbls[i][c]+' ' for i, c in enumerate(conds)])
-        
+
 
 def get_fig(display_mode=None, font=6, figsize=(8, 8)):
     import matplotlib
@@ -82,6 +103,19 @@ def plot_masks(trans, choice, mask, p_hist, title=''):
     plt.legend()
     import sys
     sys.exit()
+    # plt.figure()
+    # plt.plot(p_hist, '-+', label='perf. hist', lw=2)
+    # plt.plot(trans, '-+', label='ctxt', lw=2)
+    # plt.plot(trans_prev_ch, '-+', label='ctxt and prev ch', lw=2)
+    # plt.plot(2*b_data['rep_response'].shift(periods=1).values, '-+',
+    #          label='prev ch', lw=2)
+    # plt.plot(choices-3, '-+', label='choice', lw=2)
+    # plt.plot(outcomes-3, '-+', label='outcomes', lw=2)
+    # for ind in range(200):
+    #     plt.plot([ind, ind], [-3, 3], '--', color=(.7, .7, .7))
+    # plt.plot(trans_prev_ch, '-+', label='ctxt and prev ch cond', lw=2)
+    # plt.legend()
+    # asdasd
 
 
 def get_repetitions(mat):
@@ -171,10 +205,12 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         states = data['states']
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
-        choices = data['choice'][fix_tms]-1
-        gt = data['gt'][fix_tms]-1
+        evidence = np.diff(data['ob_cum'][fix_sgnl == 1, 1:3], axis=1) > 0
+        evidence = evidence.flatten()
+        choices = np.roll(data['choice'][fix_tms]-1, shift=-1)
+        gt = np.roll(data['gt'][fix_tms]-1, shift=-1)
         prev_choices = np.roll(choices, shift=1)
-        outcomes = data['perf'][fix_tms]
+        outcomes = np.roll(data['perf'][fix_tms], shift=-1)
         assert ((choices == gt) == outcomes).all()
         prev_outcomes = np.roll(outcomes, shift=1)
         outc_2_tr_bck = np.roll(outcomes, shift=2)
@@ -182,6 +218,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         n_stps = states.shape[0]
         n_stps_tr = np.sum(margin)
         indx_good_evs = choices != -1
+    # build vectors
     if cond['ch'] != -1:
         ch_mat = choices
     else:
@@ -218,21 +255,13 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         trans_mask = np.logical_or(and_(trans != 0, trans != 1), p_hist != 1)
         trans_prev_ch = trans + 2*prev_choices
         trans_prev_ch[trans_mask] = -1
-        # plt.figure()
-        # plt.plot(p_hist, '-+', label='perf. hist', lw=2)
-        # plt.plot(trans, '-+', label='ctxt', lw=2)
-        # plt.plot(trans_prev_ch, '-+', label='ctxt and prev ch', lw=2)
-        # plt.plot(2*b_data['rep_response'].shift(periods=1).values, '-+',
-        #          label='prev ch', lw=2)
-        # plt.plot(choices-3, '-+', label='choice', lw=2)
-        # plt.plot(outcomes-3, '-+', label='outcomes', lw=2)
-        # for ind in range(200):
-        #     plt.plot([ind, ind], [-3, 3], '--', color=(.7, .7, .7))
-        # plt.plot(trans_prev_ch, '-+', label='ctxt and prev ch cond', lw=2)
-        # plt.legend()
-        # asdasd
     else:
         trans_prev_ch = np.zeros((num_tr))-1
+    if cond['ev'] != -1:
+        ev = evidence
+    else:
+        ev = np.zeros((num_tr))-1
+
     active_idx = [i for i, v in enumerate(cond.values()) if v != -1]
     feats_shape = [v for v in cond.values() if v != -1]
     if exp_nets == 'exps':
@@ -252,9 +281,11 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         prev_outc = case[3]
         prev_trans = case[4]
         ctxt = case[5]
+        e = case[6]
         mask = and_.reduce((indx_good_evs, ch_mat == choice, outc_mat == outc,
                             prev_ch_mat == prev_choice, prev_tr_mat == prev_trans,
-                            trans_prev_ch == ctxt, prev_outc_mat == prev_outc,))
+                            trans_prev_ch == ctxt, prev_outc_mat == prev_outc,
+                            ev == e))
 
         if (False and choice == 0 and prev_choice == -1 and outc == -1
            and prev_outc == 0 and prev_trans == -1 and ctxt == 0):
@@ -284,7 +315,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
             else:
                 sel_tms = fix_tms[mask]
             sel_tms = sel_tms[and_(sel_tms > margin[0],
-                                   sel_tms < n_stps-margin[1])]
+                                   sel_tms < n_stps-margin[1]-1)]
             for i_tr, tr in enumerate(sel_tms):
                 idx = [np.arange(n_unts), i_tr]+[case[i] for i in active_idx]
                 trialR[idx] = states[tr-margin[0]:tr+margin[1], :].T
@@ -389,15 +420,15 @@ if __name__ == '__main__':
         main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
             'alg_ACER_seed_0_n_ch_2_BiasCorr/test_2AFC_activity/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
-        conditioning = {'ch': 2, 'prev_ch': 2, 'outc': -1, 'prev_outc': -1,
-                        'prev_tr': 2, 'ctxt': -1, 'ev': 3}
+        conditioning = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2,
+                        'prev_tr': -1, 'ctxt': 4, 'ev': -1}
         cond_list = get_conds(conditioning=conditioning)
-        margin = [4, 7]
+        margin = [1, 1]
         trialR, min_num_tr = get_cond_trials(b_data=data, cond=conditioning,
                                              cond_list=cond_list,
                                              exp_nets='nets',
                                              margin=margin)
-        lbls_cps = 'dpzt'
+        lbls_cps = 'oct'
         num_comps = 4
         num_cols = len(lbls_cps)+1
         time = np.arange(np.sum(margin))
@@ -416,6 +447,7 @@ if __name__ == '__main__':
             all_trR = all_trR[:min_num_tr]
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
+            # plot projections
             f, ax = plt.subplots(nrows=num_comps, ncols=num_cols,
                                  figsize=(16, 10))
             lbls_to_plot = list(lbls_cps)+[lbls_cps]
@@ -425,33 +457,28 @@ if __name__ == '__main__':
                         i_cond = [c for c in cond if c != -1]
                         idx = [i_c]+i_cond+[time]
                         label = get_label(cond)
-                        # clr = np.array(i_cond)/(1, 1, 3)  # XXX: valid for 3 fets
-                        if dim == 'c':
-                            clr = np.array([1*((cond[5] % 2) == 0), 0,
-                                            1*((cond[5] % 2) == 1)])
-                        elif dim == 'd':
-                            clr = np.array([cond[0], 1-cond[0], 0])
-                        elif dim == 'o':
-                            clr = np.array([cond[3], cond[3], 0])
-                        elif dim == 'p':
-                            clr = np.array([cond[1], 0, 1-cond[1]])
-                        elif dim == 'r':
-                            clr = np.array([cond[2], cond[2], 0])
-                        if dim == 'z':
-                            clr = np.array([cond[4], 0, 1-cond[4]])
-
-                        print(cond)
-                        print(clr)
-                        print(label)
-                        print('--------')
+                        clr = get_color(cond=cond, dim=dim)
                         ax[i_c, i_d].plot(time, Z[dim][idx], label=label,
                                           color=clr)
                     ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
                                            str(np.round(var_exp[dim][i_c], 4)))
             for a in ax[-1, :]:
                 a.legend()
-            # name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
-            # f.savefig(sv_folder+name+'.png')
+            # 2D plot
+            f, ax = plt.subplots(nrows=1, ncols=1, figsize=(4, 4))
+            conditions = get_conds(conditioning=conditioning)
+            for cond in dpcp(conditions):
+                i_cond = [c for c in cond if c != -1]
+                idx1 = [0]+i_cond+[time]
+                idx2 = [1]+i_cond+[time]
+                label = get_label(cond)
+                # clr = np.array(i_cond)/(1, 1, 3)  # XXX: valid for 3 fets
+                clr = get_color(cond=cond, dim='c')
+                ax.plot(Z['c'][idx1][margin[0]:margin[0]+1],
+                        Z['c'][idx2][margin[0]:margin[0]+1],
+                        label=label, color=clr,
+                        marker='.')
+            ax.legend()
 
     elif exp_nets == 'exps':
         # experiments

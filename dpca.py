@@ -15,11 +15,15 @@ from dPCA import dPCA
 from copy import deepcopy as dpcp
 import plot_pshts as pp
 from numpy import logical_and as and_
+import scipy.stats as sstats
 # this is for PCA plots
 # XXX: the order of this is important
-lbls = [['left', 'right', ''], ['left', 'right', ''], 
-        ['error', 'correct', ''], ['error', 'correct', ''],
-        ['alt', 'rep', ''], ['Alt-R', 'Rep-R', 'Alt-L', 'Rep-L', '']]
+lbls = [['L', 'R', ''], ['Prev. L', 'Prev. R', ''],
+        ['Error', 'Correct', ''], ['Prev. error', 'Prev. correct', ''],
+        ['Prev. Alt', 'Prev. Rep', ''], ['Alt ctxt + Prev. R',
+                                         'Rep ctxt + Prev. R',
+                                         'Alt ctxt + Prev. L',
+                                         'Rep ctxt + Prev. L', '']]
 
 
 def get_conds(conditioning={}):
@@ -37,8 +41,7 @@ def get_conds(conditioning={}):
 
 
 def get_label(conds):
-    label = [lbls[c]+' ' for c in conds]
-    return label
+    return ''.join([lbls[i][c]+' ' for i, c in enumerate(conds)])
         
 
 def get_fig(display_mode=None, font=6, figsize=(8, 8)):
@@ -139,7 +142,7 @@ def get_transition_mat(choice, conv_w=5):
 
 
 def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
-                    conv_w=2, exp_nets='exps', max_n_evs=500):
+                    conv_w=2, exp_nets='exps', max_n_evs=2000):
     if exp_nets == 'exps':
         assert 'e_data' in exp_data.keys(), 'Please provide e_data dictionary'
         assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
@@ -166,6 +169,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         fix_tms = np.where(data['stimulus'][:, 0])[0]
         states = data['states']
         states = states[:, int(states.shape[1]/2):]
+        states = sstats.zscore(states, axis=0)
         choices = data['choice'][fix_tms]-1
         gt = data['gt'][fix_tms]-1
         prev_choices = np.roll(choices, shift=1)
@@ -175,6 +179,8 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         rep_resp = get_repetitions(choices)
         outc_2_tr_bck = np.roll(outcome, shift=2)
         num_tr = len(choices)
+        n_stps = states.shape[0]
+        n_stps_tr = np.sum(margin)
         indx_good_evs = choices != -1
     if cond['ch'] != -1:
         ch_mat = choices
@@ -226,7 +232,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         shape = [500]+feats_shape+[2*margin]
     elif exp_nets == 'nets':
         n_unts = states.shape[1]
-        shape = [n_unts, max_n_evs]+feats_shape+[np.sum(margin)]
+        shape = [n_unts, max_n_evs]+feats_shape+[n_stps_tr]
     trialR = np.empty(shape)
     trialR[:] = np.nan
     min_num_tr = 1e6
@@ -243,9 +249,8 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
                             trans_prev_ch == ctxt, prev_outc_mat == prev_outcome,))
 
         if (False and choice == -1 and prev_choice == -1 and outcome == -1
-           and prev_outcome == 1 and prev_trans == -1 and ctxt == 0):
-            plot_masks(trans=trans_prev_ch, mask=mask,
-                       choice=choices,
+           and prev_outcome == 0 and prev_trans == -1 and ctxt == 0):
+            plot_masks(trans=trans_prev_ch, mask=mask, choice=choices,
                        p_hist=outcome)
         if exp_nets == 'exps':
             filt_evs = evs[mask]
@@ -270,12 +275,18 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
                 n_evs = max_n_evs
             else:
                 sel_tms = fix_tms[mask]
+            sel_tms = sel_tms[and_(sel_tms > margin[0],
+                                   sel_tms < n_stps-margin[1])]
             for i_tr, tr in enumerate(sel_tms):
                 idx = [np.arange(n_unts), i_tr]+[case[i] for i in active_idx]
-                trialR[idx] = states[tr-margin[0]:tr+margin[1], :].T
+                try:
+                    trialR[idx] = states[tr-margin[0]:tr+margin[1], :].T
+                except:
+                    print(1)         
         min_num_tr = min(min_num_tr, n_evs)
         max_num_tr = max(max_num_tr, n_evs)
     return trialR, min_num_tr
+
 
 def compute_dPCA_exps(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=20,
                       margin_psth=1000, sel_qlts=['mua', 'good'], conditioning={},
@@ -370,20 +381,20 @@ if __name__ == '__main__':
         main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
             'alg_ACER_seed_0_n_ch_2_BiasCorr/test_2AFC_activity/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
-        cond = {'ch': 2, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
+        conditioning = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
                 'ctxt': 4}
-        cond_list = get_conds(conditioning=cond)
-        margin = [0, 4]
-        trialR, min_num_tr = get_cond_trials(b_data=data, cond=cond,
+        cond_list = get_conds(conditioning=conditioning)
+        margin = [4, 4]
+        trialR, min_num_tr = get_cond_trials(b_data=data, cond=conditioning,
                                              cond_list=cond_list,
                                              exp_nets='nets',
                                              margin=margin)
-        lbls_cps = 'doct'
-        num_comps = 3
+        lbls_cps = 'oct'
+        num_comps = 4
         num_cols = len(lbls_cps)+1
         time = np.arange(np.sum(margin))
         if len(trialR) > 0:
-            conditions = get_conds(conditioning=cond)
+            conditions = get_conds(conditioning=conditioning)
             all_trR = np.swapaxes(trialR, 0, 1)
             # trial-average data
             R = np.nanmean(all_trR, 0)
@@ -406,7 +417,16 @@ if __name__ == '__main__':
                         i_cond = [c for c in cond if c != -1]
                         idx = [i_c]+i_cond+[time]
                         label = get_label(cond)
-                        ax[i_c, i_d].plot(time, Z[dim][idx], label=label)
+                        # clr = np.array(i_cond)/(1, 1, 3)  # XXX: valid for 3 fets
+                        clr = np.abs(np.array((.8, .8, .8)) -
+                                     np.array([1*((cond[5] % 2) == 1), cond[3],
+                                               1*(cond[5] > 1)]))
+                        print(cond)
+                        print(clr)
+                        print(label)
+                        print('--------')
+                        ax[i_c, i_d].plot(time, Z[dim][idx], label=label,
+                                          color=clr)
                     ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
                                            str(np.round(var_exp[dim][i_c], 2)))
             ax[i_c, i_d].legend()

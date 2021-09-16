@@ -20,10 +20,10 @@ import scipy.stats as sstats
 # XXX: the order of this is important
 lbls = [['L', 'R', ''], ['Prev. L', 'Prev. R', ''],
         ['Error', 'Correct', ''], ['Prev. error', 'Prev. correct', ''],
-        ['Prev. Alt', 'Prev. Rep', ''], ['Alt ctxt + Prev. R',
-                                         'Rep ctxt + Prev. R',
-                                         'Alt ctxt + Prev. L',
-                                         'Rep ctxt + Prev. L', '']]
+        ['Prev. Alt', 'Prev. Rep', ''], ['Alt ctxt + Prev. L',
+                                         'Rep ctxt + Prev. L',
+                                         'Alt ctxt + Prev. R',
+                                         'Rep ctxt + Prev. R', '']]
 
 
 def get_conds(conditioning={}):
@@ -66,7 +66,7 @@ def get_fig(display_mode=None, font=6, figsize=(8, 8)):
     return f
 
 
-def plot_masks(trans, choice, mask, p_hist):
+def plot_masks(trans, choice, mask, p_hist, title=''):
     st = 0
     num_stps = 200
     get_fig(display_mode=True)
@@ -78,6 +78,7 @@ def plot_masks(trans, choice, mask, p_hist):
     for ind in range(num_stps):
         plt.plot([ind, ind], [-3, 3], '--',
                  color=(.7, .7, .7))
+    plt.title(title)
     plt.legend()
     import sys
     sys.exit()
@@ -160,24 +161,23 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
                                                   fixtn_time=prms['fixtn_time'])
         choices = b_data['R_response'].values
         prev_choices = b_data['R_response'].shift(periods=1).values
-        outcome = b_data['hithistory'].values
-        prev_outcome = b_data['hithistory'].shift(periods=1).values
-        rep_resp = b_data['rep_response'].shift(periods=1).values
+        outcomes = b_data['hithistory'].values
+        prev_outcomes = b_data['hithistory'].shift(periods=1).values
         outc_2_tr_bck = b_data['hithistory'].shift(periods=2).values
         num_tr = len(b_data)
     elif exp_nets == 'nets':
-        fix_tms = np.where(data['stimulus'][:, 0])[0]
+        fix_sgnl = data['stimulus'][:, 0]
+        fix_tms = np.where(fix_sgnl == 1)[0]
         states = data['states']
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         choices = data['choice'][fix_tms]-1
         gt = data['gt'][fix_tms]-1
         prev_choices = np.roll(choices, shift=1)
-        outcome = data['perf'][fix_tms]
-        assert ((choices == gt) == outcome).all()
-        prev_outcome = np.roll(outcome, shift=1)
-        rep_resp = get_repetitions(choices)
-        outc_2_tr_bck = np.roll(outcome, shift=2)
+        outcomes = data['perf'][fix_tms]
+        assert ((choices == gt) == outcomes).all()
+        prev_outcomes = np.roll(outcomes, shift=1)
+        outc_2_tr_bck = np.roll(outcomes, shift=2)
         num_tr = len(choices)
         n_stps = states.shape[0]
         n_stps_tr = np.sum(margin)
@@ -191,15 +191,22 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
     else:
         prev_ch_mat = np.zeros((num_tr))-1
     if cond['outc'] != -1:
-        outc_mat = outcome
+        outc_mat = outcomes
     else:
         outc_mat = np.zeros((num_tr))-1
     if cond['prev_outc'] != -1:
-        prev_outc_mat = prev_outcome
+        prev_outc_mat = prev_outcomes
     else:
         prev_outc_mat = np.zeros((num_tr))-1
     if cond['prev_tr'] != -1:
-        prev_tr_mat = rep_resp
+        prev_tr_mat = get_transition_mat(prev_choices, conv_w=conv_w)
+        prev_tr_mat /= conv_w
+        p_hist = np.convolve(outc_2_tr_bck, np.ones((conv_w+1,)),
+                             mode='full')[0:-conv_w]
+        p_hist /= (conv_w+1)
+        trans_mask = np.logical_or(and_(prev_tr_mat != 0, prev_tr_mat != 1),
+                                   p_hist != 1)
+        prev_tr_mat[trans_mask] = -1
     else:
         prev_tr_mat = np.zeros((num_tr))-1
     if cond['ctxt'] != -1:
@@ -218,7 +225,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         # plt.plot(2*b_data['rep_response'].shift(periods=1).values, '-+',
         #          label='prev ch', lw=2)
         # plt.plot(choices-3, '-+', label='choice', lw=2)
-        # plt.plot(outcome-3, '-+', label='outcome', lw=2)
+        # plt.plot(outcomes-3, '-+', label='outcomes', lw=2)
         # for ind in range(200):
         #     plt.plot([ind, ind], [-3, 3], '--', color=(.7, .7, .7))
         # plt.plot(trans_prev_ch, '-+', label='ctxt and prev ch cond', lw=2)
@@ -237,21 +244,22 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
     trialR[:] = np.nan
     min_num_tr = 1e6
     max_num_tr = -1e6
+    stim_trial = []
     for i_c, case in enumerate(cond_list):
         choice = case[0]
         prev_choice = case[1]
-        outcome = case[2]
-        prev_outcome = case[3]
+        outc = case[2]
+        prev_outc = case[3]
         prev_trans = case[4]
         ctxt = case[5]
-        mask = and_.reduce((indx_good_evs, ch_mat == choice, outc_mat == outcome,
+        mask = and_.reduce((indx_good_evs, ch_mat == choice, outc_mat == outc,
                             prev_ch_mat == prev_choice, prev_tr_mat == prev_trans,
-                            trans_prev_ch == ctxt, prev_outc_mat == prev_outcome,))
+                            trans_prev_ch == ctxt, prev_outc_mat == prev_outc,))
 
-        if (False and choice == -1 and prev_choice == -1 and outcome == -1
-           and prev_outcome == 0 and prev_trans == -1 and ctxt == 0):
+        if (False and choice == 0 and prev_choice == -1 and outc == -1
+           and prev_outc == 0 and prev_trans == -1 and ctxt == 0):
             plot_masks(trans=trans_prev_ch, mask=mask, choice=choices,
-                       p_hist=outcome)
+                       p_hist=outcomes, title=get_label(case))
         if exp_nets == 'exps':
             filt_evs = evs[mask]
             feats = pp.plt_psths(spk_tms=spk_tms, evs=filt_evs, plot=False,
@@ -279,12 +287,12 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
                                    sel_tms < n_stps-margin[1])]
             for i_tr, tr in enumerate(sel_tms):
                 idx = [np.arange(n_unts), i_tr]+[case[i] for i in active_idx]
-                try:
-                    trialR[idx] = states[tr-margin[0]:tr+margin[1], :].T
-                except:
-                    print(1)         
+                trialR[idx] = states[tr-margin[0]:tr+margin[1], :].T
+                if i_c == 0:
+                    stim_trial.append(fix_sgnl[tr-margin[0]:tr+margin[1]])
         min_num_tr = min(min_num_tr, n_evs)
         max_num_tr = max(max_num_tr, n_evs)
+        print(np.mean(np.array(stim_trial), axis=0))
     return trialR, min_num_tr
 
 
@@ -381,15 +389,15 @@ if __name__ == '__main__':
         main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
             'alg_ACER_seed_0_n_ch_2_BiasCorr/test_2AFC_activity/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
-        conditioning = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
-                'ctxt': 4}
+        conditioning = {'ch': 2, 'prev_ch': 2, 'outc': -1, 'prev_outc': -1,
+                        'prev_tr': 2, 'ctxt': -1, 'ev': 3}
         cond_list = get_conds(conditioning=conditioning)
-        margin = [4, 4]
+        margin = [4, 7]
         trialR, min_num_tr = get_cond_trials(b_data=data, cond=conditioning,
                                              cond_list=cond_list,
                                              exp_nets='nets',
                                              margin=margin)
-        lbls_cps = 'oct'
+        lbls_cps = 'dpzt'
         num_comps = 4
         num_cols = len(lbls_cps)+1
         time = np.arange(np.sum(margin))
@@ -409,7 +417,7 @@ if __name__ == '__main__':
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
             f, ax = plt.subplots(nrows=num_comps, ncols=num_cols,
-                                 figsize=(16, 7))
+                                 figsize=(16, 10))
             lbls_to_plot = list(lbls_cps)+[lbls_cps]
             for i_c in range(num_comps):
                 for i_d, dim in enumerate(lbls_to_plot):
@@ -418,9 +426,20 @@ if __name__ == '__main__':
                         idx = [i_c]+i_cond+[time]
                         label = get_label(cond)
                         # clr = np.array(i_cond)/(1, 1, 3)  # XXX: valid for 3 fets
-                        clr = np.abs(np.array((.8, .8, .8)) -
-                                     np.array([1*((cond[5] % 2) == 1), cond[3],
-                                               1*(cond[5] > 1)]))
+                        if dim == 'c':
+                            clr = np.array([1*((cond[5] % 2) == 0), 0,
+                                            1*((cond[5] % 2) == 1)])
+                        elif dim == 'd':
+                            clr = np.array([cond[0], 1-cond[0], 0])
+                        elif dim == 'o':
+                            clr = np.array([cond[3], cond[3], 0])
+                        elif dim == 'p':
+                            clr = np.array([cond[1], 0, 1-cond[1]])
+                        elif dim == 'r':
+                            clr = np.array([cond[2], cond[2], 0])
+                        if dim == 'z':
+                            clr = np.array([cond[4], 0, 1-cond[4]])
+
                         print(cond)
                         print(clr)
                         print(label)
@@ -428,8 +447,9 @@ if __name__ == '__main__':
                         ax[i_c, i_d].plot(time, Z[dim][idx], label=label,
                                           color=clr)
                     ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
-                                           str(np.round(var_exp[dim][i_c], 2)))
-            ax[i_c, i_d].legend()
+                                           str(np.round(var_exp[dim][i_c], 4)))
+            for a in ax[-1, :]:
+                a.legend()
             # name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
             # f.savefig(sv_folder+name+'.png')
 

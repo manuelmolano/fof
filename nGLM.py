@@ -15,6 +15,20 @@ import glob
 import plot_pshts as pp
 import utils_fof as ut
 import seaborn as sns
+import statsmodels.api as sm
+rojo = np.array((228, 26, 28))/255
+azul = np.array((55, 126, 184))/255
+verde = np.array((77, 175, 74))/255
+morado = np.array((152, 78, 163))/255
+naranja = np.array((255, 127, 0))/255
+marron = np.array((166, 86, 40))/255
+amarillo = np.array((155, 155, 51))/255
+rosa = np.array((247, 129, 191))/255
+cyan = np.array((0, 1, 1))
+gris = np.array((.5, .5, 0.5))
+azul_2 = np.array([56, 108, 176])/255
+rojo_2 = np.array([240, 2, 127])/255
+
 model_cols = ['evidence',
               'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
               'L+5', 'L-5', 'L+6-10', 'L-6-10',
@@ -27,6 +41,85 @@ afterc_cols = [x for x in model_cols if x not in ['L+2', 'L-1', 'L-2',
 aftere_cols = [x for x in model_cols if x not in ['L+1', 'T++1',
                                                   'T-+1', 'L+2',
                                                   'L-2']]
+
+
+def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
+                 ae_cols=None, ax=None, ax_inset=None, inset_xs=0.5,
+                 regressors=['T++', 'T-+', 'T+-', 'T--'], **kwargs):
+    def get_krnl(name, cols, weights):
+        indx = np.array([np.where(np.array([x.startswith(name)
+                                            for x in cols]))[0]])
+        indx = np.array([x for x in indx if len(x) > 0])
+        xtcks = np.array(cols)[indx][0]
+        xs = [int(x[len(name):len(name)+1]) for x in xtcks]
+        kernel = np.nanmean(weights[indx], axis=0).flatten()
+        return kernel, xs
+
+    def xtcks_krnls(xs, ax):
+        xtcks = np.arange(1, max(xs)+1)
+        ax.set_xticks(xtcks)
+        ax.set_xlim([xtcks[0]-0.5, xtcks[-1]+0.5])
+        xtcks_lbls = [str(x) for x in xtcks]
+        xtcks_lbls[-1] = '6-10'
+        ax.set_xticklabels(xtcks_lbls)
+
+    def get_opts_krnls(plot_opts, tag):
+        opts = {k: x for k, x in plot_opts.items() if k.find('_a') == -1}
+        opts['color'] = plot_opts['color'+tag]
+        opts['linestyle'] = plot_opts['lstyle'+tag]
+        return opts
+
+    plot_opts = {'lw': 1,  'label': '', 'alpha': 1, 'color_ac': naranja,
+                 'fntsz': 7, 'color_ae': (0, 0, 0), 'lstyle_ac': '-',
+                 'lstyle_ae': '-', 'marker': '.'}
+    plot_opts.update(kwargs)
+    fntsz = plot_opts['fntsz']
+    del plot_opts['fntsz']
+    ac_cols = afterc_cols if ac_cols is None else ac_cols
+    ae_cols = aftere_cols if ae_cols is None else ae_cols
+    if ax is None:
+        n_regr = len(regressors)
+        if n_regr > 2:
+            ncols = int(np.sqrt(n_regr))
+            nrows = int(np.sqrt(n_regr))
+            figsize = (8, 5)
+        else:
+            ncols = n_regr
+            nrows = 1
+            figsize = (8, 3)
+        f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize,
+                             sharey=True)
+        ax = ax.flatten()
+        for a in ax:
+            a.invert_xaxis()
+            a.axhline(y=0, linestyle='--', c='k', lw=0.5)
+    else:
+        f = None
+    for j, name in enumerate(regressors):
+        ax[j].set_ylabel('Weight (a.u.)', fontsize=fntsz)
+        ax[j].set_xlabel('Trials back from decision', fontsize=fntsz)
+        # after correct
+        kernel_ac, xs_ac = get_krnl(name=name, cols=ac_cols, weights=weights_ac)
+        if std_ac is not None:
+            s_ac, _ = get_krnl(name=name, cols=ac_cols, weights=std_ac)
+        else:
+            s_ac = np.zeros_like(kernel_ac)
+        opts = get_opts_krnls(plot_opts=plot_opts, tag='_ac')
+        ax[j].errorbar(xs_ac, kernel_ac, s_ac, **opts)
+
+        # after error
+        kernel_ae, xs_ae = get_krnl(name=name, cols=ae_cols, weights=weights_ae)
+        if std_ae is not None:
+            s_ae, _ = get_krnl(name=name, cols=ae_cols, weights=std_ae)
+        else:
+            s_ae = np.zeros_like(kernel_ae)
+        opts = get_opts_krnls(plot_opts=plot_opts, tag='_ae')
+        ax[j].errorbar(xs_ae, kernel_ae, s_ae, **opts)
+
+        # tune fig
+        xtcks_krnls(xs=xs_ac, ax=ax[j])
+
+    return f, kernel_ac, kernel_ae, xs_ac, xs_ae
 
 
 def get_repetitions(mat):
@@ -87,7 +180,8 @@ def get_transition_mat(repeat, conv_w=5):
     transition_ev = np.concatenate((np.array([0]), transition[:-1]))
     return transition_ev
 
-def get_GLM_regressors(data, chck_corr=False):
+
+def get_GLM_regressors(data, mask, chck_corr=False):
     """
     Compute regressors.
 
@@ -112,16 +206,14 @@ def get_GLM_regressors(data, chck_corr=False):
         std_2afc = data['std_2afc']
     else:
         std_2afc = np.ones_like(ch)
-    inv_choice = np.logical_and(ch != 1., ch != 2.)
+    inv_choice = np.logical_and. reduce((ch != 1., ch != 2., ~mask))
     nan_indx = np.logical_or.reduce((std_2afc == 0, inv_choice))
     ev[nan_indx] = np.nan
     perf[nan_indx] = np.nan
     ch[nan_indx] = np.nan
-    ch = -(ch-2)  # choices should belong to {0, 1}
     prev_perf = ~ (np.concatenate((np.array([True]),
-                                   data['performance'][:-1])) == 1)
+                                   data['hithistory'][:-1])) == 1)
     prev_perf = prev_perf.astype('int')
-    prevprev_perf = (np.concatenate((np.array([False]), prev_perf[:-1])) == 1)
     ev /= np.nanmax(ev)
     rep_ch_ = get_repetitions(ch)
     # variables:
@@ -141,8 +233,7 @@ def get_GLM_regressors(data, chck_corr=False):
           'hit': perf,
           'evidence': ev,
           'aftererror': prev_perf,
-          'rep_response': rep_ch_,
-          'prevprev_perf': prevprev_perf}
+          'rep_response': rep_ch_}
     df = pd.DataFrame(df)
 
     # Lateral module
@@ -253,19 +344,58 @@ def get_GLM_regressors(data, chck_corr=False):
             ax.set_title(t)
     return df  # resulting df with lateralized T+
 
+
 def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, plot=False,
                     fixtn_time=.3, margin_psth=100, std_conv=20):
-    df = get_GLM_regressors(b_data, chck_corr=False)
-    # get spikes
-    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
     # select trials
     evs, indx_good_evs = pp.preprocess_events(b_data=b_data, e_data=e_data,
                                               ev=ev, evs_mrgn=evs_mrgn,
                                               fixtn_time=fixtn_time)
-    filt_evs = evs[indx_good_evs]
-    resps = ut.scatter(spk_tms=spk_tms, evs=filt_evs, margin_psth=margin_psth,
+
+    # get behavior
+    df = get_GLM_regressors(b_data, mask=indx_good_evs, chck_corr=False)
+
+    # get spikes
+    # XXX: events could be filter here, but I do all the filtering below 
+    # filt_evs = evs[indx_good_evs]
+    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
+    resps = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
                        plot=False)
-    resps = [len(r) for r in resps['aligned_spks']]
+    resps = np.array([len(r) for r in resps['aligned_spks']])
+
+    # build data set
+    not_nan_indx = df['R_response'].notna()
+
+    # after correct
+    X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
+                     afterc_cols].fillna(value=0)
+    resps_ac = resps[np.logical_and((df.aftererror == 0), not_nan_indx).values]
+    exog, endog = sm.add_constant(X_df_ac), resps_ac
+    mod = sm.GLM(endog, exog,
+                 family=sm.families.Poisson(link=sm.families.links.log))
+    res = mod.fit()
+    weights_ac = res.params
+    print('After correct weights')
+    print(weights_ac)
+
+    # after error
+    X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
+                     aftere_cols].fillna(value=0)
+    resps_ae = resps[np.logical_and((df.aftererror == 1), not_nan_indx).values]
+    exog, endog = sm.add_constant(X_df_ae), resps_ae
+    mod = sm.GLM(endog, exog,
+                 family=sm.families.Poisson(link=sm.families.links.log))
+    res = mod.fit()
+    weights_ae = res.params
+    print('After error weights')
+    print(weights_ae)
+    # Poisson regression code
+    plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
+                 regressors=['T++', 'T-+', 'T+-', 'T--'])
+    plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
+                 regressors=['L+', 'L-'])
+
+    print(1)
 
 
 def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
@@ -313,14 +443,11 @@ def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
                     if cl_qlt in sel_qlts:
                         for i_e, ev in enumerate(ev_keys):
-                            trR, min_n_tr =\
-                                get_cond_trials(b_data=b_data, e_data=e_data,
-                                                ev=ev, cl=cl, std_conv=std_conv,
-                                                margin_psth=margin_psth)
-                            if min_n_tr > 10:
-                                all_trR.append(trR)
-                                min_num_tr = min(min_num_tr, min_n_tr)
-        name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
+                            get_cond_trials(b_data=b_data, e_data=e_data,
+                                            ev=ev, cl=cl, std_conv=std_conv,
+                                            margin_psth=margin_psth)
+                            plt.title(session)
+        # name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
         # f.savefig(sv_folder+name+'.png')
 
 

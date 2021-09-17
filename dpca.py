@@ -16,15 +16,37 @@ from copy import deepcopy as dpcp
 import plot_pshts as pp
 from numpy import logical_and as and_
 import scipy.stats as sstats
+from mpl_toolkits.mplot3d import Axes3D
 # this is for PCA plots
 # XXX: the order of this is important
-lbls = [['L', 'R', ''], ['Prev. L', 'Prev. R', ''],
+LBLS = [['L', 'R', ''], ['Prev. L', 'Prev. R', ''],
         ['Error', 'Correct', ''], ['Prev. error', 'Prev. correct', ''],
         ['Prev. Alt', 'Prev. Rep', ''], ['Alt ctxt + Prev. L',
                                          'Rep ctxt + Prev. L',
                                          'Alt ctxt + Prev. R',
                                          'Rep ctxt + Prev. R', ''],
         ['Stim. L', 'Stim. R', '']]
+
+LETTER_TO_LABEL = {'c': 'Context', 'd': 'Choice', 'o': 'Prev. outcome',
+                   'p': 'Prev. choice', 'r': 'Outcome', 'z': 'Trans. history',
+                   's': 'Stimulus', 't': 'Time'}
+
+COND_TO_LETTER = {'ch': 'd', 'prev_ch': 'p', 'outc': 'r', 'prev_outc': 'o',
+                  'prev_tr': 'z', 'ctxt': 'c', 'ev': 's'}
+
+COND_TO_NUM_FEATS = {'ch': 2, 'prev_ch': 2, 'outc': 2, 'prev_outc': 2,
+                     'prev_tr': 2, 'ctxt': 4, 'ev': 2}
+
+
+def rm_top_right_lines(ax):
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+
+
+def get_feature(dim):
+    feat = LETTER_TO_LABEL[dim] if dim in LETTER_TO_LABEL.keys() else dim
+    return feat
+
 
 def get_color(cond, dim):
     if dim == 'c':
@@ -33,11 +55,11 @@ def get_color(cond, dim):
     elif dim == 'd':
         clr = np.array([cond[0], 1-cond[0], 0])
     elif dim == 'o':
-        clr = np.array([cond[3], cond[3], 0])/1.1
+        clr = np.array([cond[3], 0.7*cond[3], 0])
     elif dim == 'p':
         clr = np.array([cond[1], 0, 1-cond[1]])
     elif dim == 'r':
-        clr = np.array([cond[2], cond[2], 0])/1.1
+        clr = np.array([cond[2], 0.7*cond[2], 0])
     elif dim == 'z':
         clr = np.array([cond[4], 0, 1-cond[4]])
     elif dim == 's':
@@ -50,19 +72,19 @@ def get_conds(conditioning={}):
     cond = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
             'ctxt': 4, 'ev': 2}
     cond.update(conditioning)
-    ch = [0, 1] if cond['ch'] != -1 else [-1]
-    prev_ch = [0, 1] if cond['prev_ch'] != -1 else [-1]
-    outc = [0, 1] if cond['outc'] != -1 else [-1]
-    prev_outc = [0, 1] if cond['prev_outc'] != -1 else [-1]
-    prev_tr = [0, 1] if cond['prev_tr'] != -1 else [-1]
-    ctxt = [0, 1, 2, 3] if cond['ctxt'] != -1 else [-1]
-    ev = [0, 1] if cond['ev'] != -1 else [-1]
+    ch = [0, 1] if cond['ch'] else [-1]
+    prev_ch = [0, 1] if cond['prev_ch'] else [-1]
+    outc = [0, 1] if cond['outc'] else [-1]
+    prev_outc = [0, 1] if cond['prev_outc'] else [-1]
+    prev_tr = [0, 1] if cond['prev_tr'] else [-1]
+    ctxt = [0, 1, 2, 3] if cond['ctxt'] else [-1]
+    ev = [0, 1] if cond['ev'] else [-1]
     cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr, ctxt, ev)
     return cases
 
 
 def get_label(conds):
-    return ''.join([lbls[i][c]+' ' for i, c in enumerate(conds)])
+    return ''.join([LBLS[i][c]+' ' for i, c in enumerate(conds)])
 
 
 def get_fig(display_mode=None, font=6, figsize=(8, 8)):
@@ -216,26 +238,26 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         outc_2_tr_bck = np.roll(outcomes, shift=2)
         num_tr = len(choices)
         n_stps = states.shape[0]
-        n_stps_tr = np.sum(margin)
+        n_stps_tr = np.sum(margin)+1
         indx_good_evs = choices != -1
     # build vectors
-    if cond['ch'] != -1:
+    if cond['ch']:
         ch_mat = choices
     else:
         ch_mat = np.zeros((num_tr))-1
-    if cond['prev_ch'] != -1:
+    if cond['prev_ch']:
         prev_ch_mat = prev_choices
     else:
         prev_ch_mat = np.zeros((num_tr))-1
-    if cond['outc'] != -1:
+    if cond['outc']:
         outc_mat = outcomes
     else:
         outc_mat = np.zeros((num_tr))-1
-    if cond['prev_outc'] != -1:
+    if cond['prev_outc']:
         prev_outc_mat = prev_outcomes
     else:
         prev_outc_mat = np.zeros((num_tr))-1
-    if cond['prev_tr'] != -1:
+    if cond['prev_tr']:
         prev_tr_mat = get_transition_mat(prev_choices, conv_w=conv_w)
         prev_tr_mat /= conv_w
         p_hist = np.convolve(outc_2_tr_bck, np.ones((conv_w+1,)),
@@ -246,7 +268,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         prev_tr_mat[trans_mask] = -1
     else:
         prev_tr_mat = np.zeros((num_tr))-1
-    if cond['ctxt'] != -1:
+    if cond['ctxt']:
         trans = get_transition_mat(prev_choices, conv_w=conv_w)
         trans /= conv_w
         p_hist = np.convolve(outc_2_tr_bck, np.ones((conv_w+1,)),
@@ -257,13 +279,13 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         trans_prev_ch[trans_mask] = -1
     else:
         trans_prev_ch = np.zeros((num_tr))-1
-    if cond['ev'] != -1:
+    if cond['ev']:
         ev = evidence
     else:
         ev = np.zeros((num_tr))-1
 
-    active_idx = [i for i, v in enumerate(cond.values()) if v != -1]
-    feats_shape = [v for v in cond.values() if v != -1]
+    active_idx = [i for i, v in enumerate(cond.values()) if v]
+    feats_shape = [COND_TO_NUM_FEATS[k] for k, v in cond.items() if v]
     if exp_nets == 'exps':
         shape = [500]+feats_shape+[2*margin]
     elif exp_nets == 'nets':
@@ -318,9 +340,9 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
                                    sel_tms < n_stps-margin[1]-1)]
             for i_tr, tr in enumerate(sel_tms):
                 idx = [np.arange(n_unts), i_tr]+[case[i] for i in active_idx]
-                trialR[idx] = states[tr-margin[0]:tr+margin[1], :].T
+                trialR[idx] = states[tr-margin[0]:tr+margin[1]+1, :].T
                 if i_c == 0:
-                    stim_trial.append(fix_sgnl[tr-margin[0]:tr+margin[1]])
+                    stim_trial.append(fix_sgnl[tr-margin[0]:tr+margin[1]+1])
         min_num_tr = min(min_num_tr, n_evs)
         max_num_tr = max(max_num_tr, n_evs)
         print(np.mean(np.array(stim_trial), axis=0))
@@ -420,20 +442,30 @@ if __name__ == '__main__':
         main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
             'alg_ACER_seed_0_n_ch_2_BiasCorr/test_2AFC_activity/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
-        conditioning = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2,
-                        'prev_tr': -1, 'ctxt': 4, 'ev': -1}
-        cond_list = get_conds(conditioning=conditioning)
+        # CONDITIONS:
+        # ch: current choice (values=[0, 1] for left/right)
+        # prev_ch: previous choice (values=[0, 1] for left/right)
+        # outc: current outcome (values=[0, 1] for error/correct)
+        # prev_outc: previous outcome (values=[0, 1] for error/correct)
+        # prev_tr: context (values=[0, 1] for alt/rep context)
+        # ctxt: context x prev-choice (values=[0, 1, 2, 3] for Alt+PrevL, Rep+PrevL, Alt+PrevR, Rep+PrevR)
+        # ev: evidence (values=[0, 1] for evidence for left/right)
+        feats_cond = {'ch': 0, 'prev_ch': 0, 'outc': 0, 'prev_outc': 1,
+                      'prev_tr': 0, 'ctxt': 1, 'ev': 0}
+        cond_list = get_conds(conditioning=feats_cond)
+        # TIMESTEPS BEFORE/AFTER FIXATION POINT
         margin = [1, 1]
-        trialR, min_num_tr = get_cond_trials(b_data=data, cond=conditioning,
-                                             cond_list=cond_list,
-                                             exp_nets='nets',
+        trialR, min_num_tr = get_cond_trials(b_data=data, cond=feats_cond,
+                                             cond_list=cond_list, exp_nets='nets',
                                              margin=margin)
-        lbls_cps = 'oct'
-        num_comps = 4
-        num_cols = len(lbls_cps)+1
-        time = np.arange(np.sum(margin))
+        lbls_cps = ''.join([COND_TO_LETTER[k] for k, v in feats_cond.items() if v])
+        lbls_cps += 't'
+        # NUMBER OF COMPONENTS TO PLOT
+        num_comps = 3
+        nrows = len(lbls_cps)
+        time = np.arange(np.sum(margin)+1)-margin[0]
         if len(trialR) > 0:
-            conditions = get_conds(conditioning=conditioning)
+            conditions = get_conds(conditioning=feats_cond)
             all_trR = np.swapaxes(trialR, 0, 1)
             # trial-average data
             R = np.nanmean(all_trR, 0)
@@ -448,9 +480,13 @@ if __name__ == '__main__':
             Z = dpca.fit_transform(R, all_trR)
             var_exp = dpca.explained_variance_ratio_
             # plot projections
-            f, ax = plt.subplots(nrows=num_comps, ncols=num_cols,
+            f, ax = plt.subplots(nrows=nrows, ncols=num_comps,
                                  figsize=(16, 10))
-            lbls_to_plot = list(lbls_cps)+[lbls_cps]
+            for a in ax.flatten():
+                a.axvline(0, linestyle='--', color='k', lw=0.5)
+            for a in ax.flatten():
+                rm_top_right_lines(a)
+            lbls_to_plot = list(lbls_cps.replace('t', ''))+[lbls_cps]
             for i_c in range(num_comps):
                 for i_d, dim in enumerate(lbls_to_plot):
                     for cond in dpcp(conditions):
@@ -458,27 +494,58 @@ if __name__ == '__main__':
                         idx = [i_c]+i_cond+[time]
                         label = get_label(cond)
                         clr = get_color(cond=cond, dim=dim)
-                        ax[i_c, i_d].plot(time, Z[dim][idx], label=label,
+                        ax[i_d, i_c].plot(time, Z[dim][idx], label=label,
                                           color=clr)
-                    ax[i_c, i_d].set_title(dim+' C' + str(i_c+1) + ' v. expl.: ' +
-                                           str(np.round(var_exp[dim][i_c], 4)))
+                    ax[i_d, i_c].set_title('Comp ' + str(i_c+1) +
+                                           ' Variance Explained: ' +
+                                           str(np.round(var_exp[dim][i_c], 3)))
+            for a in ax[:, -1]:
+                a.legend(bbox_to_anchor=(1., 1.05))
             for a in ax[-1, :]:
-                a.legend()
+                a.set_xlabel('Timesteps from fixation')
+            for a, dim in zip(ax[:, 0], lbls_to_plot):
+                a.set_ylabel(get_feature(dim))
+
+            f.savefig(main_folder+'/dpca_proj_'+''.join(lbls_to_plot)+'.png',
+                      dpi=400, bbox_inches='tight')
+
             # 2D plot
             f, ax = plt.subplots(nrows=1, ncols=1, figsize=(4, 4))
-            conditions = get_conds(conditioning=conditioning)
+            conditions = get_conds(conditioning=feats_cond)
             for cond in dpcp(conditions):
                 i_cond = [c for c in cond if c != -1]
                 idx1 = [0]+i_cond+[time]
                 idx2 = [1]+i_cond+[time]
                 label = get_label(cond)
-                # clr = np.array(i_cond)/(1, 1, 3)  # XXX: valid for 3 fets
                 clr = get_color(cond=cond, dim='c')
-                ax.plot(Z['c'][idx1][margin[0]:margin[0]+1],
-                        Z['c'][idx2][margin[0]:margin[0]+1],
-                        label=label, color=clr,
-                        marker='.')
-            ax.legend()
+                ax.plot(Z['c'][idx1],  # [margin[0]:margin[0]+1],
+                        Z['c'][idx2],  # [margin[0]:margin[0]+1],
+                        label=label, color=clr, marker='.')
+            ax.legend(bbox_to_anchor=(1., 1.05))
+            ax.set_xlabel('Context 1st Comp.')
+            ax.set_ylabel('Context 2nd Comp.')
+            f.savefig(main_folder+'/dpca_2D_context.png', dpi=400,
+                      bbox_inches='tight')
+
+            # 3D plot
+            f, ax = plt.subplots(nrows=1, ncols=1, figsize=(4, 4))
+            ax3D = f.gca(projection='3d')
+            conditions = get_conds(conditioning=feats_cond)
+            for cond in dpcp(conditions):
+                alpha = np.clip(cond[3]+0.3, 0, 1)
+                i_cond = [c for c in cond if c != -1]
+                idx1 = [0]+i_cond+[time]
+                idx2 = [1]+i_cond+[time]
+                label = get_label(cond)
+                clr = get_color(cond=cond, dim='c')
+                ax3D.plot(Z['c'][idx1], Z['c'][idx2], Z['o'][idx1],
+                          label=label, color=clr, marker='.', alpha=alpha)
+            ax.legend(bbox_to_anchor=(1., 1.05))
+            ax3D.set_xlabel('Context 1st Comp.')
+            ax3D.set_ylabel('Context 2nd Comp.')
+            ax3D.set_zlabel('Prev. outcome 1st Comp.')
+            f.savefig(main_folder+'/dpca_3D_context.png', dpi=400,
+                      bbox_inches='tight')
 
     elif exp_nets == 'exps':
         # experiments

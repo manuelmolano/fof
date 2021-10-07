@@ -68,6 +68,7 @@ def get_color(cond, dim):
         clr = np.array([0, 0, 0])
     return clr
 
+
 def get_conds(conditioning={}):
     cond = {'ch': -1, 'prev_ch': -1, 'outc': -1, 'prev_outc': 2, 'prev_tr': -1,
             'ctxt': 4, 'ev': 2}
@@ -408,7 +409,7 @@ def compute_dPCA_exps(main_folder, sel_sess, sel_rats, inv, lbls_cps, std_conv=2
         R = np.nanmean(all_trR, 0)
         # center data
         mean_acr_tr = np.mean(R.reshape((R.shape[0], -1)), 1)
-        for l in range(len(lbls_cps)):
+        for lbl in range(len(lbls_cps)):
             mean_acr_tr = mean_acr_tr[:, None]
         R -= mean_acr_tr
         dpca = dPCA.dPCA(labels=lbls_cps, regularizer='auto')
@@ -448,7 +449,8 @@ if __name__ == '__main__':
         # outc: current outcome (values=[0, 1] for error/correct)
         # prev_outc: previous outcome (values=[0, 1] for error/correct)
         # prev_tr: context (values=[0, 1] for alt/rep context)
-        # ctxt: context x prev-choice (values=[0, 1, 2, 3] for Alt+PrevL, Rep+PrevL, Alt+PrevR, Rep+PrevR)
+        # ctxt: context x prev-choice
+        #      (values=[0, 1, 2, 3] for Alt+PrevL, Rep+PrevL, Alt+PrevR, Rep+PrevR)
         # ev: evidence (values=[0, 1] for evidence for left/right)
         feats_cond = {'ch': 0, 'prev_ch': 0, 'outc': 0, 'prev_outc': 1,
                       'prev_tr': 0, 'ctxt': 1, 'ev': 0}
@@ -471,7 +473,7 @@ if __name__ == '__main__':
             R = np.nanmean(all_trR, 0)
             # center data
             mean_acr_tr = np.mean(R.reshape((R.shape[0], -1)), 1)
-            for l in range(len(lbls_cps)):
+            for lbl in range(len(lbls_cps)):
                 mean_acr_tr = mean_acr_tr[:, None]
             R -= mean_acr_tr
             dpca = dPCA.dPCA(labels=lbls_cps, regularizer='auto')

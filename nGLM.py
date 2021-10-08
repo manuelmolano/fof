@@ -16,6 +16,7 @@ import plot_pshts as pp
 import utils_fof as ut
 import seaborn as sns
 import statsmodels.api as sm
+import scipy.stats as sstats
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255
@@ -35,12 +36,25 @@ model_cols = ['evidence',
               'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
               'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
               'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-              'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
+              'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+              'intercept', 'trans_bias']
 afterc_cols = [x for x in model_cols if x not in ['L+2', 'L-1', 'L-2',
                                                   'T+-1', 'T--1']]
 aftere_cols = [x for x in model_cols if x not in ['L+1', 'T++1',
                                                   'T-+1', 'L+2',
                                                   'L-2']]
+
+
+def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
+    f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharey=True)
+    if ncols == 1 and nrows == 1:
+        ax = [ax]
+    else:
+        ax = ax.flatten()
+    for a in ax:
+        a.invert_xaxis()
+        a.axhline(y=0, linestyle='--', c='k', lw=0.5)
+    return f, ax
 
 
 def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
@@ -51,8 +65,11 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
                                             for x in cols]))[0]])
         indx = np.array([x for x in indx if len(x) > 0])
         xtcks = np.array(cols)[indx][0]
-        xs = [int(x[len(name):len(name)+1]) for x in xtcks]
         kernel = np.nanmean(weights[indx], axis=0).flatten()
+        if (xtcks != np.array(['evidence'])).all():
+            xs = [int(x[len(name):len(name)+1]) for x in xtcks]
+        else:
+            xs = [1]
         return kernel, xs
 
     def xtcks_krnls(xs, ax):
@@ -89,6 +106,8 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
             figsize = (8, 3)
         f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize,
                              sharey=True)
+        if n_regr == 1:
+            ax = np.array([ax])
         ax = ax.flatten()
         for a in ax:
             a.invert_xaxis()
@@ -181,7 +200,7 @@ def get_transition_mat(repeat, conv_w=5):
     return transition_ev
 
 
-def get_GLM_regressors(data, mask, chck_corr=False):
+def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2):
     """
     Compute regressors.
 
@@ -198,24 +217,44 @@ def get_GLM_regressors(data, mask, chck_corr=False):
         dataframe containg evidence, lateral and transition regressors.
 
     """
-    ev = data['coh'].values
-    perf = data['hithistory'].values
-    ch = data['R_response'].values
-    # discard (make nan) non-standard-2afc task periods
-    if 'std_2afc' in data.keys():
-        std_2afc = data['std_2afc']
-    else:
-        std_2afc = np.ones_like(ch)
-    inv_choice = np.logical_and. reduce((ch != 1., ch != 2., ~mask))
-    nan_indx = np.logical_or.reduce((std_2afc == 0, inv_choice))
-    ev[nan_indx] = np.nan
-    perf[nan_indx] = np.nan
-    ch[nan_indx] = np.nan
-    prev_perf = ~ (np.concatenate((np.array([True]),
-                                   data['hithistory'][:-1])) == 1)
-    prev_perf = prev_perf.astype('int')
-    ev /= np.nanmax(ev)
-    rep_ch_ = get_repetitions(ch)
+    if exp_nets == 'exps':
+        ev = data['coh'].values
+        perf = data['hithistory'].values
+        ch = data['R_response'].values
+        # discard (make nan) non-standard-2afc task periods
+        nan_indx = np.logical_and.reduce((ch != 1., ch != 2., ~mask))
+        ev[nan_indx] = np.nan
+        perf[nan_indx] = np.nan
+        ch[nan_indx] = np.nan
+        prev_perf = ~ (np.concatenate((np.array([True]),
+                                       data['hithistory'][:-1])) == 1)
+        prev_perf = prev_perf.astype('int')
+        ev /= np.nanmax(ev)
+        rep_ch_ = get_repetitions(ch)
+    elif exp_nets == 'nets':
+        fix_sgnl = data['stimulus'][:, 0]
+        fix_tms = np.where(fix_sgnl == 1)[0]
+        # data['signed_evidence']
+        ev = np.array(data['info_vals'].item()['coh'])[fix_tms]
+        # data['performance'].astype(float)
+        perf = np.array(data['info_vals'].item()['performance']).astype(float)
+        prev_perf = ~ (np.concatenate((np.array([True]), perf[:-1])) == 1)
+        ch = data['choice'][fix_tms].astype(float)
+        # discard (make nan) non-standard-2afc task periods
+        if 'std_2afc' in data.keys():
+            std_2afc = data['std_2afc']
+        else:
+            std_2afc = np.ones_like(ch)
+        inv_choice = np.logical_and(ch != 1., ch != 2.)
+        nan_indx = np.logical_or.reduce((std_2afc == 0, inv_choice))
+        ev[nan_indx] = np.nan
+        perf[nan_indx] = np.nan
+        ch[nan_indx] = np.nan
+        ch = -(ch-2)  # choices should belong to {0, 1}
+        prev_perf = prev_perf.astype('int')
+        ev /= np.nanmax(ev)
+        rep_ch_ = get_repetitions(ch)
+
     # variables:
     # 'origidx': trial index within session
     # 'rewside': ground truth
@@ -228,15 +267,12 @@ def get_GLM_regressors(data, mask, chck_corr=False):
     # 'frames_listened'
     # 'aftererror': not(performance) shifted
     # 'rep_response'
-    df = {'origidx': np.arange(ch.shape[0]),
-          'R_response': ch,
-          'hit': perf,
-          'evidence': ev,
-          'aftererror': prev_perf,
-          'rep_response': rep_ch_}
+    df = {'origidx': np.arange(ch.shape[0]), 'R_response': ch, 'hit': perf,
+          'evidence': ev, 'aftererror': prev_perf, 'rep_response': rep_ch_}
     df = pd.DataFrame(df)
 
     # Lateral module
+    # L+
     df['L+1'] = np.nan  # np.nan considering invalids as errors
     df.loc[(df.R_response == 1) & (df.hit == 1), 'L+1'] = 1
     df.loc[(df.R_response == 0) & (df.hit == 1), 'L+1'] = -1
@@ -332,6 +368,16 @@ def get_GLM_regressors(data, mask, chck_corr=False):
         # {0 = Left; 1 = Right, nan=invalid}
 
     df['intercept'] = 1
+    # zT
+    kernel = np.exp(-np.arange(10)/tau)
+    perf = np.convolve(perf, np.ones((2)))
+    zt = np.convolve(df['T++1'], kernel)
+    plt.figure()
+    plt.plot(2*(rep_ch_-0.5), '-+', label='reps')
+    plt.plot(df['T++1'], '-+', label='t++')
+    plt.plot(zt, '-+', label='zt')
+    plt.legend()
+    asdasd
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors
     if chck_corr:
@@ -345,55 +391,88 @@ def get_GLM_regressors(data, mask, chck_corr=False):
     return df  # resulting df with lateralized T+
 
 
-def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, plot=False,
-                    fixtn_time=.3, margin_psth=100, std_conv=20):
-    # select trials
-    evs, indx_good_evs = pp.preprocess_events(b_data=b_data, e_data=e_data,
-                                              ev=ev, evs_mrgn=evs_mrgn,
-                                              fixtn_time=fixtn_time)
+def get_cond_trials(b_data, e_data, exp_nets='nets', **exp_data):
+    if exp_nets == 'exps':
+        assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
+        exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
+                 'fixtn_time': .3, 'margin_psth': 100, 'std_conv': 20}
+        exp_d.update(exp_data)
+        # select trials
+        evs, indx_good_evs = pp.preprocess_events(b_data=b_data, e_data=e_data,
+                                                  evs_mrgn=exp_d['evs_mrgn'],
+                                                  fixtn_time=exp_d['fixtn_time'],
+                                                  ev=exp_d['ev'])
+    else:
+        indx_good_evs = None
 
     # get behavior
-    df = get_GLM_regressors(b_data, mask=indx_good_evs, chck_corr=False)
+    df = get_GLM_regressors(b_data, exp_nets=exp_nets, mask=indx_good_evs,
+                            chck_corr=False)
 
-    # get spikes
-    # XXX: events could be filter here, but I do all the filtering below 
-    # filt_evs = evs[indx_good_evs]
-    spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
-    resps = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
-                       plot=False)
-    resps = np.array([len(r) for r in resps['aligned_spks']])
+    if exp_nets == 'exps':
+        # get spikes
+        # XXX: events could be filter here, but I do all the filtering below
+        # filt_evs = evs[indx_good_evs]
+        spk_tms = e_data['spks'][e_data['clsts'] == exp_d['cl']][:, None]
+        resps = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
+                           plot=False)
+        # XXX: responses measured in the form of spike-counts
+        resps = np.array([len(r) for r in resps['aligned_spks']])
+    else:
+        fix_sgnl = data['stimulus'][:, 0]
+        fix_tms = np.where(fix_sgnl == 1)[0]
+        resps = data['states']
+        resps = resps[fix_tms, int(resps.shape[1]/2):]
+        resps = sstats.zscore(resps, axis=0)
+        resps -= np.min(resps, axis=0)
 
     # build data set
     not_nan_indx = df['R_response'].notna()
 
-    # after correct
+    # after correct/error regressors
     X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
                      afterc_cols].fillna(value=0)
-    resps_ac = resps[np.logical_and((df.aftererror == 0), not_nan_indx).values]
-    exog, endog = sm.add_constant(X_df_ac), resps_ac
-    mod = sm.GLM(endog, exog,
-                 family=sm.families.Poisson(link=sm.families.links.log))
-    res = mod.fit()
-    weights_ac = res.params
-    print('After correct weights')
-    print(weights_ac)
-
-    # after error
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
                      aftere_cols].fillna(value=0)
-    resps_ae = resps[np.logical_and((df.aftererror == 1), not_nan_indx).values]
-    exog, endog = sm.add_constant(X_df_ae), resps_ae
-    mod = sm.GLM(endog, exog,
-                 family=sm.families.Poisson(link=sm.families.links.log))
-    res = mod.fit()
-    weights_ae = res.params
-    print('After error weights')
-    print(weights_ae)
-    # Poisson regression code
-    plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                 regressors=['T++', 'T-+', 'T+-', 'T--'])
-    plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                 regressors=['L+', 'L-'])
+    if exp_nets == 'exps':
+        resps = resps[:, None]  # check if this works
+        num_neurons = 1
+    elif exp_nets == 'nets':
+        num_neurons = 500
+
+    f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
+    f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
+    f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
+
+    for i_n in range(num_neurons):
+        # after correct
+        resps_ac = resps[np.logical_and((df.aftererror == 0),
+                                        not_nan_indx).values, i_n]
+        exog, endog = sm.add_constant(X_df_ac), resps_ac
+        mod = sm.GLM(endog, exog,
+                     family=sm.families.Poisson(link=sm.families.links.log))
+        res = mod.fit()
+        weights_ac = res.params
+        # print('After correct weights')
+        # print(weights_ac)
+
+        # after error
+        resps_ae = resps[np.logical_and((df.aftererror == 1),
+                                        not_nan_indx).values, i_n]
+        exog, endog = sm.add_constant(X_df_ae), resps_ae
+        mod = sm.GLM(endog, exog,
+                     family=sm.families.Poisson(link=sm.families.links.log))
+        res = mod.fit()
+        weights_ae = res.params
+        # print('After error weights')
+        # print(weights_ae)
+        # Poisson regression code
+        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
+                     regressors=['T++', 'T-+', 'T+-', 'T--'], ax=ax_tr)
+        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
+                     regressors=['L+', 'L-'], ax=ax_l)
+        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
+                     regressors=['evidence'], ax=ax_ev)
 
     print(1)
 
@@ -401,22 +480,8 @@ def get_cond_trials(b_data, e_data, ev, cl, evs_mrgn=1e-2, plot=False,
 def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                  margin_psth=1000, sel_qlts=['mua', 'good'], conditioning={},
                  sv_folder=''):
-    def get_conds(conditioning={}):
-        cond = {'ch': True, 'prev_ch': False, 'outc': False, 'prev_outc': True,
-                'prev_tr': False}
-        cond.update(conditioning)
-        ch = [0, 1] if cond['ch'] else [-1]
-        prev_ch = [0, 1] if cond['prev_ch'] else [-1]
-        outc = [0, 1] if cond['outc'] else [-1]
-        prev_outc = [0, 1] if cond['prev_outc'] else [-1]
-        prev_tr = [0, 1] if cond['prev_tr'] else [-1]
-        cases = itertools.product(ch, prev_ch, outc, prev_outc, prev_tr)
-        return cases
-
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     rats = glob.glob(main_folder+'LE*')
-    all_trR = []
-    min_num_tr = 1e6
     for r in rats:
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
@@ -453,20 +518,31 @@ def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
 
 if __name__ == '__main__':
     plt.close('all')
+    exps_nets = 'nets'
     analysis_type = 'dpca'
     std_conv = 50
     margin_psth = 1000
-    home = 'manuel'
-    main_folder = '/home/'+home+'/fof_data/'
-    if home == 'manuel':
-        sv_folder = main_folder+'/psths/'
-    elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
-    inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
-    sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = []  # ['LE104_2021-06-02_13-14-24']  # ['LE104_2021-05-17_12-02-40']
-    # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
-
-    compute_nGLM(inv=inv, main_folder=main_folder, std_conv=std_conv,
-                 margin_psth=margin_psth, sel_sess=sel_sess, sel_rats=sel_rats,
-                 sv_folder=sv_folder)
+    if exps_nets == 'exps':
+        home = 'manuel'
+        main_folder = '/home/'+home+'/fof_data/'
+        if home == 'manuel':
+            sv_folder = main_folder+'/psths/'
+        elif home == 'molano':
+            sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
+        inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz',
+                      allow_pickle=1)
+        sel_rats = []  # ['LE113']  # 'LE101'
+        sel_sess = []  # ['LE104_2021-06-02_13-14-24']
+        # ['LE104_2021-05-17_12-02-40']
+        # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
+        compute_nGLM(inv=inv, main_folder=main_folder, std_conv=std_conv,
+                     margin_psth=margin_psth, sel_sess=sel_sess,
+                     sel_rats=sel_rats, sv_folder=sv_folder)
+    if exps_nets == 'nets':
+        main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
+            'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity//'
+        data = np.load(main_folder+'data.npz', allow_pickle=1)
+        e_data = data['states']
+        b_data = data
+        # del b_data['states']
+        get_cond_trials(b_data=b_data, e_data=e_data)

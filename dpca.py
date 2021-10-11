@@ -229,6 +229,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         evidence = np.diff(data['ob_cum'][fix_sgnl == 1, 1:3], axis=1) > 0
+        # XXX: You could used signed_evidence from data['info_vals']
         evidence = evidence.flatten()
         choices = np.roll(data['choice'][fix_tms]-1, shift=-1)
         gt = np.roll(data['gt'][fix_tms]-1, shift=-1)

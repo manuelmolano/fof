@@ -237,15 +237,15 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     elif exp_nets == 'nets':
         info = data['info_vals'].item()
         fix_sgnl = data['stimulus'][:, 0]
-        fix_tms = np.where(fix_sgnl == 1)[0]
+        fix_tms = np.where(fix_sgnl == 1)[0][1:]  # drop first trial
         # data['signed_evidence']
         # ev = np.array(info['coh'])[fix_tms]
-        ev = np.roll(np.array(info['coh'])[fix_tms], shift=-1)
+        ev = np.roll(np.array(info['coh'])[fix_tms-1], shift=-1)
         # data['performance'].astype(float)
         perf = np.array(info['performance']).astype(float)
         prev_perf = ~ (np.concatenate((np.array([True]), perf[:-1])) == 1)
         # ch = data['choice'][fix_tms].astype(float)
-        ch = np.roll(data['choice'][fix_tms], shift=-1).astype(float)
+        ch = np.roll(data['choice'][fix_tms-1], shift=-1).astype(float)
         # discard (make nan) non-standard-2afc task periods
         if 'std_2afc' in data.keys():
             std_2afc = data['std_2afc']
@@ -406,7 +406,7 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     return df  # resulting df with lateralized T+
 
 
-def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
+def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
     if exp_nets == 'exps':
         assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
         exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
@@ -435,10 +435,14 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
         resps = np.array([len(r) for r in resps['aligned_spks']])
     else:
         fix_sgnl = data['stimulus'][:, 0]
-        fix_tms = np.where(fix_sgnl == 1)[0]
+        fix_tms = np.where(fix_sgnl == 1)[0][1:]
         resps = data['states']
         resps = resps[fix_tms, int(resps.shape[1]/2):]
         resps = sstats.zscore(resps, axis=0)
+        # f, ax = plt.subplots(nrows=2)
+        # ax[0].hist(resps.flatten(), 200)
+        # ax[0].imshow(resps[:100, :].T, aspect='auto', vmin=-5, vmax=5)
+        # asasd
         resps -= np.min(resps, axis=0)
 
     if exp_nets == 'exps':
@@ -448,14 +452,14 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         states -= np.min(states, axis=0)
-        lims = [3, 4]
+        lims = [6, 7]
         xs = np.arange(np.sum(lims))-lims[0]
         # fix_tms += 1
         fix_tms = fix_tms[fix_tms > lims[0]]
         fix_tms = fix_tms[fix_tms < states.shape[0]-lims[1]]
         states = np.array([states[fxt-lims[0]:fxt+lims[1], :] for fxt in fix_tms])
         # ch = data['choice'][fix_tms].astype(float)
-        ch = np.roll(data['choice'][fix_tms], shift=-1)
+        ch = np.roll(data['choice'][fix_tms-1], shift=-1)
         sts_1 = states[ch == 1]
         sts_2 = states[ch == 2]
         sign = []
@@ -466,9 +470,9 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
         f, ax = plt.subplots(ncols=2)
-        ax[0].plot(xs, sign)
+        ax[0].plot(xs, sign, '+-')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-        perf = np.roll(data['perf'][fix_tms].astype(float), shift=-1)
+        perf = np.roll(data['perf'][fix_tms-1].astype(float), shift=-1)
         sts_1 = states[perf == 0]
         sts_2 = states[perf == 1]
         sign = []
@@ -478,8 +482,21 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
-        ax[1].plot(xs, sign)
+        ax[1].plot(xs, sign, '+-', label='perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        prev_perf = data['perf'][fix_tms-1].astype(float)
+        sts_1 = states[prev_perf == 0]
+        sts_2 = states[prev_perf == 1]
+        sign = []
+        for tmstp in range(states.shape[1]):
+            s_tsp_1 = sts_1[:, tmstp, :]
+            s_tsp_2 = sts_2[:, tmstp, :]
+            sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
+                      for i in range(states.shape[2])]
+            sign.append(np.sum(sign_n)/states.shape[2])
+        ax[1].plot(xs, sign, '+-', label='prev perf')
+        ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        ax[1].legend()
         # asd
         # clrs = [azul, rojo]
         # for i_c, c in enumerate([1, 2]):
@@ -515,7 +532,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
         resps = resps[:, None]  # check if this works
         num_neurons = 1
     elif exp_nets == 'nets':
-        num_neurons = 1000
+        num_neurons = 10
 
     # f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
     # f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
@@ -638,7 +655,7 @@ if __name__ == '__main__':
                      sel_rats=sel_rats, sv_folder=sv_folder)
     if exps_nets == 'nets':
         main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
-            'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity//'
+            'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
         e_data = data['states']
         b_data = data

@@ -467,7 +467,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
         fix_tms = fix_tms[fix_tms < states.shape[0]-lims[1]]
         states = np.array([states[fxt-lims[0]:fxt+lims[1], :] for fxt in fix_tms])
         # ch = data['choice'][fix_tms].astype(float)
-        ch = np.roll(data['choice'][fix_tms-1], shift=-1)
+        ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
         sts_1 = states[ch == 1]
         sts_2 = states[ch == 2]
         sign = []
@@ -480,9 +480,9 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
         f, ax = plt.subplots(ncols=3)
         ax[0].plot(xs, sign, '+-', label='choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-        ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
-        sts_1 = states[ch == 1]
-        sts_2 = states[ch == 2]
+        # XXX: define prev choice here!
+        sts_1 = states[prev_ch == 1]
+        sts_2 = states[prev_ch == 2]
         sign = []
         for tmstp in range(states.shape[1]):
             s_tsp_1 = sts_1[:, tmstp, :]

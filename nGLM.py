@@ -143,10 +143,10 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
 
 
 def get_vars(data, fix_tms):
-    ch = data['choice'][fix_tms-1].astype(float)
+    ch = np.roll(data['choice'][fix_tms-1].astype(float), shift=-1)
     perf = np.roll(data['perf'][fix_tms-1].astype(float), shift=-1)
     prev_perf = data['perf'][fix_tms-1].astype(float)
-    ev = np.roll(np.array(data['info_vals'].item()['coh'])[fix_tms], shift=-1)
+    ev = np.array(data['info_vals'].item()['coh'])[fix_tms]
     return ch, perf, prev_perf, ev
 
 
@@ -460,7 +460,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         states -= np.min(states, axis=0)
-        lims = [6, 7]
+        lims = [10, 11]
         xs = np.arange(np.sum(lims))-lims[0]
         # fix_tms += 1
         fix_tms = fix_tms[fix_tms > lims[0]]
@@ -563,7 +563,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
         resps = resps[:, None]  # check if this works
         num_neurons = 1
     elif exp_nets == 'nets':
-        num_neurons = 100
+        num_neurons = 10
 
     # f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
     # f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))

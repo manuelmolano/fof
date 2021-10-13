@@ -517,11 +517,12 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
     elif exp_nets == 'nets':
         num_neurons = 1000
 
-    f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
-    f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
-    f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
-    f_tr_b, ax_tr_b = get_fig(ncols=1, nrows=1, figsize=(8, 6))
-
+    # f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
+    # f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
+    # f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
+    # f_tr_b, ax_tr_b = get_fig(ncols=1, nrows=1, figsize=(8, 6))
+    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+    ax[8].invert_xaxis()
     for i_n in range(num_neurons):
         # after correct
         resps_ac = resps[np.logical_and((df.aftererror == 0),
@@ -545,14 +546,32 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.001, **exp_data):
         # print('After error weights')
         # print(weights_ae)
         # Poisson regression code
+        regrss = ['T++', 'T-+', 'T+-', 'T--']
         plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=['T++', 'T-+', 'T+-', 'T--'], ax=ax_tr)
+                     regressors=regrss, ax=ax[:4])
+        for i in range(4):
+            ax[i].set_ylabel('Weight '+regrss[i])
+        _, kernel_ac, _, _, _ = plot_kernels(weights_ac=weights_ac.values,
+                                             weights_ae=weights_ae.values,
+                                             regressors=['L+'], ax=ax[4:5])
+        _, _, kernel_ae, _, _ = plot_kernels(weights_ac=weights_ac.values,
+                                             weights_ae=weights_ae.values,
+                                             regressors=['L-'], ax=ax[5:6])
+        regrss = ['L+', 'L-']
+        for i in range(2):
+            ax[i+4].set_ylabel('Weight '+regrss[i])
         plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=['L+', 'L-'], ax=ax_l)
+                     regressors=['evidence'], ax=ax[6:7])
+        ax[6].set_ylabel('Weight evidence')
+        ax[6].set_xlabel('')
+        ax[6].set_xticks([])
         plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=['evidence'], ax=ax_ev)
-        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=['trans_bias'], ax=ax_tr_b)
+                     regressors=['trans_bias'], ax=ax[7:8])
+        ax[7].set_ylabel('Weight trans-bias')
+        ax[7].set_xlabel('')
+        ax[7].set_xticks([])
+        ax[8].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
+        # asdasd
     print(1)
 
 

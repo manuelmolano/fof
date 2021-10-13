@@ -232,6 +232,8 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         # XXX: You could used signed_evidence from data['info_vals']
         evidence = evidence.flatten()
         choices = np.roll(data['choice'][fix_tms]-1, shift=-1)
+        # XXX: rolling might not be necessary anymore see this:
+        # //github.com/man.../fof/commit/60ebdb830bf41bdd96e2b745aabfe810c6718f63
         gt = np.roll(data['gt'][fix_tms]-1, shift=-1)
         prev_choices = np.roll(choices, shift=1)
         outcomes = np.roll(data['perf'][fix_tms], shift=-1)

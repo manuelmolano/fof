@@ -17,6 +17,7 @@ import utils_fof as ut
 import seaborn as sns
 import statsmodels.api as sm
 import scipy.stats as sstats
+from scipy.ndimage.interpolation import shift
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255
@@ -143,11 +144,22 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
 
 
 def get_vars(data, fix_tms):
-    ch = np.roll(data['choice'][fix_tms-1].astype(float), shift=-1)
-    perf = np.roll(data['perf'][fix_tms-1].astype(float), shift=-1)
+    # XXX: when doing fix_tms-1 for each trial, we are actually taking the
+    # choice/performance in the previous trial. Therefore, we have to shift 
+    # backwards to realign.
+    ch = shift(data['choice'][fix_tms-1], shift=-1, cval=0).astype(float)
+    perf = shift(data['perf'][fix_tms-1], shift=-1, cval=0).astype(float)
     prev_perf = data['perf'][fix_tms-1].astype(float)
     ev = np.array(data['info_vals'].item()['coh'])[fix_tms]
     return ch, perf, prev_perf, ev
+
+
+def get_fixation_times(data, lags):
+    fix_sgnl = data['stimulus'][:, 0]
+    fix_tms = np.where(fix_sgnl == 1)[0][1:]  # drop first trial
+    fix_tms = fix_tms[fix_tms > lags[0]]
+    fix_tms = fix_tms[fix_tms < data['perf'].shape[0]-lags[1]]
+    return fix_tms
 
 
 def get_repetitions(mat):
@@ -210,7 +222,7 @@ def get_transition_mat(repeat, conv_w=5):
 
 
 def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
-                       krnl_len=10):
+                       krnl_len=10, lags=[0, 0]):
     """
     Compute regressors.
 
@@ -242,8 +254,7 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         ev /= np.nanmax(ev)
         rep_ch_ = get_repetitions(ch)
     elif exp_nets == 'nets':
-        fix_sgnl = data['stimulus'][:, 0]
-        fix_tms = np.where(fix_sgnl == 1)[0][1:]  # drop first trial
+        fix_tms = get_fixation_times(data=data, lags=lags)
         # data['signed_evidence']
         # ev = np.array(info['coh'])[fix_tms]
         ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
@@ -281,7 +292,8 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     # 'aftererror': not(performance) shifted
     # 'rep_response'
     df = {'origidx': np.arange(ch.shape[0]), 'R_response': ch, 'hit': perf,
-          'evidence': ev, 'aftererror': prev_perf, 'rep_response': rep_ch_}
+          'evidence': ev, 'aftererror': 1*(prev_perf == 0),
+          'rep_response': rep_ch_}
     df = pd.DataFrame(df)
 
     # Lateral module
@@ -414,7 +426,9 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     return df  # resulting df with lateralized T+
 
 
-def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
+def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
+                    **exp_data):
+    lags_mat = np.arange(np.sum(lags))-lags[0]
     if exp_nets == 'exps':
         assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
         exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
@@ -428,44 +442,15 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
     else:
         indx_good_evs = None
 
-    # get behavior
-    df = get_GLM_regressors(b_data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False)
-
-    if exp_nets == 'exps':
-        # get spikes
-        # XXX: events could be filter here, but I do all the filtering below
-        # filt_evs = evs[indx_good_evs]
-        spk_tms = e_data['spks'][e_data['clsts'] == exp_d['cl']][:, None]
-        resps = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
-                           plot=False)
-        # XXX: responses measured in the form of spike-counts
-        resps = np.array([len(r) for r in resps['aligned_spks']])
-    else:
-        fix_sgnl = data['stimulus'][:, 0]
-        fix_tms = np.where(fix_sgnl == 1)[0][1:]
-        resps = data['states']
-        resps = resps[fix_tms, int(resps.shape[1]/2):]
-        resps = sstats.zscore(resps, axis=0)
-        # f, ax = plt.subplots(nrows=2)
-        # ax[0].hist(resps.flatten(), 200)
-        # ax[0].imshow(resps[:100, :].T, aspect='auto', vmin=-5, vmax=5)
-        # asasd
-        resps -= np.min(resps, axis=0)
-
     if exp_nets == 'exps':
         print('PSTHs not implemented for experimental data yet')
-    else:
+    elif False:
         states = data['states']
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         states -= np.min(states, axis=0)
-        lims = [10, 11]
-        xs = np.arange(np.sum(lims))-lims[0]
-        # fix_tms += 1
-        fix_tms = fix_tms[fix_tms > lims[0]]
-        fix_tms = fix_tms[fix_tms < states.shape[0]-lims[1]]
-        states = np.array([states[fxt-lims[0]:fxt+lims[1], :] for fxt in fix_tms])
+        fix_tms = get_fixation_times(data, lags=lags)
+        states = np.array([states[fxt-lags[0]:fxt+lags[1], :] for fxt in fix_tms])
         # ch = data['choice'][fix_tms].astype(float)
         ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
         sts_1 = states[ch == 1]
@@ -478,9 +463,9 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
         f, ax = plt.subplots(ncols=3)
-        ax[0].plot(xs, sign, '+-', label='choice')
+        ax[0].plot(lags_mat, sign, '+-', label='choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-        # XXX: define prev choice here!
+        prev_ch = shift(ch, shift=1, cval=0)
         sts_1 = states[prev_ch == 1]
         sts_2 = states[prev_ch == 2]
         sign = []
@@ -490,7 +475,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
-        ax[0].plot(xs, sign, '+-', label='prev. choice')
+        ax[0].plot(lags_mat, sign, '+-', label='prev. choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         ax[0].legend()
         sts_1 = states[perf == 0]
@@ -502,7 +487,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
-        ax[1].plot(xs, sign, '+-', label='perf')
+        ax[1].plot(lags_mat, sign, '+-', label='perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         sts_1 = states[prev_perf == 0]
         sts_2 = states[prev_perf == 1]
@@ -513,11 +498,11 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
-        ax[1].plot(xs, sign, '+-', label='prev. perf')
+        ax[1].plot(lags_mat, sign, '+-', label='prev. perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         ax[1].legend()
-        sts_1 = states[np.abs(ev) < 0.1]
-        sts_2 = states[np.abs(ev-31.) < 1]
+        sts_1 = states[ev < 5]
+        sts_2 = states[ev > 15]
         sign = []
         for tmstp in range(states.shape[1]):
             s_tsp_1 = sts_1[:, tmstp, :]
@@ -525,32 +510,29 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
-        ax[2].plot(xs, sign, '+-', label='evidence')
+        ax[2].plot(lags_mat, sign, '+-', label='evidence')
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+    # GLM
+    if exp_nets == 'exps':
+        # get spikes
+        # XXX: events could be filter here, but I do all the filtering below
+        # filt_evs = evs[indx_good_evs]
+        spk_tms = e_data['spks'][e_data['clsts'] == exp_d['cl']][:, None]
+        resps = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
+                           plot=False)
+        # XXX: responses measured in the form of spike-counts
+        resps = np.array([len(r) for r in resps['aligned_spks']])
+    else:
+        fix_tms = get_fixation_times(data, lags=lags)
+        states = data['states']
+        # resps = sstats.zscore(resps, axis=0)
+        # f, ax = plt.subplots(nrows=2)
+        # ax[0].hist(resps.flatten(), 200)
+        # ax[0].imshow(resps[:100, :].T, aspect='auto', vmin=-5, vmax=5)
+        # asasd
 
-        # asd
-        # clrs = [azul, rojo]
-        # for i_c, c in enumerate([1, 2]):
-        #     sts = states[ch == c]
-        #     ax[0].plot(xs, np.std(np.mean(sts, axis=0), axis=1), color=clrs[i_c])
-        # ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-        # ev = np.array(info['coh'])[fix_tms]
-        # clrs = grad_colors
-        # for i_e, e in enumerate(np.unique(ev)):
-        #     sts = states[ev == e]
-        #     ax[1].plot(xs, np.std(np.mean(sts, axis=0), axis=1), color=clrs[i_e])
-
-        # ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-        # perf = data['perf'][fix_tms].astype(float)
-        # clrs = ['k', naranja]
-        # for i_p, p in enumerate([0, 1]):
-        #     sts = states[perf == p]
-        #     ax[2].plot(xs, np.std(np.mean(sts, axis=0), axis=1), color=clrs[i_p])
-        # # ax[2].plot(xs, np.mean(np.std(states, axis=0), axis=1))
-        # ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-        # # ax[0].plot(np.mean(sts_2, axis=(0)), color=azul)
-        # sfasasd
-
+    df = get_GLM_regressors(b_data, exp_nets=exp_nets, mask=indx_good_evs,
+                            chck_corr=False, lags=lags)
     # build data set
     not_nan_indx = df['R_response'].notna()
 
@@ -559,69 +541,70 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, **exp_data):
                      afterc_cols].fillna(value=0)
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
                      aftere_cols].fillna(value=0)
-    if exp_nets == 'exps':
-        resps = resps[:, None]  # check if this works
-        num_neurons = 1
-    elif exp_nets == 'nets':
-        num_neurons = 10
-
+    num_neurons = 20  # XXX: for exps this should be 1
     # f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
     # f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
     # f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
     # f_tr_b, ax_tr_b = get_fig(ncols=1, nrows=1, figsize=(8, 6))
-    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
-    ax[9].invert_xaxis()
-    for i_n in range(num_neurons):
-        # after correct
-        resps_ac = resps[np.logical_and((df.aftererror == 0),
-                                        not_nan_indx).values, i_n]
-        exog, endog = sm.add_constant(X_df_ac), resps_ac
-        mod = sm.GLM(endog, exog,
-                     family=sm.families.Poisson(link=sm.families.links.log))
-        res = mod.fit()
-        weights_ac = res.params
-        # print('After correct weights')
-        # print(weights_ac)
-
-        # after error
-        resps_ae = resps[np.logical_and((df.aftererror == 1),
-                                        not_nan_indx).values, i_n]
-        exog, endog = sm.add_constant(X_df_ae), resps_ae
-        mod = sm.GLM(endog, exog,
-                     family=sm.families.Poisson(link=sm.families.links.log))
-        res = mod.fit()
-        weights_ae = res.params
-        # print('After error weights')
-        # print(weights_ae)
-        # Poisson regression code
-        regrss = ['T++', 'T-+', 'T+-', 'T--']
-        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=regrss, ax=ax[:4])
-        for i in range(4):
-            ax[i].set_ylabel('Weight '+regrss[i])
-        _, kernel_ac, _, _, _ = plot_kernels(weights_ac=weights_ac.values,
-                                             weights_ae=weights_ae.values,
-                                             regressors=['L+'], ax=ax[4:5])
-        _, _, kernel_ae, _, _ = plot_kernels(weights_ac=weights_ac.values,
-                                             weights_ae=weights_ae.values,
-                                             regressors=['L-'], ax=ax[5:6])
-        regrss = ['L+', 'L-']
-        for i in range(2):
-            ax[i+4].set_ylabel('Weight '+regrss[i])
-        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=['evidence'], ax=ax[6:7])
-        ax[6].set_ylabel('Weight evidence')
-        ax[6].set_xlabel('')
-        ax[6].set_xticks([])
-        plot_kernels(weights_ac=weights_ac.values, weights_ae=weights_ae.values,
-                     regressors=['trans_bias+', 'trans_bias-'], ax=ax[7:9])
-        regrss = ['trans-bias+', 'trans-bias-']
-        for i in range(2):
-            ax[i+7].set_ylabel('Weight '+regrss[i])
-            ax[i+7].set_xlabel('')
-            ax[i+7].set_xticks([])
-        ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
-        # asdasd
+    # ax[9].invert_xaxis()
+    for lag in lags_mat:
+        f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+        f.suptitle(str(lag))
+        resps = states[fix_tms+lag, int(states.shape[1]/2):].copy()
+        resps -= np.min(resps, axis=0)
+        for i_n in range(num_neurons):
+            # after correct
+            resps_ac = resps[np.logical_and((df.aftererror == 0),
+                                            not_nan_indx).values, i_n]
+            exog, endog = sm.add_constant(X_df_ac), resps_ac
+            mod = sm.GLM(endog, exog,
+                         family=sm.families.Poisson(link=sm.families.links.log))
+            res = mod.fit()
+            weights_ac = res.params
+            # print('After correct weights')
+            # print(weights_ac)
+            # after error
+            resps_ae = resps[np.logical_and((df.aftererror == 1),
+                                            not_nan_indx).values, i_n]
+            exog, endog = sm.add_constant(X_df_ae), resps_ae
+            mod = sm.GLM(endog, exog,
+                         family=sm.families.Poisson(link=sm.families.links.log))
+            res = mod.fit()
+            weights_ae = res.params
+            # print('After error weights')
+            # print(weights_ae)
+            # Poisson regression code
+            regrss = ['T++', 'T-+', 'T+-', 'T--']
+            plot_kernels(weights_ac=weights_ac.values,
+                         weights_ae=weights_ae.values,
+                         regressors=regrss, ax=ax[:4])
+            for i in range(4):
+                ax[i].set_ylabel('Weight '+regrss[i])
+            _, kernel_ac, _, _, _ = plot_kernels(weights_ac=weights_ac.values,
+                                                 weights_ae=weights_ae.values,
+                                                 regressors=['L+'], ax=ax[4:5])
+            _, _, kernel_ae, _, _ = plot_kernels(weights_ac=weights_ac.values,
+                                                 weights_ae=weights_ae.values,
+                                                 regressors=['L-'], ax=ax[5:6])
+            regrss = ['L+', 'L-']
+            for i in range(2):
+                ax[i+4].set_ylabel('Weight '+regrss[i])
+            plot_kernels(weights_ac=weights_ac.values,
+                         weights_ae=weights_ae.values,
+                         regressors=['evidence'], ax=ax[6:7])
+            ax[6].set_ylabel('Weight evidence')
+            ax[6].set_xlabel('')
+            ax[6].set_xticks([])
+            plot_kernels(weights_ac=weights_ac.values,
+                         weights_ae=weights_ae.values,
+                         regressors=['trans_bias+', 'trans_bias-'], ax=ax[7:9])
+            regrss = ['trans-bias+', 'trans-bias-']
+            for i in range(2):
+                ax[i+7].set_ylabel('Weight '+regrss[i])
+                ax[i+7].set_xlabel('')
+                ax[i+7].set_xticks([])
+            # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
+            # asdasd
     print(1)
 
 
@@ -687,8 +670,10 @@ if __name__ == '__main__':
                      margin_psth=margin_psth, sel_sess=sel_sess,
                      sel_rats=sel_rats, sv_folder=sv_folder)
     if exps_nets == 'nets':
-        main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
-            'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+        # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
+        #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+        main_folder = '/home/manuel/priors_analysis/annaK/' +\
+            'pretrained_RNNs_N2_fina_models/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
         e_data = data['states']
         b_data = data

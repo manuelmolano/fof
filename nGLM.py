@@ -9,7 +9,7 @@ Created on Tue Sep 14 09:55:59 2021
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import itertools
+# import itertools
 import pandas as pd
 import glob
 import plot_pshts as pp
@@ -18,6 +18,7 @@ import seaborn as sns
 import statsmodels.api as sm
 import scipy.stats as sstats
 from scipy.ndimage.interpolation import shift
+from sklearn.linear_model import LogisticRegression
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255
@@ -57,6 +58,43 @@ def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
         a.invert_xaxis()
         a.axhline(y=0, linestyle='--', c='k', lw=0.5)
     return f, ax
+
+
+def plot_all_weights(ax, weights_ac, weights_ae):
+    # TRANSITION WEIGHTS
+    regrss = ['T++', 'T-+', 'T+-', 'T--']
+    ax_tmp = np.array([ax[0:2], ax[5:7]]).flatten()
+    plot_kernels(weights_ac=weights_ac,
+                 weights_ae=weights_ae,
+                 regressors=regrss, ax=ax_tmp)
+    for i in range(4):
+        ax_tmp[i].set_ylabel('Weight '+regrss[i])
+    # LATERAL WEIGHTS
+    _, kernel_ac, _, _, _ = plot_kernels(weights_ac=weights_ac,
+                                         weights_ae=weights_ae,
+                                         regressors=['L+'], ax=ax[2:3])
+    _, _, kernel_ae, _, _ = plot_kernels(weights_ac=weights_ac,
+                                         weights_ae=weights_ae,
+                                         regressors=['L-'], ax=ax[7:8])
+    regrss = ['L+', 'L-']
+    for i in range(2):
+        ax[i+4].set_ylabel('Weight '+regrss[i])
+    # EVIDENCE
+    plot_kernels(weights_ac=weights_ac,
+                 weights_ae=weights_ae,
+                 regressors=['evidence'], ax=ax[4:5])
+    ax[6].set_ylabel('Weight evidence')
+    ax[6].set_xlabel('')
+    ax[6].set_xticks([])
+    # TRANSITION-BIASES
+    plot_kernels(weights_ac=weights_ac,
+                 weights_ae=weights_ae,
+                 regressors=['trans_bias+', 'trans_bias-'], ax=[ax[3], ax[8]])
+    regrss = ['trans-bias+', 'trans-bias-']
+    for i in range(2):
+        ax[i+7].set_ylabel('Weight '+regrss[i])
+        ax[i+7].set_xlabel('')
+        ax[i+7].set_xticks([])
 
 
 def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
@@ -145,7 +183,7 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
 
 def get_vars(data, fix_tms):
     # XXX: when doing fix_tms-1 for each trial, we are actually taking the
-    # choice/performance in the previous trial. Therefore, we have to shift 
+    # choice/performance in the previous trial. Therefore, we have to shift
     # backwards to realign.
     ch = shift(data['choice'][fix_tms-1], shift=-1, cval=0).astype(float)
     perf = shift(data['perf'][fix_tms-1], shift=-1, cval=0).astype(float)
@@ -219,6 +257,49 @@ def get_transition_mat(repeat, conv_w=5):
                              mode='full')[0:limit]
     transition_ev = np.concatenate((np.array([0]), transition[:-1]))
     return transition_ev
+
+
+def behavioral_glm(df):
+    """
+    Compute GLM weights for data in df conditioned on previous outcome.
+
+    Parameters
+    ----------
+    df : dataframe
+        dataframe containing regressors and response.
+
+    Returns
+    -------
+    Lreg_ac : LogisticRegression model
+        logistic model fit to after correct trials.
+    Lreg_ae : LogisticRegression model
+        logistic model fit to after error trials.
+
+    """
+    not_nan_indx = df['R_response'].notna()
+    X_df_ac, y_df_ac =\
+        df.loc[(df.aftererror == 0) & not_nan_indx,
+               afterc_cols].fillna(value=0),\
+        df.loc[(df.aftererror == 0) & not_nan_indx, 'R_response']
+    X_df_ae, y_df_ae =\
+        df.loc[(df.aftererror == 1) & not_nan_indx,
+               aftere_cols].fillna(value=0),\
+        df.loc[(df.aftererror == 1) & not_nan_indx, 'R_response']
+
+    if len(np.unique(y_df_ac.values)) == 2 and len(np.unique(y_df_ae.values)) == 2:
+        Lreg_ac = LogisticRegression(C=1, fit_intercept=False, penalty='l2',
+                                     solver='saga', random_state=123,
+                                     max_iter=10000000, n_jobs=-1)
+        Lreg_ac.fit(X_df_ac.values, y_df_ac.values)
+        Lreg_ae = LogisticRegression(C=1, fit_intercept=False, penalty='l2',
+                                     solver='saga', random_state=123,
+                                     max_iter=10000000, n_jobs=-1)
+        Lreg_ae.fit(X_df_ae.values, y_df_ae.values)
+    else:
+        Lreg_ac = None
+        Lreg_ae = None
+
+    return Lreg_ac, Lreg_ae
 
 
 def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
@@ -512,7 +593,16 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
             sign.append(np.sum(sign_n)/states.shape[2])
         ax[2].plot(lags_mat, sign, '+-', label='evidence')
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-    # GLM
+    # BEHAVIORAL GLM
+
+    df = get_GLM_regressors(b_data, exp_nets=exp_nets, mask=indx_good_evs,
+                            chck_corr=False, lags=lags)
+    Lreg_ac, Lreg_ae = behavioral_glm(df)
+    weights_ac = Lreg_ac.coef_
+    weights_ae = Lreg_ae.coef_
+    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+    plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
+    # NEURO-GLM
     if exp_nets == 'exps':
         # get spikes
         # XXX: events could be filter here, but I do all the filtering below
@@ -531,8 +621,6 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
         # ax[0].imshow(resps[:100, :].T, aspect='auto', vmin=-5, vmax=5)
         # asasd
 
-    df = get_GLM_regressors(b_data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False, lags=lags)
     # build data set
     not_nan_indx = df['R_response'].notna()
 
@@ -541,7 +629,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
                      afterc_cols].fillna(value=0)
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
                      aftere_cols].fillna(value=0)
-    num_neurons = 20  # XXX: for exps this should be 1
+    num_neurons = 1000  # XXX: for exps this should be 1
     # f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
     # f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
     # f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
@@ -553,7 +641,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
         resps = states[fix_tms+lag, int(states.shape[1]/2):].copy()
         resps -= np.min(resps, axis=0)
         for i_n in range(num_neurons):
-            # after correct
+            # AFTER CORRECT
             resps_ac = resps[np.logical_and((df.aftererror == 0),
                                             not_nan_indx).values, i_n]
             exog, endog = sm.add_constant(X_df_ac), resps_ac
@@ -561,9 +649,7 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
                          family=sm.families.Poisson(link=sm.families.links.log))
             res = mod.fit()
             weights_ac = res.params
-            # print('After correct weights')
-            # print(weights_ac)
-            # after error
+            # AFTER ERROR
             resps_ae = resps[np.logical_and((df.aftererror == 1),
                                             not_nan_indx).values, i_n]
             exog, endog = sm.add_constant(X_df_ae), resps_ae
@@ -571,38 +657,8 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
                          family=sm.families.Poisson(link=sm.families.links.log))
             res = mod.fit()
             weights_ae = res.params
-            # print('After error weights')
-            # print(weights_ae)
-            # Poisson regression code
-            regrss = ['T++', 'T-+', 'T+-', 'T--']
-            plot_kernels(weights_ac=weights_ac.values,
-                         weights_ae=weights_ae.values,
-                         regressors=regrss, ax=ax[:4])
-            for i in range(4):
-                ax[i].set_ylabel('Weight '+regrss[i])
-            _, kernel_ac, _, _, _ = plot_kernels(weights_ac=weights_ac.values,
-                                                 weights_ae=weights_ae.values,
-                                                 regressors=['L+'], ax=ax[4:5])
-            _, _, kernel_ae, _, _ = plot_kernels(weights_ac=weights_ac.values,
-                                                 weights_ae=weights_ae.values,
-                                                 regressors=['L-'], ax=ax[5:6])
-            regrss = ['L+', 'L-']
-            for i in range(2):
-                ax[i+4].set_ylabel('Weight '+regrss[i])
-            plot_kernels(weights_ac=weights_ac.values,
-                         weights_ae=weights_ae.values,
-                         regressors=['evidence'], ax=ax[6:7])
-            ax[6].set_ylabel('Weight evidence')
-            ax[6].set_xlabel('')
-            ax[6].set_xticks([])
-            plot_kernels(weights_ac=weights_ac.values,
-                         weights_ae=weights_ae.values,
-                         regressors=['trans_bias+', 'trans_bias-'], ax=ax[7:9])
-            regrss = ['trans-bias+', 'trans-bias-']
-            for i in range(2):
-                ax[i+7].set_ylabel('Weight '+regrss[i])
-                ax[i+7].set_xlabel('')
-                ax[i+7].set_xticks([])
+            plot_all_weights(ax=ax, weights_ac=weights_ac.values,
+                             weights_ae=weights_ae.values)
             # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
             # asdasd
     print(1)
@@ -670,10 +726,10 @@ if __name__ == '__main__':
                      margin_psth=margin_psth, sel_sess=sel_sess,
                      sel_rats=sel_rats, sv_folder=sv_folder)
     if exps_nets == 'nets':
-        # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
-        #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
-        main_folder = '/home/manuel/priors_analysis/annaK/' +\
-            'pretrained_RNNs_N2_fina_models/'
+        main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
+            'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+        # main_folder = '/home/manuel/priors_analysis/annaK/' +\
+        #     'pretrained_RNNs_N2_fina_models/'
         data = np.load(main_folder+'data.npz', allow_pickle=1)
         e_data = data['states']
         b_data = data

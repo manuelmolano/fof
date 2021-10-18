@@ -19,6 +19,7 @@ import statsmodels.api as sm
 import scipy.stats as sstats
 from scipy.ndimage.interpolation import shift
 from sklearn.linear_model import LogisticRegression
+import helper_functions as hf
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255
@@ -180,8 +181,10 @@ def get_vars(data, fix_tms):
     ch = shift(data['choice'][fix_tms-1], shift=-1, cval=0).astype(float)
     perf = shift(data['perf'][fix_tms-1], shift=-1, cval=0).astype(float)
     prev_perf = data['perf'][fix_tms-1].astype(float)
+    gt = shift(data['gt'][fix_tms-1], shift=-1, cval=0).astype(float)
     ev = np.array(data['info_vals'].item()['coh'])[fix_tms]
-    return ch, perf, prev_perf, ev
+    putative_ev = ev*(-1)**(gt == 2)
+    return ch, perf, prev_perf, putative_ev
 
 
 def get_fixation_times(data, lags):
@@ -582,16 +585,16 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
         states = np.array([len(r) for r in states['aligned_spks']])
     else:
         datasets = glob.glob(folder+'data_*')
-        data = {'ch': [], 'perf': [], 'prev_perf': [],
-                'states': np.empty((0, num_units)), 'ev': []}
+        data = {'choice': [], 'performance': [], 'prev_perf': [],
+                'states': np.empty((0, num_units)), 'signed_evidence': []}
         for f in datasets:
             data_tmp = np.load(f, allow_pickle=1)
             fix_tms = get_fixation_times(data=data_tmp, lags=lags)
             ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
-            data['ch'] += ch.tolist()
-            data['perf'] += perf.tolist()
+            data['choice'] += ch.tolist()
+            data['performance'] += perf.tolist()
             data['prev_perf'] += ev.tolist()
-            data['ev'] += ev.tolist()
+            data['signed_evidence'] += ev.tolist()
             states = data_tmp['states']
             states = states[:, int(states.shape[1]/2):]
             states = sstats.zscore(states, axis=0)
@@ -604,14 +607,15 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
         # asasd
     for k in data.keys():
         data[k] = np.array(data[k])
-    df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False, lags=lags)
+    # df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
+    #                         chck_corr=False, lags=lags)
+    df = hf.get_GLM_regressors(data=data)
     Lreg_ac, Lreg_ae = behavioral_glm(df)
     weights_ac = Lreg_ac.coef_
     weights_ae = Lreg_ae.coef_
     f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
-
+    asdasd
     # build data set
     not_nan_indx = df['R_response'].notna()
 

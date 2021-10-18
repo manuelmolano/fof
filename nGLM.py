@@ -40,7 +40,7 @@ model_cols = ['evidence',
               'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
               'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
               'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-              'intercept', 'trans_bias-', 'trans_bias+']
+              'intercept', 'trans_bias']
 afterc_cols = [x for x in model_cols if x not in ['L+2', 'L-1', 'L-2',
                                                   'T+-1', 'T--1']]
 aftere_cols = [x for x in model_cols if x not in ['L+1', 'T++1',
@@ -63,38 +63,30 @@ def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
 def plot_all_weights(ax, weights_ac, weights_ae):
     # TRANSITION WEIGHTS
     regrss = ['T++', 'T-+', 'T+-', 'T--']
-    ax_tmp = np.array([ax[0:2], ax[5:7]]).flatten()
-    plot_kernels(weights_ac=weights_ac,
-                 weights_ae=weights_ae,
-                 regressors=regrss, ax=ax_tmp)
+    ax_tmp = np.array([ax[0:2], ax[4:6]]).flatten()
+    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae, regressors=regrss,
+                 ax=ax_tmp)
     for i in range(4):
         ax_tmp[i].set_ylabel('Weight '+regrss[i])
     # LATERAL WEIGHTS
-    _, kernel_ac, _, _, _ = plot_kernels(weights_ac=weights_ac,
-                                         weights_ae=weights_ae,
-                                         regressors=['L+'], ax=ax[2:3])
-    _, _, kernel_ae, _, _ = plot_kernels(weights_ac=weights_ac,
-                                         weights_ae=weights_ae,
-                                         regressors=['L-'], ax=ax[7:8])
+    _, k_ac, _, _, _ = plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                                    regressors=['L+'], ax=ax[2:3])
+    _, _, k_ae, _, _ = plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                                    regressors=['L-'], ax=ax[6:7])
     regrss = ['L+', 'L-']
-    for i in range(2):
-        ax[i+4].set_ylabel('Weight '+regrss[i])
+    ax[2].set_ylabel('Weight L+')
+    ax[6].set_ylabel('Weight L-')
     # EVIDENCE
-    plot_kernels(weights_ac=weights_ac,
-                 weights_ae=weights_ae,
-                 regressors=['evidence'], ax=ax[4:5])
-    ax[6].set_ylabel('Weight evidence')
-    ax[6].set_xlabel('')
-    ax[6].set_xticks([])
-    # TRANSITION-BIASES
-    plot_kernels(weights_ac=weights_ac,
-                 weights_ae=weights_ae,
-                 regressors=['trans_bias+', 'trans_bias-'], ax=[ax[3], ax[8]])
-    regrss = ['trans-bias+', 'trans-bias-']
-    for i in range(2):
-        ax[i+7].set_ylabel('Weight '+regrss[i])
-        ax[i+7].set_xlabel('')
-        ax[i+7].set_xticks([])
+    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                 regressors=['evidence'], ax=ax[3:4])
+    ax[3].set_ylabel('Weight evidence')
+    # TRANSITION-BIAS
+    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                 regressors=['trans_bias'], ax=ax[7:8])
+    ax[7].set_ylabel('Weight trans-bias')
+    for a in [ax[3], ax[7]]:
+        a.set_xlabel('')
+        a.set_xticks([])
 
 
 def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
@@ -472,22 +464,7 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     limit = -krnl_len+1
     kernel = np.exp(-np.arange(krnl_len)/tau)
     zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
-    df['trans_bias+'] = zt*df['L+1']
-    df['trans_bias-'] = zt*df['L-1']
-    # tr_bias_aux = np.convolve(zt_comps.shift(1), kernel,
-    #                           mode='full')[0:limit]*(df['L+1']+df['L-1'])
-    # plt.figure()
-    # plt.plot(2*(ch-0.5), '-+', label='choice')
-    # plt.plot(df['L+1'], '-+', label='L+')
-    # plt.plot(df['L-1'], '-+', label='L-')
-    # plt.plot(perf, '-+', label='perf')
-    # plt.plot(2*(rep_ch_-0.5), '-+', label='reps')
-    # plt.plot(zt_comps, '-+', label='t++')
-    # plt.plot(df['T++1'], '-+', label='T++')  # T++1 is in the Left/rigth space
-    # plt.plot(df['trans_bias'], '-+', label='bias')
-    # plt.plot(tr_bias_aux, '-+', label='bias II')
-    # plt.legend()
-    # asdasd
+    df['trans_bias'] = zt*(df['L+1']+df['L-1'])
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors
     if chck_corr:
@@ -605,16 +582,16 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
         states = np.array([len(r) for r in states['aligned_spks']])
     else:
         datasets = glob.glob(folder+'data_*')
-        data = {'choice': [], 'perf': [], 'prev_perf': [],
-                'states': np.empty((0, num_units)), 'coh': []}
+        data = {'ch': [], 'perf': [], 'prev_perf': [],
+                'states': np.empty((0, num_units)), 'ev': []}
         for f in datasets:
             data_tmp = np.load(f, allow_pickle=1)
             fix_tms = get_fixation_times(data=data_tmp, lags=lags)
             ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
-            data['choice'] += ch.tolist()
+            data['ch'] += ch.tolist()
             data['perf'] += perf.tolist()
             data['prev_perf'] += ev.tolist()
-            data['coh'] += ev.tolist()
+            data['ev'] += ev.tolist()
             states = data_tmp['states']
             states = states[:, int(states.shape[1]/2):]
             states = sstats.zscore(states, axis=0)
@@ -627,13 +604,12 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
         # asasd
     for k in data.keys():
         data[k] = np.array(data[k])
-        print(data[k].shape)
     df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
                             chck_corr=False, lags=lags)
     Lreg_ac, Lreg_ae = behavioral_glm(df)
     weights_ac = Lreg_ac.coef_
     weights_ae = Lreg_ae.coef_
-    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
 
     # build data set
@@ -644,26 +620,21 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
                      afterc_cols].fillna(value=0)
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
                      aftere_cols].fillna(value=0)
-    num_neurons = 1000  # XXX: for exps this should be 1
-    # f_tr, ax_tr = get_fig(ncols=2, nrows=2, figsize=(8, 6))
-    # f_l, ax_l = get_fig(ncols=2, nrows=1, figsize=(6, 6))
-    # f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
-    # f_tr_b, ax_tr_b = get_fig(ncols=1, nrows=1, figsize=(8, 6))
-    # ax[9].invert_xaxis()
-    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+    num_neurons = 100  # XXX: for exps this should be 1
+    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     f.suptitle(str(lag))
     for i_n in range(num_neurons):
         # AFTER CORRECT
-        resps_ac = states[np.logical_and((df.aftererror == 0),
-                                         not_nan_indx).values, i_n]
+        resps_ac = data['states'][np.logical_and((df.aftererror == 0),
+                                                 not_nan_indx).values, i_n]
         exog, endog = sm.add_constant(X_df_ac), resps_ac
         mod = sm.GLM(endog, exog,
                      family=sm.families.Poisson(link=sm.families.links.log))
         res = mod.fit()
         weights_ac = res.params
         # AFTER ERROR
-        resps_ae = states[np.logical_and((df.aftererror == 1),
-                                         not_nan_indx).values, i_n]
+        resps_ae = data['states'][np.logical_and((df.aftererror == 1),
+                                                 not_nan_indx).values, i_n]
         exog, endog = sm.add_constant(X_df_ae), resps_ae
         mod = sm.GLM(endog, exog,
                      family=sm.families.Poisson(link=sm.families.links.log))
@@ -736,9 +707,11 @@ if __name__ == '__main__':
         compute_nGLM(inv=inv, main_folder=main_folder, std_conv=std_conv,
                      margin_psth=margin_psth, sel_sess=sel_sess,
                      sel_rats=sel_rats, sv_folder=sv_folder)
-    if exps_nets == 'nets':
-        main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
-            'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+    elif exps_nets == 'nets':
+        # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
+        # 'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+        main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
+            'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
         neuroGLM(folder=main_folder, exp_nets='nets', lag=0)  # , **exp_data)
         # main_folder = '/home/manuel/priors_analysis/annaK/' +\
         #     'pretrained_RNNs_N2_fina_models/'

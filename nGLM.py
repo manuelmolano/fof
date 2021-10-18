@@ -41,7 +41,7 @@ model_cols = ['evidence',
               'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
               'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
               'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-              'intercept', 'trans_bias']
+              'intercept']  # , 'trans_bias']
 afterc_cols = [x for x in model_cols if x not in ['L+2', 'L-1', 'L-2',
                                                   'T+-1', 'T--1']]
 aftere_cols = [x for x in model_cols if x not in ['L+1', 'T++1',
@@ -82,8 +82,9 @@ def plot_all_weights(ax, weights_ac, weights_ae):
                  regressors=['evidence'], ax=ax[3:4])
     ax[3].set_ylabel('Weight evidence')
     # TRANSITION-BIAS
-    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                 regressors=['trans_bias'], ax=ax[7:8])
+    if 'trans_bias' in model_cols:
+        plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                     regressors=['trans_bias'], ax=ax[7:8])
     ax[7].set_ylabel('Weight trans-bias')
     for a in [ax[3], ax[7]]:
         a.set_xlabel('')
@@ -330,10 +331,10 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         ev /= np.nanmax(ev)
         rep_ch_ = get_repetitions(ch)
     elif exp_nets == 'nets':
-        ch = data['ch']
-        perf = data['perf']
+        ch = data['choice']
+        perf = data['performance']
         prev_perf = data['prev_perf']
-        ev = data['ev']
+        ev = data['signed_evidence']
         # discard (make nan) non-standard-2afc task periods
         if 'std_2afc' in data.keys():
             std_2afc = data['std_2afc']
@@ -593,7 +594,7 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
             ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
             data['choice'] += ch.tolist()
             data['performance'] += perf.tolist()
-            data['prev_perf'] += ev.tolist()
+            data['prev_perf'] += prev_perf.tolist()
             data['signed_evidence'] += ev.tolist()
             states = data_tmp['states']
             states = states[:, int(states.shape[1]/2):]
@@ -607,14 +608,21 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
         # asasd
     for k in data.keys():
         data[k] = np.array(data[k])
-    # df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-    #                         chck_corr=False, lags=lags)
-    df = hf.get_GLM_regressors(data=data)
+    df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
+                            chck_corr=False, lags=lags)
     Lreg_ac, Lreg_ae = behavioral_glm(df)
     weights_ac = Lreg_ac.coef_
     weights_ae = Lreg_ae.coef_
     f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
+    df_test = hf.get_GLM_regressors(data=data)
+    Lreg_ac_test, Lreg_ae_test = behavioral_glm(df_test)
+    weights_ac_test = Lreg_ac_test.coef_
+    weights_ae_test = Lreg_ae_test.coef_
+    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+    plot_all_weights(ax=ax, weights_ac=weights_ac_test[0],
+                     weights_ae=weights_ae_test[0])
+
     asdasd
     # build data set
     not_nan_indx = df['R_response'].notna()

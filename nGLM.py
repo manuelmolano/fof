@@ -335,16 +335,10 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         ev /= np.nanmax(ev)
         rep_ch_ = get_repetitions(ch)
     elif exp_nets == 'nets':
-        fix_tms = get_fixation_times(data=data, lags=lags)
-        # data['signed_evidence']
-        # ev = np.array(info['coh'])[fix_tms]
-        ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
-        # ev = np.roll(np.array(info['coh'])[fix_tms], shift=-1)
-        # data['performance'].astype(float)
-        # perf = np.array(info['performance']).astype(float)
-        # prev_perf = ~ (np.concatenate((np.array([True]), perf[:-1])) == 1)
-        # ch = data['choice'][fix_tms].astype(float)
-        # ch = np.roll(data['choice'][fix_tms-1], shift=-1).astype(float)
+        ch = data['ch']
+        perf = data['perf']
+        prev_perf = data['prev_perf']
+        ev = data['ev']
         # discard (make nan) non-standard-2afc task periods
         if 'std_2afc' in data.keys():
             std_2afc = data['std_2afc']
@@ -507,22 +501,8 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     return df  # resulting df with lateralized T+
 
 
-def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
-                    **exp_data):
+def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
     lags_mat = np.arange(np.sum(lags))-lags[0]
-    if exp_nets == 'exps':
-        assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
-        exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
-                 'fixtn_time': .3, 'margin_psth': 100, 'std_conv': 20}
-        exp_d.update(exp_data)
-        # select trials
-        evs, indx_good_evs = pp.preprocess_events(b_data=b_data, e_data=e_data,
-                                                  evs_mrgn=exp_d['evs_mrgn'],
-                                                  fixtn_time=exp_d['fixtn_time'],
-                                                  ev=exp_d['ev'])
-    else:
-        indx_good_evs = None
-
     if exp_nets == 'exps':
         print('PSTHs not implemented for experimental data yet')
     elif False:
@@ -593,33 +573,68 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
             sign.append(np.sum(sign_n)/states.shape[2])
         ax[2].plot(lags_mat, sign, '+-', label='evidence')
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
-    # BEHAVIORAL GLM
 
-    df = get_GLM_regressors(b_data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False, lags=lags)
-    Lreg_ac, Lreg_ae = behavioral_glm(df)
-    weights_ac = Lreg_ac.coef_
-    weights_ae = Lreg_ae.coef_
-    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
-    plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
+
+def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
+    lags = [lag, lag+1]
+    # BEHAVIORAL GLM
+    if exp_nets == 'exps':
+        assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
+        exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
+                 'fixtn_time': .3, 'margin_psth': 100, 'std_conv': 20}
+        exp_d.update(exp_data)
+        # select trials
+        e_data = exp_d['e_data']
+        evs, indx_good_evs = pp.preprocess_events(b_data=exp_d['b_data'],
+                                                  e_data=e_data,
+                                                  evs_mrgn=exp_d['evs_mrgn'],
+                                                  fixtn_time=exp_d['fixtn_time'],
+                                                  ev=exp_d['ev'])
+    else:
+        indx_good_evs = None
+
     # NEURO-GLM
     if exp_nets == 'exps':
         # get spikes
         # XXX: events could be filter here, but I do all the filtering below
         # filt_evs = evs[indx_good_evs]
         spk_tms = e_data['spks'][e_data['clsts'] == exp_d['cl']][:, None]
-        resps = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
-                           plot=False)
+        states = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
+                            plot=False)
         # XXX: responses measured in the form of spike-counts
-        resps = np.array([len(r) for r in resps['aligned_spks']])
+        states = np.array([len(r) for r in states['aligned_spks']])
     else:
-        fix_tms = get_fixation_times(data, lags=lags)
-        states = data['states']
-        # resps = sstats.zscore(resps, axis=0)
+        datasets = glob.glob(folder+'data_*')
+        data = {'choice': [], 'perf': [], 'prev_perf': [],
+                'states': np.empty((0, num_units)), 'coh': []}
+        for f in datasets:
+            data_tmp = np.load(f, allow_pickle=1)
+            fix_tms = get_fixation_times(data=data_tmp, lags=lags)
+            ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
+            data['choice'] += ch.tolist()
+            data['perf'] += perf.tolist()
+            data['prev_perf'] += ev.tolist()
+            data['coh'] += ev.tolist()
+            states = data_tmp['states']
+            states = states[:, int(states.shape[1]/2):]
+            states = sstats.zscore(states, axis=0)
+            states -= np.min(states, axis=0)
+            states = states[fix_tms+lag, :]
+            data['states'] = np.concatenate((data['states'], states), axis=0)
         # f, ax = plt.subplots(nrows=2)
         # ax[0].hist(resps.flatten(), 200)
         # ax[0].imshow(resps[:100, :].T, aspect='auto', vmin=-5, vmax=5)
         # asasd
+    for k in data.keys():
+        data[k] = np.array(data[k])
+        print(data[k].shape)
+    df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
+                            chck_corr=False, lags=lags)
+    Lreg_ac, Lreg_ae = behavioral_glm(df)
+    weights_ac = Lreg_ac.coef_
+    weights_ae = Lreg_ae.coef_
+    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+    plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
 
     # build data set
     not_nan_indx = df['R_response'].notna()
@@ -635,32 +650,29 @@ def get_cond_trials(b_data, e_data, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
     # f_ev, ax_ev = get_fig(ncols=1, nrows=1, figsize=(8, 6))
     # f_tr_b, ax_tr_b = get_fig(ncols=1, nrows=1, figsize=(8, 6))
     # ax[9].invert_xaxis()
-    for lag in lags_mat:
-        f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
-        f.suptitle(str(lag))
-        resps = states[fix_tms+lag, int(states.shape[1]/2):].copy()
-        resps -= np.min(resps, axis=0)
-        for i_n in range(num_neurons):
-            # AFTER CORRECT
-            resps_ac = resps[np.logical_and((df.aftererror == 0),
-                                            not_nan_indx).values, i_n]
-            exog, endog = sm.add_constant(X_df_ac), resps_ac
-            mod = sm.GLM(endog, exog,
-                         family=sm.families.Poisson(link=sm.families.links.log))
-            res = mod.fit()
-            weights_ac = res.params
-            # AFTER ERROR
-            resps_ae = resps[np.logical_and((df.aftererror == 1),
-                                            not_nan_indx).values, i_n]
-            exog, endog = sm.add_constant(X_df_ae), resps_ae
-            mod = sm.GLM(endog, exog,
-                         family=sm.families.Poisson(link=sm.families.links.log))
-            res = mod.fit()
-            weights_ae = res.params
-            plot_all_weights(ax=ax, weights_ac=weights_ac.values,
-                             weights_ae=weights_ae.values)
-            # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
-            # asdasd
+    f, ax = get_fig(ncols=5, nrows=2, figsize=(12, 6))
+    f.suptitle(str(lag))
+    for i_n in range(num_neurons):
+        # AFTER CORRECT
+        resps_ac = states[np.logical_and((df.aftererror == 0),
+                                         not_nan_indx).values, i_n]
+        exog, endog = sm.add_constant(X_df_ac), resps_ac
+        mod = sm.GLM(endog, exog,
+                     family=sm.families.Poisson(link=sm.families.links.log))
+        res = mod.fit()
+        weights_ac = res.params
+        # AFTER ERROR
+        resps_ae = states[np.logical_and((df.aftererror == 1),
+                                         not_nan_indx).values, i_n]
+        exog, endog = sm.add_constant(X_df_ae), resps_ae
+        mod = sm.GLM(endog, exog,
+                     family=sm.families.Poisson(link=sm.families.links.log))
+        res = mod.fit()
+        weights_ae = res.params
+        plot_all_weights(ax=ax, weights_ac=weights_ac.values,
+                         weights_ae=weights_ae.values)
+        # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
+        # asdasd
     print(1)
 
 
@@ -695,9 +707,8 @@ def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
                     if cl_qlt in sel_qlts:
                         for i_e, ev in enumerate(ev_keys):
-                            get_cond_trials(b_data=b_data, e_data=e_data,
-                                            ev=ev, cl=cl, std_conv=std_conv,
-                                            margin_psth=margin_psth)
+                            neuroGLM(b_data=b_data, e_data=e_data, ev=ev, cl=cl,
+                                     std_conv=std_conv, margin_psth=margin_psth)
                             plt.title(session)
         # name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
         # f.savefig(sv_folder+name+'.png')
@@ -728,10 +739,11 @@ if __name__ == '__main__':
     if exps_nets == 'nets':
         main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
             'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+        neuroGLM(folder=main_folder, exp_nets='nets', lag=0)  # , **exp_data)
         # main_folder = '/home/manuel/priors_analysis/annaK/' +\
         #     'pretrained_RNNs_N2_fina_models/'
-        data = np.load(main_folder+'data.npz', allow_pickle=1)
-        e_data = data['states']
-        b_data = data
+
+        # e_data = data['states']
+        # b_data = data
         # del b_data['states']
-        get_cond_trials(b_data=b_data, e_data=e_data)
+        # get_cond_trials(b_data=b_data, e_data=e_data)

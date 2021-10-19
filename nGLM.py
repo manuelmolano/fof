@@ -34,19 +34,31 @@ azul_2 = np.array([56, 108, 176])/255
 rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
-model_cols = ['evidence',
-              'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-              'L+5', 'L-5', 'L+6-10', 'L-6-10',
-              'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-              'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-              'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-              'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-              'intercept']  # , 'trans_bias']
-afterc_cols = [x for x in model_cols if x not in ['L+2', 'L-1', 'L-2',
-                                                  'T+-1', 'T--1']]
-aftere_cols = [x for x in model_cols if x not in ['L+1', 'T++1',
-                                                  'T-+1', 'L+2',
-                                                  'L-2']]
+model_cols_n = ['evidence',
+                'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+                'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+                'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+                'intercept', 'trans_bias', 'curr_ch']
+afterc_cols_n = [x for x in model_cols_n if x not in ['L+2', 'L-1', 'L-2',
+                                                      'T+-1', 'T--1']]
+aftere_cols_n = [x for x in model_cols_n if x not in ['L+1', 'T++1',
+                                                      'T-+1', 'L+2',
+                                                      'L-2']]
+model_cols_b = ['evidence',
+                'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+                'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+                'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+                'intercept']
+afterc_cols_b = [x for x in model_cols_b if x not in ['L+2', 'L-1', 'L-2',
+                                                      'T+-1', 'T--1']]
+aftere_cols_b = [x for x in model_cols_b if x not in ['L+1', 'T++1',
+                                                      'T-+1', 'L+2', 'L-2']]
 
 
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
@@ -61,38 +73,41 @@ def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
     return f, ax
 
 
-def plot_all_weights(ax, weights_ac, weights_ae):
+def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
     # TRANSITION WEIGHTS
     regrss = ['T++', 'T-+', 'T+-', 'T--']
     ax_tmp = np.array([ax[0:2], ax[4:6]]).flatten()
     plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae, regressors=regrss,
-                 ax=ax_tmp)
+                 ax=ax_tmp, behav_neural=behav_neural)
     for i in range(4):
         ax_tmp[i].set_ylabel('Weight '+regrss[i])
     # LATERAL WEIGHTS
     _, k_ac, _, _, _ = plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                                    regressors=['L+'], ax=ax[2:3])
+                                    regressors=['L+'], ax=ax[2:3],
+                                    behav_neural=behav_neural)
     _, _, k_ae, _, _ = plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                                    regressors=['L-'], ax=ax[6:7])
+                                    regressors=['L-'], ax=ax[6:7],
+                                    behav_neural=behav_neural)
     regrss = ['L+', 'L-']
     ax[2].set_ylabel('Weight L+')
     ax[6].set_ylabel('Weight L-')
     # EVIDENCE
     plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                 regressors=['evidence'], ax=ax[3:4])
+                 regressors=['evidence'], ax=ax[3:4], behav_neural=behav_neural)
     ax[3].set_ylabel('Weight evidence')
     # TRANSITION-BIAS
-    if 'trans_bias' in model_cols:
+    if behav_neural == 'neural':
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                     regressors=['trans_bias'], ax=ax[7:8])
-    ax[7].set_ylabel('Weight trans-bias')
+                     regressors=['trans_bias'], ax=ax[7:8],
+                     behav_neural=behav_neural)
+        ax[7].set_ylabel('Weight trans-bias')
     for a in [ax[3], ax[7]]:
         a.set_xlabel('')
         a.set_xticks([])
 
 
-def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
-                 ae_cols=None, ax=None, ax_inset=None, inset_xs=0.5,
+def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
+                 ax_inset=None, inset_xs=0.5, behav_neural='neural',
                  regressors=['T++', 'T-+', 'T+-', 'T--'], **kwargs):
     def get_krnl(name, cols, weights):
         indx = np.array([np.where(np.array([x.startswith(name)
@@ -126,8 +141,8 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ac_cols=None,
     plot_opts.update(kwargs)
     fntsz = plot_opts['fntsz']
     del plot_opts['fntsz']
-    ac_cols = afterc_cols if ac_cols is None else ac_cols
-    ae_cols = aftere_cols if ae_cols is None else ae_cols
+    ac_cols = afterc_cols_n if behav_neural == 'neural' else afterc_cols_b
+    ae_cols = aftere_cols_n if behav_neural == 'neural' else aftere_cols_b
     if ax is None:
         n_regr = len(regressors)
         if n_regr > 2:
@@ -275,11 +290,11 @@ def behavioral_glm(df):
     not_nan_indx = df['R_response'].notna()
     X_df_ac, y_df_ac =\
         df.loc[(df.aftererror == 0) & not_nan_indx,
-               afterc_cols].fillna(value=0),\
+               afterc_cols_b].fillna(value=0),\
         df.loc[(df.aftererror == 0) & not_nan_indx, 'R_response']
     X_df_ae, y_df_ae =\
         df.loc[(df.aftererror == 1) & not_nan_indx,
-               aftere_cols].fillna(value=0),\
+               aftere_cols_b].fillna(value=0),\
         df.loc[(df.aftererror == 1) & not_nan_indx, 'R_response']
 
     if len(np.unique(y_df_ac.values)) == 2 and len(np.unique(y_df_ae.values)) == 2:
@@ -299,7 +314,7 @@ def behavioral_glm(df):
 
 
 def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
-                       krnl_len=10, lags=[0, 0]):
+                       krnl_len=10, lags=[0, 0], behav_neural='neural'):
     """
     Compute regressors.
 
@@ -316,6 +331,14 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         dataframe containg evidence, lateral and transition regressors.
 
     """
+    if behav_neural == 'neural':
+        afterc_cols = afterc_cols_n
+        aftere_cols = aftere_cols_n
+        model_cols = model_cols_n
+    elif behav_neural == 'behav':
+        afterc_cols = afterc_cols_b
+        aftere_cols = aftere_cols_b
+        model_cols = model_cols_b
     if exp_nets == 'exps':
         ev = data['coh'].values
         perf = data['hithistory'].values
@@ -465,10 +488,13 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
 
     df['intercept'] = 1
     # zT
-    limit = -krnl_len+1
-    kernel = np.exp(-np.arange(krnl_len)/tau)
-    zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
-    df['trans_bias'] = zt*(df['L+1']+df['L-1'])
+    if behav_neural == 'neural':
+        limit = -krnl_len+1
+        kernel = np.exp(-np.arange(krnl_len)/tau)
+        zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
+        df['trans_bias'] = zt*(df['L+1']+df['L-1'])
+        df['curr_ch'] = df['L+1']+df['L-1']
+        df['curr_ch'] = df['curr_ch'].shift(-1)
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors
     if chck_corr:
@@ -556,9 +582,9 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
 
 
-def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
+def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
+             **exp_data):
     lags = [lag, lag+1]
-    # BEHAVIORAL GLM
     if exp_nets == 'exps':
         assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
         exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
@@ -574,7 +600,6 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
     else:
         indx_good_evs = None
 
-    # NEURO-GLM
     if exp_nets == 'exps':
         # get spikes
         # XXX: events could be filter here, but I do all the filtering below
@@ -609,33 +634,44 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
     for k in data.keys():
         data[k] = np.array(data[k])
     df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False, lags=lags)
+                            chck_corr=False, lags=lags, behav_neural='behav')
+    # BEHAVIORAL GLM
     Lreg_ac, Lreg_ae = behavioral_glm(df)
     weights_ac = Lreg_ac.coef_
     weights_ae = Lreg_ae.coef_
-    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-    plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0])
-    df_test = hf.get_GLM_regressors(data=data)
-    Lreg_ac_test, Lreg_ae_test = behavioral_glm(df_test)
-    weights_ac_test = Lreg_ac_test.coef_
-    weights_ae_test = Lreg_ae_test.coef_
-    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-    plot_all_weights(ax=ax, weights_ac=weights_ac_test[0],
-                     weights_ae=weights_ae_test[0])
+    if plot or 1:
+        f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+        plot_all_weights(ax=ax, weights_ac=weights_ac[0],
+                         weights_ae=weights_ae[0], behav_neural='behav')
+        f.savefig(main_folder+'/behav_GLM.png', dpi=400, bbox_inches='tight')
+        plt.close(f)
+    # df_test = hf.get_GLM_regressors(data=data)
+    # Lreg_ac_test, Lreg_ae_test = behavioral_glm(df_test)
+    # weights_ac_test = Lreg_ac_test.coef_
+    # weights_ae_test = Lreg_ae_test.coef_
+    # f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+    # plot_all_weights(ax=ax, weights_ac=weights_ac_test[0],
+    # weights_ae=weights_ae_test[0])
 
-    asdasd
+    # NEURO-GLM
+    df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
+                            chck_corr=False, lags=lags, behav_neural='neural')
     # build data set
     not_nan_indx = df['R_response'].notna()
 
     # after correct/error regressors
     X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
-                     afterc_cols].fillna(value=0)
+                     afterc_cols_n].fillna(value=0)
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
-                     aftere_cols].fillna(value=0)
-    num_neurons = 100  # XXX: for exps this should be 1
-    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-    f.suptitle(str(lag))
+                     aftere_cols_n].fillna(value=0)
+    num_neurons = num_units  # XXX: for exps this should be 1
+    if plot:
+        f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+        f.suptitle(str(lag))
+    idx_mat = []
+    pvalues = []
     for i_n in range(num_neurons):
+        print(i_n)
         # AFTER CORRECT
         resps_ac = data['states'][np.logical_and((df.aftererror == 0),
                                                  not_nan_indx).values, i_n]
@@ -644,6 +680,8 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
                      family=sm.families.Poisson(link=sm.families.links.log))
         res = mod.fit()
         weights_ac = res.params
+        idx_mat += [x+'_ac' for x in res.pvalues.index]
+        pvalues += list(res.pvalues)
         # AFTER ERROR
         resps_ae = data['states'][np.logical_and((df.aftererror == 1),
                                                  not_nan_indx).values, i_n]
@@ -652,11 +690,15 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, **exp_data):
                      family=sm.families.Poisson(link=sm.families.links.log))
         res = mod.fit()
         weights_ae = res.params
-        plot_all_weights(ax=ax, weights_ac=weights_ac.values,
-                         weights_ae=weights_ae.values)
+        idx_mat += [x+'_ae' for x in res.pvalues.index]
+        pvalues += list(res.pvalues)
+        if plot:
+            plot_all_weights(ax=ax, weights_ac=weights_ac.values,
+                             weights_ae=weights_ae.values)
         # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
         # asdasd
     print(1)
+    return idx_mat, pvalues
 
 
 def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
@@ -721,14 +763,255 @@ if __name__ == '__main__':
                      sel_rats=sel_rats, sv_folder=sv_folder)
     elif exps_nets == 'nets':
         # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
-        # 'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
+        #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
             'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
-        neuroGLM(folder=main_folder, exp_nets='nets', lag=0)  # , **exp_data)
-        # main_folder = '/home/manuel/priors_analysis/annaK/' +\
+        idx_mat, pvalues = neuroGLM(folder=main_folder, exp_nets='nets', plt=False,
+                                    lag=0)
+        idx_mat = np.array(idx_mat)
+        pvalues = np.array(pvalues)
+        perc_ac = []
+        perc_ae = []
+        unq_regrs = np.unique(idx_mat)
+        unq_regrs = np.unique([x[:-3] for x in unq_regrs
+                               if ('6-10' not in x) and ('5' not in x) and
+                               (not x.startswith('intercept'))])
+        for rgrs in unq_regrs:
+            rgrs_ac = rgrs+'_ac'
+            if (idx_mat == rgrs_ac).any():
+                num_smpls = np.sum(idx_mat == rgrs_ac)
+                num_sign = np.sum(pvalues[idx_mat == rgrs_ac] < 0.01)
+                perc_ac.append(100*num_sign/num_smpls)
+            else:
+                perc_ac.append(0)
+            rgrs_ae = rgrs+'_ae'
+            if (idx_mat == rgrs_ae).any():
+                num_smpls = np.sum(idx_mat == rgrs_ae)
+                num_sign = np.sum(pvalues[idx_mat == rgrs_ae] < 0.01)
+                perc_ae.append(100*num_sign/num_smpls)
+            else:
+                perc_ae.append(0)
+        labels = unq_regrs
+        x = np.arange(len(labels))  # the label locations
+        width = 0.35  # the width of the bars
+        fig, ax = plt.subplots()
+        rects1 = ax.bar(x - width/2, perc_ac, width, label='after correct')
+        rects2 = ax.bar(x + width/2, perc_ae, width, label='after error')
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_ylabel('Percentage of significant neurons')
+        # ax.set_title('Scores by group and gender')
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.legend()
+        fig.tight_layout()
+     # main_folder = '/home/manuel/priors_analysis/annaK/' +\
         #     'pretrained_RNNs_N2_fina_models/'
 
         # e_data = data['states']
         # b_data = data
         # del b_data['states']
         # get_cond_trials(b_data=b_data, e_data=e_data)
+# ------------
+# L+1_ac
+# 0.818359375
+# ------------
+# L+3_ac
+# 0.654296875
+# ------------
+# L+3_ae
+# 0.5478515625
+# ------------
+# L+4_ac
+# 0.3798828125
+# ------------
+# L+4_ae
+# 0.298828125
+# ------------
+# L+5_ac
+# 0.21875
+# ------------
+# L+5_ae
+# 0.0859375
+# ------------
+# L+6-10_ac
+# 0.1337890625
+# ------------
+# L+6-10_ae
+# 0.0380859375
+# ------------
+# L-1_ae
+# 0.732421875
+# ------------
+# L-3_ac
+# 0.3203125
+# ------------
+# L-3_ae
+# 0.2021484375
+# ------------
+# L-4_ac
+# 0.0771484375
+# ------------
+# L-4_ae
+# 0.033203125
+# ------------
+# L-5_ac
+# 0.04296875
+# ------------
+# L-5_ae
+# 0.0078125
+# ------------
+# L-6-10_ac
+# 0.01171875
+# ------------
+# L-6-10_ae
+# 0.0048828125
+# ------------
+# T++1_ac
+# 0.7529296875
+# ------------
+# T++2_ac
+# 0.0810546875
+# ------------
+# T++2_ae
+# 0.0302734375
+# ------------
+# T++3_ac
+# 0.0361328125
+# ------------
+# T++3_ae
+# 0.0166015625
+# ------------
+# T++4_ac
+# 0.01953125
+# ------------
+# T++4_ae
+# 0.009765625
+# ------------
+# T++5_ac
+# 0.009765625
+# ------------
+# T++5_ae
+# 0.0029296875
+# ------------
+# T++6-10_ac
+# 0.01953125
+# ------------
+# T++6-10_ae
+# 0.0263671875
+# ------------
+# T+-1_ae
+# 0.6943359375
+# ------------
+# T+-2_ac
+# 0.1748046875
+# ------------
+# T+-2_ae
+# 0.0869140625
+# ------------
+# T+-3_ac
+# 0.0634765625
+# ------------
+# T+-3_ae
+# 0.0185546875
+# ------------
+# T+-4_ac
+# 0.03125
+# ------------
+# T+-4_ae
+# 0.0009765625
+# ------------
+# T+-5_ac
+# 0.00390625
+# ------------
+# T+-5_ae
+# 0.001953125
+# ------------
+# T+-6-10_ac
+# 0.0029296875
+# ------------
+# T+-6-10_ae
+# 0.01171875
+# ------------
+# T-+1_ac
+# 0.5146484375
+# ------------
+# T-+2_ac
+# 0.1953125
+# ------------
+# T-+2_ae
+# 0.04296875
+# ------------
+# T-+3_ac
+# 0.041015625
+# ------------
+# T-+3_ae
+# 0.0087890625
+# ------------
+# T-+4_ac
+# 0.0302734375
+# ------------
+# T-+4_ae
+# 0.005859375
+# ------------
+# T-+5_ac
+# 0.0048828125
+# ------------
+# T-+5_ae
+# 0.0029296875
+# ------------
+# T-+6-10_ac
+# 0.00390625
+# ------------
+# T-+6-10_ae
+# 0.00390625
+# ------------
+# T--1_ae
+# 0.3779296875
+# ------------
+# T--2_ac
+# 0.064453125
+# ------------
+# T--2_ae
+# 0.0263671875
+# ------------
+# T--3_ac
+# 0.0185546875
+# ------------
+# T--3_ae
+# 0.0068359375
+# ------------
+# T--4_ac
+# 0.0107421875
+# ------------
+# T--4_ae
+# 0.0
+# ------------
+# T--5_ac
+# 0.0048828125
+# ------------
+# T--5_ae
+# 0.001953125
+# ------------
+# T--6-10_ac
+# 0.001953125
+# ------------
+# T--6-10_ae
+# 0.001953125
+# ------------
+# evidence_ac
+# 0.0
+# ------------
+# evidence_ae
+# 0.0
+# ------------
+# intercept_ac
+# 0.99609375
+# ------------
+# intercept_ae
+# 0.9951171875
+# ------------
+# trans_bias_ac
+# 0.001953125
+# ------------
+# trans_bias_ae
+# 0.0166015625

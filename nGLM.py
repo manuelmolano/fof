@@ -582,10 +582,45 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
 
 
-def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
+def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
              **exp_data):
+    """
+    Compute both behavioral and neuro GLM.
+
+    Parameters
+    ----------
+    folder : str
+        where to find behav/neural data from networks.
+    exp_nets : str, optional
+        whether to analyze experiments or networks ('nets')
+    lag : int, optional
+        in networks lag from fixation to collect activity data (0)
+    num_units : int, optional
+        in networks number of units (1024)
+    plot : boolean, optional
+        whether to plot (True)
+    **exp_data : dict
+        experimental data info.
+        exp_d = {'ev': 'stim_ttl_strt',  Event to align to
+                 'evs_mrgn': 1e-2,  Margin error to align ttl and csv events
+                 'plot': False, Whether to plot rasters/psths (?)
+                 'fixtn_time': .3, Fixation time (s)
+                 'margin_psth': 100, Margin for to plot raster/psth (?)
+                 'std_conv': 20  Standard deviation of gaussian used for smoothing
+                 }
+
+    Returns
+    -------
+    idx_mat : list
+        list with the regressor corresponding to the p-values in pvalues.
+    pvalues : list
+        list with the p-values associated to the regressors in idx_max.
+    weights_mat: list
+        list with the weights associated to the regressors in idx_max.
+    """
     lags = [lag, lag+1]
     if exp_nets == 'exps':
+        raise Exception('Code for experimental data is not up to date')
         assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
         exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
                  'fixtn_time': .3, 'margin_psth': 100, 'std_conv': 20}
@@ -597,10 +632,6 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
                                                   evs_mrgn=exp_d['evs_mrgn'],
                                                   fixtn_time=exp_d['fixtn_time'],
                                                   ev=exp_d['ev'])
-    else:
-        indx_good_evs = None
-
-    if exp_nets == 'exps':
         # get spikes
         # XXX: events could be filter here, but I do all the filtering below
         # filt_evs = evs[indx_good_evs]
@@ -610,6 +641,8 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
         # XXX: responses measured in the form of spike-counts
         states = np.array([len(r) for r in states['aligned_spks']])
     else:
+        indx_good_evs = None
+        # get and put together files
         datasets = glob.glob(folder+'data_*')
         data = {'choice': [], 'performance': [], 'prev_perf': [],
                 'states': np.empty((0, num_units)), 'signed_evidence': []}
@@ -627,31 +660,20 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
             states -= np.min(states, axis=0)
             states = states[fix_tms+lag, :]
             data['states'] = np.concatenate((data['states'], states), axis=0)
-        # f, ax = plt.subplots(nrows=2)
-        # ax[0].hist(resps.flatten(), 200)
-        # ax[0].imshow(resps[:100, :].T, aspect='auto', vmin=-5, vmax=5)
-        # asasd
-    for k in data.keys():
-        data[k] = np.array(data[k])
+
+        for k in data.keys():
+            data[k] = np.array(data[k])
+    # BEHAVIORAL GLM
     df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
                             chck_corr=False, lags=lags, behav_neural='behav')
-    # BEHAVIORAL GLM
     Lreg_ac, Lreg_ae = behavioral_glm(df)
     weights_ac = Lreg_ac.coef_
     weights_ae = Lreg_ae.coef_
-    if plot or 1:
-        f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-        plot_all_weights(ax=ax, weights_ac=weights_ac[0],
-                         weights_ae=weights_ae[0], behav_neural='behav')
-        f.savefig(main_folder+'/behav_GLM.png', dpi=400, bbox_inches='tight')
-        plt.close(f)
-    # df_test = hf.get_GLM_regressors(data=data)
-    # Lreg_ac_test, Lreg_ae_test = behavioral_glm(df_test)
-    # weights_ac_test = Lreg_ac_test.coef_
-    # weights_ae_test = Lreg_ae_test.coef_
-    # f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-    # plot_all_weights(ax=ax, weights_ac=weights_ac_test[0],
-    # weights_ae=weights_ae_test[0])
+    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+    plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0],
+                     behav_neural='behav')
+    f.savefig(main_folder+'/behav_GLM.png', dpi=400, bbox_inches='tight')
+    plt.close(f)
 
     # NEURO-GLM
     df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
@@ -669,6 +691,7 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
         f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
         f.suptitle(str(lag))
     idx_mat = []
+    weights_mat = []
     pvalues = []
     for i_n in range(num_neurons):
         print(i_n)
@@ -682,6 +705,7 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
         weights_ac = res.params
         idx_mat += [x+'_ac' for x in res.pvalues.index]
         pvalues += list(res.pvalues)
+        weights_mat += list(weights_ac)
         # AFTER ERROR
         resps_ae = data['states'][np.logical_and((df.aftererror == 1),
                                                  not_nan_indx).values, i_n]
@@ -692,18 +716,19 @@ def neuroGLM(folder, exp_nets='nets', lag=0, num_units=1024, plot=True,
         weights_ae = res.params
         idx_mat += [x+'_ae' for x in res.pvalues.index]
         pvalues += list(res.pvalues)
+        weights_mat += list(weights_ae)
         if plot:
             plot_all_weights(ax=ax, weights_ac=weights_ac.values,
                              weights_ae=weights_ae.values)
         # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
         # asdasd
     print(1)
-    return idx_mat, pvalues
+    return idx_mat, pvalues, weights_mat
 
 
-def compute_nGLM(main_folder, sel_sess, sel_rats, inv, std_conv=20,
-                 margin_psth=1000, sel_qlts=['mua', 'good'], conditioning={},
-                 sv_folder=''):
+def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
+                      margin_psth=1000, sel_qlts=['mua', 'good'], conditioning={},
+                      sv_folder=''):
     ev_keys = ['fix_strt', 'stim_ttl_strt', 'outc_strt']
     rats = glob.glob(main_folder+'LE*')
     for r in rats:
@@ -758,19 +783,20 @@ if __name__ == '__main__':
         sel_sess = []  # ['LE104_2021-06-02_13-14-24']
         # ['LE104_2021-05-17_12-02-40']
         # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
-        compute_nGLM(inv=inv, main_folder=main_folder, std_conv=std_conv,
-                     margin_psth=margin_psth, sel_sess=sel_sess,
-                     sel_rats=sel_rats, sv_folder=sv_folder)
+        compute_nGLM_exps(inv=inv, main_folder=main_folder, std_conv=std_conv,
+                          margin_psth=margin_psth, sel_sess=sel_sess,
+                          sel_rats=sel_rats, sv_folder=sv_folder)
     elif exps_nets == 'nets':
         lag = 0
         # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
         #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
             'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
-        idx_mat, pvalues = neuroGLM(folder=main_folder, exp_nets='nets', plt=False,
-                                    lag=lag)
+        idx_mat, pvalues, weights = neuroGLM(folder=main_folder, exp_nets='nets',
+                                             plt=False, lag=lag)
         np.savez(main_folder+'/pvalues_'+str(lag)+'.npz', **{'idx_mat': idx_mat,
-                                                             'pvalues': pvalues})
+                                                             'pvalues': pvalues,
+                                                             'weights': weights})
         idx_mat = np.array(idx_mat)
         pvalues = np.array(pvalues)
         perc_ac = []

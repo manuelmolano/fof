@@ -786,7 +786,12 @@ if __name__ == '__main__':
                           margin_psth=margin_psth, sel_sess=sel_sess,
                           sel_rats=sel_rats, sv_folder=sv_folder)
     elif exps_nets == 'nets':
-        lag = 0
+        import sys
+        if len(sys.argv) == 1:
+            lag = 0
+        else:
+            lag = sys.argv[1]
+        print('Using lag: ', lag)
         # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
         #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\

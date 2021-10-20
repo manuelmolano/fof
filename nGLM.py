@@ -762,14 +762,15 @@ if __name__ == '__main__':
                      margin_psth=margin_psth, sel_sess=sel_sess,
                      sel_rats=sel_rats, sv_folder=sv_folder)
     elif exps_nets == 'nets':
+        lag = 0
         # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
         #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
             'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
         idx_mat, pvalues = neuroGLM(folder=main_folder, exp_nets='nets', plt=False,
-                                    lag=0)
-        np.savez(main_folder+'/pvalues.npz', **{'idx_mat': idx_mat,
-                                                'pvalues': pvalues})
+                                    lag=lag)
+        np.savez(main_folder+'/pvalues_'+str(lag)+'.npz', **{'idx_mat': idx_mat,
+                                                             'pvalues': pvalues})
         idx_mat = np.array(idx_mat)
         pvalues = np.array(pvalues)
         perc_ac = []
@@ -806,7 +807,7 @@ if __name__ == '__main__':
         ax.set_xticklabels(labels)
         ax.legend()
         fig.tight_layout()
-        fig.savefig(main_folder+'/perc_sign_neurons.png', dpi=400,
+        fig.savefig(main_folder+'/perc_sign_neurons_'+str(lag)+'.png', dpi=400,
                     bbox_inches='tight')
      # main_folder = '/home/manuel/priors_analysis/annaK/' +\
         #     'pretrained_RNNs_N2_fina_models/'

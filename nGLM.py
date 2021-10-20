@@ -435,7 +435,7 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df.loc[(df.aftererror == 0) & (df.hit == 1), 'rep_response_11']
     df.loc[(df.aftererror == 1) | (df.hit == 0), 'T++1'] = 0
     df['T++1'] = df['T++1'].shift(1)
-    zt_comps = df['T++1'].shift(1)
+    zt_comps = df['T++1']  # .shift(1)
     df['T+-1'] = np.nan  # np.nan
     df.loc[(df.aftererror == 0) & (df.hit == 0), 'T+-1'] =\
         df.loc[(df.aftererror == 0) & (df.hit == 0), 'rep_response_11']
@@ -768,6 +768,8 @@ if __name__ == '__main__':
             'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
         idx_mat, pvalues = neuroGLM(folder=main_folder, exp_nets='nets', plt=False,
                                     lag=0)
+        np.savez(main_folder+'/pvalues.npz', **{'idx_mat': idx_mat,
+                                                'pvalues': pvalues})
         idx_mat = np.array(idx_mat)
         pvalues = np.array(pvalues)
         perc_ac = []
@@ -804,6 +806,8 @@ if __name__ == '__main__':
         ax.set_xticklabels(labels)
         ax.legend()
         fig.tight_layout()
+        fig.savefig(main_folder+'/perc_sign_neurons.png', dpi=400,
+                    bbox_inches='tight')
      # main_folder = '/home/manuel/priors_analysis/annaK/' +\
         #     'pretrained_RNNs_N2_fina_models/'
 

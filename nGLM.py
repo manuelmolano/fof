@@ -41,10 +41,9 @@ model_cols_n = ['evidence',
                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
                 'intercept', 'trans_bias', 'curr_ch']
-afterc_cols_n = [x for x in model_cols_n if x not in ['L+2', 'L-1', 'L-2',
-                                                      'T+-1', 'T--1']]
-aftere_cols_n = [x for x in model_cols_n if x not in ['L+1', 'T++1',
-                                                      'T-+1', 'L+2',
+afterc_cols_n = [x for x in model_cols_n if x not in ['L+2', 'L-1', 'L-2', 'T+-1',
+                                                      'T--1']]
+aftere_cols_n = [x for x in model_cols_n if x not in ['L+1', 'T++1', 'T-+1', 'L+2',
                                                       'L-2']]
 model_cols_b = ['evidence',
                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
@@ -52,12 +51,11 @@ model_cols_b = ['evidence',
                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
                 'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-                'intercept']
+                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
 afterc_cols_b = [x for x in model_cols_b if x not in ['L+2', 'L-1', 'L-2',
                                                       'T+-1', 'T--1']]
-aftere_cols_b = [x for x in model_cols_b if x not in ['L+1', 'T++1',
-                                                      'T-+1', 'L+2', 'L-2']]
+aftere_cols_b = [x for x in model_cols_b if x not in ['L+1', 'T++1', 'T-+1', 'L+2',
+                                                      'L-2']]
 
 
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
@@ -187,6 +185,124 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
         xtcks_krnls(xs=xs_ac, ax=ax[j])
 
     return f, kernel_ac, kernel_ae, xs_ac, xs_ae
+
+
+def plt_Lp_VS_Ln(folder, lag):
+    data = np.load(main_folder+'/pvalues_'+str(lag)+'.npz')
+    idx_mat = data['idx_mat']
+    weights = data['weights']
+    f, ax = plt.subplots()
+    w_lp = weights[idx_mat == 'L+1_ac']
+    w_lp = np.abs(w_lp)
+    w_ln = weights[idx_mat == 'L-1_ae']
+    w_ln = np.abs(w_ln)
+    ax.plot(w_lp, w_ln, '.')
+    ax.plot([np.min(w_lp), np.max(w_lp)], [np.min(w_lp), np.max(w_lp)],
+            '--k', lw=0.5)
+    ax.set_xlabel('L+1')
+    ax.set_ylabel('L-1')
+    f.tight_layout()
+    f.savefig(main_folder+'/Lp_VS_Ln_'+str(lag)+'.png', dpi=400,
+              bbox_inches='tight')
+
+
+def plot_weights_distr(folder, lag):
+    """
+    Plot percentage of significant neurons to each regressor.
+
+    Parameters
+    ----------
+    folder : str
+        where the results stored.
+    lag : int
+        the lag with which the results were obtained.
+
+    Returns
+    -------
+    None.
+
+    """
+    data = np.load(main_folder+'/pvalues_'+str(lag)+'.npz')
+    idx_mat = data['idx_mat']
+    weights = data['weights']
+    unq_regrs = np.unique(idx_mat)
+    unq_regrs = filter_regressors(regrs=unq_regrs)
+    fig, ax = plt.subplots(nrows=4, ncols=5, figsize=(18, 12))
+    ax = ax.flatten()
+    for i_r, rgrs in enumerate(unq_regrs):
+        rgrs_ac = rgrs+'_ac'
+        w_ac = weights[idx_mat == rgrs_ac]
+        rgrs_ae = rgrs+'_ae'
+        w_ae = weights[idx_mat == rgrs_ae]
+        ax[i_r].hist([w_ac, w_ae], 20)
+        ax[i_r].set_title(rgrs)
+
+    # ax[0].legend()
+    fig.tight_layout()
+    fig.savefig(main_folder+'/weight_hists_'+str(lag)+'.png', dpi=400,
+                bbox_inches='tight')
+
+
+def plot_perc_sign(folder, lag):
+    """
+    Plot percentage of significant neurons to each regressor.
+
+    Parameters
+    ----------
+    folder : str
+        where the results stored.
+    lag : int
+        the lag with which the results were obtained.
+
+    Returns
+    -------
+    None.
+
+    """
+    data = np.load(main_folder+'/pvalues_'+str(lag)+'.npz')
+    idx_mat = data['idx_mat']
+    pvalues = data['pvalues']
+    perc_ac = []
+    perc_ae = []
+    unq_regrs = np.unique(idx_mat)
+    unq_regrs = filter_regressors(regrs=unq_regrs)
+    for rgrs in unq_regrs:
+        rgrs_ac = rgrs+'_ac'
+        if (idx_mat == rgrs_ac).any():
+            num_smpls = np.sum(idx_mat == rgrs_ac)
+            num_sign = np.sum(pvalues[idx_mat == rgrs_ac] < 0.01)
+            perc_ac.append(100*num_sign/num_smpls)
+        else:
+            perc_ac.append(0)
+        rgrs_ae = rgrs+'_ae'
+        if (idx_mat == rgrs_ae).any():
+            num_smpls = np.sum(idx_mat == rgrs_ae)
+            num_sign = np.sum(pvalues[idx_mat == rgrs_ae] < 0.01)
+            perc_ae.append(100*num_sign/num_smpls)
+        else:
+            perc_ae.append(0)
+    labels = unq_regrs
+    x = np.arange(len(labels))  # the label locations
+    width = 0.35  # the width of the bars
+    fig, ax = plt.subplots(figsize=(18, 6))
+    ax.bar(x - width/2, perc_ac, width, label='after correct')
+    ax.bar(x + width/2, perc_ae, width, label='after error')
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Percentage of significant neurons')
+    ax.set_ylim([0, 100])
+    # ax.set_title('Scores by group and gender')
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(main_folder+'/perc_sign_neurons_'+str(lag)+'.png', dpi=400,
+                bbox_inches='tight')
+
+
+def filter_regressors(regrs):
+    return np.unique([x[:-3] for x in regrs if ('6-10' not in x) and
+                      ('5' not in x) and ('4' not in x) and
+                      (not x.startswith('intercept'))])
 
 
 def get_vars(data, fix_tms):
@@ -686,6 +802,13 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
                      aftere_cols_n].fillna(value=0)
     num_neurons = num_units  # XXX: for exps this should be 1
+    for rgrs in list(X_df_ac):
+        X_df_ac[rgrs] = X_df_ac[rgrs]/np.max(X_df_ac[rgrs])
+        print('-------')
+        print(rgrs)
+        print(np.max(X_df_ac[rgrs]))
+        print(np.min(X_df_ac[rgrs]))
+
     if plot:
         f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
         f.suptitle(str(lag))
@@ -763,6 +886,9 @@ def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
         # f.savefig(sv_folder+name+'.png')
 
 
+### MAIN
+
+
 if __name__ == '__main__':
     plt.close('all')
     exps_nets = 'nets'
@@ -788,54 +914,21 @@ if __name__ == '__main__':
     elif exps_nets == 'nets':
         import sys
         if len(sys.argv) == 1:
-            lag = 0
+            lag = 1
         else:
             lag = int(sys.argv[1])
+        redo = True
         print('Using lag: ', lag)
         # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
         #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
             'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
-        idx_mat, pvalues, weights = neuroGLM(folder=main_folder, exp_nets='nets',
-                                             plt=False, lag=lag)
-        np.savez(main_folder+'/pvalues_'+str(lag)+'.npz', **{'idx_mat': idx_mat,
-                                                             'pvalues': pvalues,
-                                                             'weights': weights})
-        idx_mat = np.array(idx_mat)
-        pvalues = np.array(pvalues)
-        perc_ac = []
-        perc_ae = []
-        unq_regrs = np.unique(idx_mat)
-        unq_regrs = np.unique([x[:-3] for x in unq_regrs
-                               if ('6-10' not in x) and ('5' not in x) and
-                               (not x.startswith('intercept'))])
-        for rgrs in unq_regrs:
-            rgrs_ac = rgrs+'_ac'
-            if (idx_mat == rgrs_ac).any():
-                num_smpls = np.sum(idx_mat == rgrs_ac)
-                num_sign = np.sum(pvalues[idx_mat == rgrs_ac] < 0.01)
-                perc_ac.append(100*num_sign/num_smpls)
-            else:
-                perc_ac.append(0)
-            rgrs_ae = rgrs+'_ae'
-            if (idx_mat == rgrs_ae).any():
-                num_smpls = np.sum(idx_mat == rgrs_ae)
-                num_sign = np.sum(pvalues[idx_mat == rgrs_ae] < 0.01)
-                perc_ae.append(100*num_sign/num_smpls)
-            else:
-                perc_ae.append(0)
-        labels = unq_regrs
-        x = np.arange(len(labels))  # the label locations
-        width = 0.35  # the width of the bars
-        fig, ax = plt.subplots(figsize=(12, 8))
-        rects1 = ax.bar(x - width/2, perc_ac, width, label='after correct')
-        rects2 = ax.bar(x + width/2, perc_ae, width, label='after error')
-        # Add some text for labels, title and custom x-axis tick labels, etc.
-        ax.set_ylabel('Percentage of significant neurons')
-        # ax.set_title('Scores by group and gender')
-        ax.set_xticks(x)
-        ax.set_xticklabels(labels)
-        ax.legend()
-        fig.tight_layout()
-        fig.savefig(main_folder+'/perc_sign_neurons_'+str(lag)+'.png', dpi=400,
-                    bbox_inches='tight')
+        if not os.path.exists(main_folder+'/pvalues_'+str(lag)+'.npz') or redo:
+            idx_mat, pvalues, weights = neuroGLM(folder=main_folder,
+                                                 exp_nets='nets',
+                                                 plt=False, lag=lag)
+            data = {'idx_mat': idx_mat, 'pvalues': pvalues, 'weights': weights}
+            np.savez(main_folder+'/pvalues_'+str(lag)+'.npz', **data)
+        plot_perc_sign(folder=main_folder, lag=lag)
+        plot_weights_distr(folder=main_folder, lag=lag)
+        plt_Lp_VS_Ln(folder=main_folder, lag=lag)

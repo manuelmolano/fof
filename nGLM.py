@@ -35,6 +35,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = 'minimal'
+FIGS_VER = '_minimal'
 
 
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
@@ -51,12 +52,20 @@ def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
 
 def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
     # TRANSITION WEIGHTS
-    regrss = ['T++', 'T-+', 'T+-', 'T--']
-    ax_tmp = np.array([ax[0:2], ax[4:6]]).flatten()
-    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae, regressors=regrss,
-                 ax=ax_tmp, behav_neural=behav_neural)
-    for i in range(4):
-        ax_tmp[i].set_ylabel('Weight '+regrss[i])
+    if GLM_VER == 'full':
+        regrss = ['T++', 'T-+', 'T+-', 'T--']
+        ax_tmp = np.array([ax[0:2], ax[4:6]]).flatten()
+        plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                     regressors=regrss, ax=ax_tmp, behav_neural=behav_neural)
+        for i in range(4):
+            ax_tmp[i].set_ylabel('Weight '+regrss[i])
+    elif GLM_VER == 'minimal':
+        # EVIDENCE
+        plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                     regressors=['zT'], ax=ax[0:1],
+                     behav_neural=behav_neural)
+        ax[0].set_ylabel('Weight zT')
+
     # LATERAL WEIGHTS
     _, k_ac, _, _, _ = plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
                                     regressors=['L+'], ax=ax[2:3],
@@ -89,7 +98,10 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
         indx = np.array([np.where(np.array([x.startswith(name)
                                             for x in cols]))[0]])
         indx = np.array([x for x in indx if len(x) > 0])
-        xtcks = np.array(cols)[indx][0]
+        try:
+            xtcks = np.array(cols)[indx][0]
+        except IndexError:
+            return None, None
         kernel = np.nanmean(weights[indx], axis=0).flatten()
         try:
             xs = [int(x[len(name):len(name)+1]) for x in xtcks]
@@ -143,24 +155,27 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
         ax[j].set_xlabel('Trials back from decision', fontsize=fntsz)
         # after correct
         kernel_ac, xs_ac = get_krnl(name=name, cols=ac_cols, weights=weights_ac)
-        if std_ac is not None:
-            s_ac, _ = get_krnl(name=name, cols=ac_cols, weights=std_ac)
-        else:
-            s_ac = np.zeros_like(kernel_ac)
-        opts = get_opts_krnls(plot_opts=plot_opts, tag='_ac')
-        ax[j].errorbar(xs_ac, kernel_ac, s_ac, **opts)
+        if kernel_ac is not None:
+            if std_ac is not None:
+                s_ac, _ = get_krnl(name=name, cols=ac_cols, weights=std_ac)
+            else:
+                s_ac = np.zeros_like(kernel_ac)
+            opts = get_opts_krnls(plot_opts=plot_opts, tag='_ac')
+            ax[j].errorbar(xs_ac, kernel_ac, s_ac, **opts)
 
         # after error
         kernel_ae, xs_ae = get_krnl(name=name, cols=ae_cols, weights=weights_ae)
-        if std_ae is not None:
-            s_ae, _ = get_krnl(name=name, cols=ae_cols, weights=std_ae)
-        else:
-            s_ae = np.zeros_like(kernel_ae)
-        opts = get_opts_krnls(plot_opts=plot_opts, tag='_ae')
-        ax[j].errorbar(xs_ae, kernel_ae, s_ae, **opts)
+        if kernel_ae is not None:
+            if std_ae is not None:
+                s_ae, _ = get_krnl(name=name, cols=ae_cols, weights=std_ae)
+            else:
+                s_ae = np.zeros_like(kernel_ae)
+            opts = get_opts_krnls(plot_opts=plot_opts, tag='_ae')
+            ax[j].errorbar(xs_ae, kernel_ae, s_ae, **opts)
 
         # tune fig
-        xtcks_krnls(xs=xs_ac, ax=ax[j])
+        xs_tune = xs_ac or xs_ae
+        xtcks_krnls(xs=xs_tune, ax=ax[j])
 
     return f, kernel_ac, kernel_ae, xs_ac, xs_ae
 
@@ -180,7 +195,7 @@ def plt_Lp_VS_Ln(folder, lag):
     ax.set_xlabel('L+1')
     ax.set_ylabel('L-1')
     f.tight_layout()
-    f.savefig(main_folder+'/Lp_VS_Ln_'+str(lag)+'.png', dpi=400,
+    f.savefig(main_folder+'/Lp_VS_Ln_'+str(lag)+FIGS_VER+'.png', dpi=400,
               bbox_inches='tight')
 
 
@@ -217,7 +232,7 @@ def plot_weights_distr(folder, lag):
 
     # ax[0].legend()
     fig.tight_layout()
-    fig.savefig(main_folder+'/weight_hists_'+str(lag)+'.png', dpi=400,
+    fig.savefig(main_folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png', dpi=400,
                 bbox_inches='tight')
 
 
@@ -273,8 +288,8 @@ def plot_perc_sign(folder, lag):
     ax.set_xticklabels(labels)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(main_folder+'/perc_sign_neurons_'+str(lag)+'.png', dpi=400,
-                bbox_inches='tight')
+    fig.savefig(main_folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png',
+                dpi=400, bbox_inches='tight')
 
 
 def filter_regressors(regrs):
@@ -293,7 +308,7 @@ def get_regressors(behav_neural):
                     'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
                     'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
                     'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-                    'intercept', 'trans_bias', 'curr_ch']
+                    'intercept', 'trans_bias']  # , 'curr_ch']
         elif behav_neural == 'behav':
             cols = ['evidence',
                     'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
@@ -305,10 +320,10 @@ def get_regressors(behav_neural):
                     'intercept']
     elif GLM_VER == 'minimal':
         if behav_neural == 'neural':
-            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias',
-                    'curr_ch']
-        elif behav_neural == 'behav':
             cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
+            # 'curr_ch']
+        elif behav_neural == 'behav':
+            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
 
     afterc_cols = [x for x in cols if x not in ['L+2', 'L-1', 'L-2',
                                                 'T+-1', 'T--1']]
@@ -610,8 +625,8 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         kernel = np.exp(-np.arange(krnl_len)/tau)
         zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
         df['trans_bias'] = zt*(df['L+1']+df['L-1'])
-        df['curr_ch'] = df['L+1']+df['L-1']
-        df['curr_ch'] = df['curr_ch'].shift(-1)
+        # df['curr_ch'] = df['L+1']+df['L-1']
+        # df['curr_ch'] = df['curr_ch'].shift(-1)
         if GLM_VER == 'minimal':
             df['zT'] = zt
     elif behav_neural == 'behav':
@@ -801,7 +816,8 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0],
                      behav_neural='behav')
-    f.savefig(main_folder+'/behav_GLM.png', dpi=400, bbox_inches='tight')
+    f.savefig(main_folder+'/behav_GLM'+FIGS_VER+'.png', dpi=400,
+              bbox_inches='tight')
     plt.close(f)
 
     # NEURO-GLM
@@ -929,7 +945,7 @@ if __name__ == '__main__':
     elif exps_nets == 'nets':
         import sys
         if len(sys.argv) == 1:
-            lag = 1
+            lag = 0
         else:
             lag = int(sys.argv[1])
         redo = True

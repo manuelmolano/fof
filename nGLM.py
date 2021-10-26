@@ -34,6 +34,9 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
+GLM_VER = 'minimal'
+
+
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
     f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharey=True)
     if ncols == 1 and nrows == 1:
@@ -114,8 +117,7 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
     plot_opts.update(kwargs)
     fntsz = plot_opts['fntsz']
     del plot_opts['fntsz']
-    ac_cols = afterc_cols_n if behav_neural == 'neural' else afterc_cols_b
-    ae_cols = aftere_cols_n if behav_neural == 'neural' else aftere_cols_b
+    ac_cols, ae_cols, _ = get_regressors(behav_neural=behav_neural)
     if ax is None:
         n_regr = len(regressors)
         if n_regr > 2:
@@ -281,12 +283,38 @@ def filter_regressors(regrs):
                       (not x.startswith('intercept'))])
 
 
-def remove_regressors(cols):
+def get_regressors(behav_neural):
+    if GLM_VER == 'full':
+        if behav_neural == 'neural':
+            cols = ['evidence',
+                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                    'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                    'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+                    'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+                    'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+                    'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+                    'intercept', 'trans_bias', 'curr_ch']
+        elif behav_neural == 'behav':
+            cols = ['evidence',
+                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                    'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                    'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+                    'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+                    'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+                    'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+                    'intercept']
+    elif GLM_VER == 'minimal':
+        if behav_neural == 'neural':
+            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias',
+                    'curr_ch']
+        elif behav_neural == 'behav':
+            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
+
     afterc_cols = [x for x in cols if x not in ['L+2', 'L-1', 'L-2',
                                                 'T+-1', 'T--1']]
     aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1',
                                                 'L+2', 'L-2']]
-    return afterc_cols, aftere_cols
+    return afterc_cols, aftere_cols, cols
 
 
 def get_vars(data, fix_tms):
@@ -386,14 +414,15 @@ def behavioral_glm(df):
         logistic model fit to after error trials.
 
     """
+    ac_cols, ae_cols, _ = get_regressors(behav_neural='behav')
     not_nan_indx = df['R_response'].notna()
     X_df_ac, y_df_ac =\
         df.loc[(df.aftererror == 0) & not_nan_indx,
-               afterc_cols_b].fillna(value=0),\
+               ac_cols].fillna(value=0),\
         df.loc[(df.aftererror == 0) & not_nan_indx, 'R_response']
     X_df_ae, y_df_ae =\
         df.loc[(df.aftererror == 1) & not_nan_indx,
-               aftere_cols_b].fillna(value=0),\
+               ae_cols].fillna(value=0),\
         df.loc[(df.aftererror == 1) & not_nan_indx, 'R_response']
 
     if len(np.unique(y_df_ac.values)) == 2 and len(np.unique(y_df_ae.values)) == 2:
@@ -412,8 +441,8 @@ def behavioral_glm(df):
     return Lreg_ac, Lreg_ae
 
 
-def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
-                       krnl_len=10, lags=[0, 0], behav_neural='neural'):
+def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
+                           krnl_len=10, lags=[0, 0], behav_neural='neural'):
     """
     Compute regressors.
 
@@ -430,14 +459,9 @@ def get_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         dataframe containg evidence, lateral and transition regressors.
 
     """
-    if behav_neural == 'neural':
-        afterc_cols = afterc_cols_n
-        aftere_cols = aftere_cols_n
-        model_cols = model_cols_n
-    elif behav_neural == 'behav':
-        afterc_cols = afterc_cols_b
-        aftere_cols = aftere_cols_b
-        model_cols = model_cols_b
+
+    afterc_cols, aftere_cols, model_cols =\
+        get_regressors(behav_neural=behav_neural)
     if exp_nets == 'exps':
         ev = data['coh'].values
         perf = data['hithistory'].values
@@ -763,8 +787,8 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         for k in data.keys():
             data[k] = np.array(data[k])
     # BEHAVIORAL GLM
-    df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False, lags=lags, behav_neural='behav')
+    df = compute_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
+                                chck_corr=False, lags=lags, behav_neural='behav')
     Lreg_ac, Lreg_ae = behavioral_glm(df)
     weights_ac = Lreg_ac.coef_
     weights_ae = Lreg_ae.coef_
@@ -775,16 +799,17 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     plt.close(f)
 
     # NEURO-GLM
-    df = get_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-                            chck_corr=False, lags=lags, behav_neural='neural')
+    df = compute_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
+                                chck_corr=False, lags=lags, behav_neural='neural')
     # build data set
     not_nan_indx = df['R_response'].notna()
 
     # after correct/error regressors
+    ac_cols, ae_cols, _ = get_regressors(behav_neural='neural')
     X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
-                     afterc_cols_n].fillna(value=0)
+                     ac_cols].fillna(value=0)
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
-                     aftere_cols_n].fillna(value=0)
+                     ae_cols].fillna(value=0)
     num_neurons = num_units  # XXX: for exps this should be 1
     for rgrs in list(X_df_ac):
         X_df_ac[rgrs] = X_df_ac[rgrs]/np.max(X_df_ac[rgrs])
@@ -874,29 +899,6 @@ def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
 
 
 if __name__ == '__main__':
-    # model_cols_n = ['evidence',
-    #                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-    #                 'L+5', 'L-5', 'L+6-10', 'L-6-10',
-    #                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-    #                 'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-    #                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-    #                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-    #                 'intercept', 'trans_bias', 'curr_ch']
-    # model_cols_b = ['evidence',
-    #                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-    #                 'L+5', 'L-5', 'L+6-10', 'L-6-10',
-    #                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-    #                 'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-    #                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-    #                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
-
-    model_cols_n = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias',
-                    'curr_ch']
-    model_cols_b = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
-
-    afterc_cols_n, aftere_cols_n = remove_regressors(model_cols_n)
-    afterc_cols_b, aftere_cols_b = remove_regressors(model_cols_b)
-
     plt.close('all')
     exps_nets = 'nets'
     analysis_type = 'dpca'

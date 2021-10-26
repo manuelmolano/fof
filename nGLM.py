@@ -33,30 +33,6 @@ azul_2 = np.array([56, 108, 176])/255
 rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
-model_cols_n = ['evidence',
-                'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-                'L+5', 'L-5', 'L+6-10', 'L-6-10',
-                'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-                'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-                'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-                'intercept', 'trans_bias', 'curr_ch']
-afterc_cols_n = [x for x in model_cols_n if x not in ['L+2', 'L-1', 'L-2', 'T+-1',
-                                                      'T--1']]
-aftere_cols_n = [x for x in model_cols_n if x not in ['L+1', 'T++1', 'T-+1', 'L+2',
-                                                      'L-2']]
-model_cols_b = ['evidence',
-                'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-                'L+5', 'L-5', 'L+6-10', 'L-6-10',
-                'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-                'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-                'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
-afterc_cols_b = [x for x in model_cols_b if x not in ['L+2', 'L-1', 'L-2',
-                                                      'T+-1', 'T--1']]
-aftere_cols_b = [x for x in model_cols_b if x not in ['L+1', 'T++1', 'T-+1', 'L+2',
-                                                      'L-2']]
-
 
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
     f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharey=True)
@@ -303,6 +279,14 @@ def filter_regressors(regrs):
     return np.unique([x[:-3] for x in regrs if ('6-10' not in x) and
                       ('5' not in x) and ('4' not in x) and
                       (not x.startswith('intercept'))])
+
+
+def remove_regressors(cols):
+    afterc_cols = [x for x in cols if x not in ['L+2', 'L-1', 'L-2',
+                                                'T+-1', 'T--1']]
+    aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1',
+                                                'L+2', 'L-2']]
+    return afterc_cols, aftere_cols
 
 
 def get_vars(data, fix_tms):
@@ -890,6 +874,29 @@ def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
 
 
 if __name__ == '__main__':
+    # model_cols_n = ['evidence',
+    #                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+    #                 'L+5', 'L-5', 'L+6-10', 'L-6-10',
+    #                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+    #                 'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+    #                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+    #                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+    #                 'intercept', 'trans_bias', 'curr_ch']
+    # model_cols_b = ['evidence',
+    #                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+    #                 'L+5', 'L-5', 'L+6-10', 'L-6-10',
+    #                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+    #                 'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+    #                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+    #                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
+
+    model_cols_n = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias',
+                    'curr_ch']
+    model_cols_b = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
+
+    afterc_cols_n, aftere_cols_n = remove_regressors(model_cols_n)
+    afterc_cols_b, aftere_cols_b = remove_regressors(model_cols_b)
+
     plt.close('all')
     exps_nets = 'nets'
     analysis_type = 'dpca'

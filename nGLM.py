@@ -528,22 +528,23 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     df.loc[df.hit == 1, 'L-1'] = 0
     df['L-1'] = df['L-1'].shift(1)
     df.loc[df.origidx == 1, 'L-1'] = np.nan
-    # shifts
-    for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
-        df['L+'+str(item)] = df['L+'+str(item-1)].shift(1)
-        df['L-'+str(item)] = df['L-'+str(item-1)].shift(1)
-        df.loc[df.origidx == 1, 'L+'+str(item)] = np.nan
-        df.loc[df.origidx == 1, 'L-'+str(item)] = np.nan
+    if GLM_VER == 'full':
+        # shifts
+        for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
+            df['L+'+str(item)] = df['L+'+str(item-1)].shift(1)
+            df['L-'+str(item)] = df['L-'+str(item-1)].shift(1)
+            df.loc[df.origidx == 1, 'L+'+str(item)] = np.nan
+            df.loc[df.origidx == 1, 'L-'+str(item)] = np.nan
 
-    # add from 6 to 10, assign them and drop prev cols cols
-    cols_lp = ['L+'+str(x) for x in range(6, 11)]
-    cols_ln = ['L-'+str(x) for x in range(6, 11)]
+        # add from 6 to 10, assign them and drop prev cols cols
+        cols_lp = ['L+'+str(x) for x in range(6, 11)]
+        cols_ln = ['L-'+str(x) for x in range(6, 11)]
 
-    df['L+6-10'] = np.nansum(df[cols_lp].values, axis=1)
-    df['L-6-10'] = np.nansum(df[cols_ln].values, axis=1)
-    df.drop(cols_lp+cols_ln, axis=1, inplace=True)
-    df.loc[df.origidx <= 6, 'L+6-10'] = np.nan
-    df.loc[df.origidx <= 6, 'L-6-10'] = np.nan
+        df['L+6-10'] = np.nansum(df[cols_lp].values, axis=1)
+        df['L-6-10'] = np.nansum(df[cols_ln].values, axis=1)
+        df.drop(cols_lp+cols_ln, axis=1, inplace=True)
+        df.loc[df.origidx <= 6, 'L+6-10'] = np.nan
+        df.loc[df.origidx <= 6, 'L-6-10'] = np.nan
 
     # pre transition module
     df.loc[df.origidx == 1, 'rep_response'] = np.nan
@@ -558,66 +559,71 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df.loc[(df.aftererror == 0) & (df.hit == 1), 'rep_response_11']
     df.loc[(df.aftererror == 1) | (df.hit == 0), 'T++1'] = 0
     df['T++1'] = df['T++1'].shift(1)
-    zt_comps = df['T++1']  # .shift(1)
-    df['T+-1'] = np.nan  # np.nan
-    df.loc[(df.aftererror == 0) & (df.hit == 0), 'T+-1'] =\
-        df.loc[(df.aftererror == 0) & (df.hit == 0), 'rep_response_11']
-    df.loc[(df.aftererror == 1) | (df.hit == 1), 'T+-1'] = 0
-    df['T+-1'] = df['T+-1'].shift(1)
-
-    df['T-+1'] = np.nan  # np.nan
-    df.loc[(df.aftererror == 1) & (df.hit == 1), 'T-+1'] =\
-        df.loc[(df.aftererror == 1) & (df.hit == 1), 'rep_response_11']
-    df.loc[(df.aftererror == 0) | (df.hit == 0), 'T-+1'] = 0
-    df['T-+1'] = df['T-+1'].shift(1)
-
-    df['T--1'] = np.nan  # np.nan
-    df.loc[(df.aftererror == 1) & (df.hit == 0), 'T--1'] =\
-        df.loc[(df.aftererror == 1) & (df.hit == 0), 'rep_response_11']
-    df.loc[(df.aftererror == 0) | (df.hit == 1), 'T--1'] = 0
-    df['T--1'] = df['T--1'].shift(1)
-
-    # shifts now
-    for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
-        df['T++'+str(item)] = df['T++'+str(item-1)].shift(1)
-        df['T+-'+str(item)] = df['T+-'+str(item-1)].shift(1)
-        df['T-+'+str(item)] = df['T-+'+str(item-1)].shift(1)
-        df['T--'+str(item)] = df['T--'+str(item-1)].shift(1)
-        df.loc[df.origidx == 1, 'T++'+str(item)] = np.nan
-        df.loc[df.origidx == 1, 'T+-'+str(item)] = np.nan
-        df.loc[df.origidx == 1, 'T-+'+str(item)] = np.nan
-        df.loc[df.origidx == 1, 'T--'+str(item)] = np.nan
-
-    cols_tpp = ['T++'+str(x) for x in range(6, 11)]
-    # cols_tpp = [x for x in df.columns if x.startswith('T++')]
-    cols_tpn = ['T+-'+str(x) for x in range(6, 11)]
-    # cols_tpn = [x for x in df.columns if x.startswith('T+-')]
-    cols_tnp = ['T-+'+str(x) for x in range(6, 11)]
-    # cols_tnp = [x for x in df.columns if x.startswith('T-+')]
-    cols_tnn = ['T--'+str(x) for x in range(6, 11)]
-    # cols_tnn = [x for x in df.columns if x.startswith('T--')]
-
-    df['T++6-10'] = np.nansum(df[cols_tpp].values, axis=1)
-    df['T+-6-10'] = np.nansum(df[cols_tpn].values, axis=1)
-    df['T-+6-10'] = np.nansum(df[cols_tnp].values, axis=1)
-    df['T--6-10'] = np.nansum(df[cols_tnn].values, axis=1)
-    df.drop(cols_tpp+cols_tpn+cols_tnp+cols_tnn, axis=1, inplace=True)
-    df.loc[df.origidx < 6, ['T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10']] =\
-        np.nan
-    # transforming transitions to left/right space
-    for col in [x for x in df.columns if x.startswith('T')]:
-        df[col] = df[col] * (df.R_response.shift(1)*2-1)
-        # {0 = Left; 1 = Right, nan=invalid}
-
+    if GLM_VER == 'full':
+        # T+-
+        df['T+-1'] = np.nan  # np.nan
+        df.loc[(df.aftererror == 0) & (df.hit == 0), 'T+-1'] =\
+            df.loc[(df.aftererror == 0) & (df.hit == 0), 'rep_response_11']
+        df.loc[(df.aftererror == 1) | (df.hit == 1), 'T+-1'] = 0
+        df['T+-1'] = df['T+-1'].shift(1)
+        # T-+
+        df['T-+1'] = np.nan  # np.nan
+        df.loc[(df.aftererror == 1) & (df.hit == 1), 'T-+1'] =\
+            df.loc[(df.aftererror == 1) & (df.hit == 1), 'rep_response_11']
+        df.loc[(df.aftererror == 0) | (df.hit == 0), 'T-+1'] = 0
+        df['T-+1'] = df['T-+1'].shift(1)
+        # T--
+        df['T--1'] = np.nan  # np.nan
+        df.loc[(df.aftererror == 1) & (df.hit == 0), 'T--1'] =\
+            df.loc[(df.aftererror == 1) & (df.hit == 0), 'rep_response_11']
+        df.loc[(df.aftererror == 0) | (df.hit == 1), 'T--1'] = 0
+        df['T--1'] = df['T--1'].shift(1)
+        # shifts now
+        for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
+            df['T++'+str(item)] = df['T++'+str(item-1)].shift(1)
+            df['T+-'+str(item)] = df['T+-'+str(item-1)].shift(1)
+            df['T-+'+str(item)] = df['T-+'+str(item-1)].shift(1)
+            df['T--'+str(item)] = df['T--'+str(item-1)].shift(1)
+            df.loc[df.origidx == 1, 'T++'+str(item)] = np.nan
+            df.loc[df.origidx == 1, 'T+-'+str(item)] = np.nan
+            df.loc[df.origidx == 1, 'T-+'+str(item)] = np.nan
+            df.loc[df.origidx == 1, 'T--'+str(item)] = np.nan
+        # sum trans. from 6 to 10
+        cols_tpp = ['T++'+str(x) for x in range(6, 11)]
+        cols_tpn = ['T+-'+str(x) for x in range(6, 11)]
+        cols_tnp = ['T-+'+str(x) for x in range(6, 11)]
+        cols_tnn = ['T--'+str(x) for x in range(6, 11)]
+        df['T++6-10'] = np.nansum(df[cols_tpp].values, axis=1)
+        df['T+-6-10'] = np.nansum(df[cols_tpn].values, axis=1)
+        df['T-+6-10'] = np.nansum(df[cols_tnp].values, axis=1)
+        df['T--6-10'] = np.nansum(df[cols_tnn].values, axis=1)
+        df.drop(cols_tpp+cols_tpn+cols_tnp+cols_tnn, axis=1, inplace=True)
+        df.loc[df.origidx < 6, ['T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10']] =\
+            np.nan
+    # intercept
     df['intercept'] = 1
+
     # zT
     if behav_neural == 'neural':
+        zt_comps = df['T++1']
         limit = -krnl_len+1
         kernel = np.exp(-np.arange(krnl_len)/tau)
         zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
         df['trans_bias'] = zt*(df['L+1']+df['L-1'])
         df['curr_ch'] = df['L+1']+df['L-1']
         df['curr_ch'] = df['curr_ch'].shift(-1)
+        if GLM_VER == 'minimal':
+            df['zT'] = zt
+    elif behav_neural == 'behav':
+        # transforming transitions to left/right space
+        for col in [x for x in df.columns if x.startswith('T')]:
+            df[col] = df[col] * (df.R_response.shift(1)*2-1)
+        if GLM_VER == 'minimal':
+            zt_comps = df['T++1']
+            limit = -krnl_len+1
+            kernel = np.exp(-np.arange(krnl_len)/tau)
+            df['zT'] = np.convolve(zt_comps, kernel, mode='full')[0:limit]
+
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors
     if chck_corr:

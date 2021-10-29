@@ -19,6 +19,7 @@ import statsmodels.api as sm
 import scipy.stats as sstats
 from scipy.ndimage.interpolation import shift
 from sklearn.linear_model import LogisticRegression
+import plotting_functions as pf
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255
@@ -238,6 +239,7 @@ def plot_weights_distr(folder, lag):
     """
     data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
     idx_mat = data['idx_mat']
+    pvalues = data['pvalues']
     weights = data['weights']
     unq_regrs = np.unique(idx_mat)
     unq_regrs = filter_regressors(regrs=unq_regrs)
@@ -247,9 +249,9 @@ def plot_weights_distr(folder, lag):
     std_ws = []
     for i_r, rgrs in enumerate(unq_regrs):
         rgrs_ac = rgrs+'_ac'
-        w_ac = np.abs(weights[idx_mat == rgrs_ac])
+        w_ac = np.abs(weights[np.logical_and(idx_mat == rgrs_ac, pvalues < 0.01)])
         rgrs_ae = rgrs+'_ae'
-        w_ae = np.abs(weights[idx_mat == rgrs_ae])
+        w_ae = np.abs(weights[np.logical_and(idx_mat == rgrs_ae, pvalues < 0.01)])
         ax[i_r].hist([w_ac, w_ae], 20)
         ax[i_r].set_title(rgrs)
         mean_ws.append([np.mean(w_ac), np.mean(w_ae)])
@@ -751,8 +753,8 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
 
 
-def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
-             redo=False, file_name='', **exp_data):
+def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
+         redo=False, **exp_data):
     """
     Compute both behavioral and neuro GLM.
 
@@ -787,67 +789,79 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     weights_mat: list
         list with the weights associated to the regressors in idx_max.
     """
-    file_name = folder+'/pvalues_'+str(lag)+'.npz'
-    lags = [lag, lag+1]
-    if exp_nets == 'exps':
-        raise Exception('Code for experimental data is not up to date')
-        assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
-        exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
-                 'fixtn_time': .3, 'margin_psth': 100, 'std_conv': 20}
-        exp_d.update(exp_data)
-        # select trials
-        e_data = exp_d['e_data']
-        evs, indx_good_evs = pp.preprocess_events(b_data=exp_d['b_data'],
-                                                  e_data=e_data,
-                                                  evs_mrgn=exp_d['evs_mrgn'],
-                                                  fixtn_time=exp_d['fixtn_time'],
-                                                  ev=exp_d['ev'])
-        # get spikes
-        # XXX: events could be filter here, but I do all the filtering below
-        # filt_evs = evs[indx_good_evs]
-        spk_tms = e_data['spks'][e_data['clsts'] == exp_d['cl']][:, None]
-        states = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
-                            plot=False)
-        # XXX: responses measured in the form of spike-counts
-        states = np.array([len(r) for r in states['aligned_spks']])
-    else:
-        indx_good_evs = None
-        # get and put together files
-        datasets = glob.glob(folder+'data_*')
-        data = {'choice': [], 'performance': [], 'prev_perf': [],
-                'states': np.empty((0, num_units)), 'signed_evidence': []}
-        print('Experiment '+folder)
-        print('Loading '+str(len(datasets))+' datasets')
-        for f in datasets:
-            data_tmp = np.load(f, allow_pickle=1)
-            fix_tms = get_fixation_times(data=data_tmp, lags=lags)
-            ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
-            data['choice'] += ch.tolist()
-            data['performance'] += perf.tolist()
-            data['prev_perf'] += prev_perf.tolist()
-            data['signed_evidence'] += ev.tolist()
-            states = data_tmp['states']
-            states = states[:, int(states.shape[1]/2):]
-            states = sstats.zscore(states, axis=0)
-            states -= np.min(states, axis=0)
-            states = states[fix_tms+lag, :]
-            data['states'] = np.concatenate((data['states'],
-                                             states[:, :num_units]), axis=0)
+    n_file_name = folder+'/pvalues_'+str(lag)+'.npz'
+    b_file_name = folder+'/behav.npz'
+    if not os.path.exists(b_file_name) or not os.path.exists(n_file_name) or redo:
+        lags = [lag, lag+1]
+        if exp_nets == 'exps':
+            raise Exception('Code for experimental data is not up to date')
+            assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
+            exp_d = {'ev': 'stim_ttl_strt', 'evs_mrgn': 1e-2, 'plot': False,
+                     'fixtn_time': .3, 'margin_psth': 100, 'std_conv': 20}
+            exp_d.update(exp_data)
+            # select trials
+            e_data = exp_d['e_data']
+            evs, indx_good_evs =\
+                pp.preprocess_events(b_data=exp_d['b_data'], e_data=e_data,
+                                     evs_mrgn=exp_d['evs_mrgn'], ev=exp_d['ev'],
+                                     fixtn_time=exp_d['fixtn_time'])
+            # get spikes
+            # XXX: events could be filter here, but I do all the filtering below
+            # filt_evs = evs[indx_good_evs]
+            spk_tms = e_data['spks'][e_data['clsts'] == exp_d['cl']][:, None]
+            states = ut.scatter(spk_tms=spk_tms, evs=evs, margin_psth=margin_psth,
+                                plot=False)
+            # XXX: responses measured in the form of spike-counts
+            states = np.array([len(r) for r in states['aligned_spks']])
+        else:
+            indx_good_evs = None
+            # get and put together files
+            datasets = glob.glob(folder+'data_*')
+            data = {'choice': [], 'performance': [], 'prev_perf': [],
+                    'states': np.empty((0, num_units)), 'signed_evidence': []}
+            print('Experiment '+folder)
+            print('Loading '+str(len(datasets))+' datasets')
+            for f in datasets:
+                data_tmp = np.load(f, allow_pickle=1)
+                fix_tms = get_fixation_times(data=data_tmp, lags=lags)
+                ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
+                data['choice'] += ch.tolist()
+                data['performance'] += perf.tolist()
+                data['prev_perf'] += prev_perf.tolist()
+                data['signed_evidence'] += ev.tolist()
+                states = data_tmp['states']
+                states = states[:, int(states.shape[1]/2):]
+                states = sstats.zscore(states, axis=0)
+                states -= np.min(states, axis=0)
+                states = states[fix_tms+lag, :]
+                data['states'] = np.concatenate((data['states'],
+                                                 states[:, :num_units]), axis=0)
 
-        for k in data.keys():
-            data[k] = np.array(data[k])
-    # BEHAVIORAL GLM
-    df = compute_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-                                chck_corr=False, lags=lags, behav_neural='behav')
-    Lreg_ac, Lreg_ae = behavioral_glm(df)
-    weights_ac = Lreg_ac.coef_
-    weights_ae = Lreg_ae.coef_
-    f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-    plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0],
-                     behav_neural='behav')
-    save_fig(f=f, name=folder+'/behav_GLM'+FIGS_VER+'.png')
-    plt.close(f)
-    if not os.path.exists(file_name) or redo:
+            for k in data.keys():
+                data[k] = np.array(data[k])
+    if not os.path.exists(b_file_name) or redo:
+        # BEHAVIORAL GLM
+        df = compute_GLM_regressors(data=data, exp_nets=exp_nets,
+                                    mask=indx_good_evs, chck_corr=False,
+                                    lags=lags, behav_neural='behav')
+        Lreg_ac, Lreg_ae = behavioral_glm(df)
+        weights_ac = Lreg_ac.coef_
+        weights_ae = Lreg_ae.coef_
+        xtcks = ['T++'+x for x in ['2', '3', '4', '5', '6-10']]
+        reset, _, _ = pf.compute_reset_index(weights_ac[None, :],
+                                             weights_ae[None, :],
+                                             xtcks=xtcks, full_reset_index=False)
+        data_bhv = {'weights_ac': weights_ac, 'weights_ae': weights_ae,
+                    'reset': reset}
+        np.savez(b_file_name, **data_bhv)
+
+        f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+        plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0],
+                         behav_neural='behav')
+        ax[0].set_title(str(np.round(reset, 3)))
+        save_fig(f=f, name=folder+'/behav_GLM'+FIGS_VER+'.png')
+        plt.close(f)
+    if not os.path.exists(n_file_name) or redo:
         # NEURO-GLM
         df = compute_GLM_regressors(data=data, exp_nets=exp_nets,
                                     mask=indx_good_evs, chck_corr=False,
@@ -900,7 +914,7 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             # asdasd
         data = {'idx_mat': idx_mat, 'pvalues': pvalues,
                 'weights': weights_mat}
-        np.savez(file_name, **data)
+        np.savez(n_file_name, **data)
 
 
 def batch_neuroGLM(main_folder, lag=0, redo=False):
@@ -908,55 +922,94 @@ def batch_neuroGLM(main_folder, lag=0, redo=False):
     if not os.path.exists(neural_folder):
         os.mkdir(neural_folder)
     # seeds = [[0, 2], np.arange(12, 16)]  # seeds 1, 3 for nch=2 don't do the task
-    seeds = [np.arange(12, 16)]
+    seeds = [np.arange(16)]
     for i_n, n_ch in enumerate([16]):  # [2, 16]):
         f_lp_ln, ax_lp_ln = plt.subplots(ncols=2)
-        f_perc, ax_perc = plt.subplots()
-        f_ws, ax_ws = plt.subplots()
-        ax_perc.set_title('Percentages '+str(n_ch))
-        ax_ws.set_title('Weights '+str(n_ch))
         mean_percs = []
         mean_weights = []
+        reset_mat = []
         sds = seeds[i_n]
         for seed in sds:
             folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
                 '/test_2AFC_activity/'
-            neuroGLM(folder=folder, exp_nets='nets', plt=False, lag=lag,
-                     num_units=1024, redo=redo)
+            GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
+                 num_units=1024, redo=redo)
             perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag)
             mean_percs.append([perc_ac, perc_ae])
             mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag)
             mean_weights.append(mean_ws)
             plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
+            beahv_data = np.load(folder+'/behav.npz')
+            reset_mat.append(beahv_data['reset'])
         xs = np.arange(len(labels))
+        # plot mean percentages
         mean_percs = np.array(mean_percs)
         m_p = np.mean(mean_percs, axis=0)
         std_p = np.std(mean_percs, axis=0)
+        f_perc, ax_perc = plt.subplots()
+        ax_perc.set_title('Percentages '+str(n_ch))
         ax_perc.errorbar(xs, m_p[0], std_p[0], marker='+',
                          linestyle='none', label='After correct')
         ax_perc.errorbar(xs, m_p[1], std_p[1], marker='+',
                          linestyle='none', label='After error')
-
-        mean_weights = np.array(mean_weights)
-        m_w = np.mean(mean_weights, axis=0).T
-        std_w = np.std(mean_weights, axis=0).T
-        ax_ws.errorbar(xs, m_w[0], std_w[0], marker='+',
-                       linestyle='none', label='After correct')
-        ax_ws.errorbar(xs, m_w[1], std_w[1], marker='+',
-                       linestyle='none', label='After error')
         ax_perc.set_xticks(xs)
         ax_perc.set_xticklabels(labels)
         ax_perc.legend()
         ax_perc.set_ylim([0, 100])
+        # plot mean percentages VS reset
+        f_perc_vs_res, ax_perc_vs_res = plt.subplots(ncols=len(labels),
+                                                     figsize=(12, 3))
+        for i_p in range(len(labels)):
+            ax_perc_vs_res[i_p].plot(mean_percs[:, 0, i_p], reset_mat, '.')
+            ax_perc_vs_res[i_p].plot(mean_percs[:, 1, i_p], reset_mat, '.')
+            corr_ac = np.corrcoef(mean_percs[:, 0, i_p], reset_mat)[0, 1]
+            corr_ae = np.corrcoef(mean_percs[:, 1, i_p], reset_mat)[0, 1]
+            ax_perc_vs_res[i_p].set_title(' corr. after corr.: ' +
+                                          str(np.round(corr_ac, 3)) +
+                                          ' / after err.: ' +
+                                          str(np.round(corr_ae, 3)))
+            ax_perc_vs_res[i_p].set_xlabel(labels[i_p]+' mean weight')
+            ax_perc_vs_res[i_p].set_ylabel('Reset Index')
+        # plot mean weights
+        mean_weights = np.array(mean_weights)
+        m_w = np.mean(mean_weights, axis=0).T
+        std_w = np.std(mean_weights, axis=0).T
+        f_ws, ax_ws = plt.subplots()
+        ax_ws.set_title('Weights '+str(n_ch))
+        ax_ws.errorbar(xs, m_w[0], std_w[0], marker='+',
+                       linestyle='none', label='After correct')
+        ax_ws.errorbar(xs, m_w[1], std_w[1], marker='+',
+                       linestyle='none', label='After error')
         ax_ws.set_xticks(xs)
         ax_ws.set_xticklabels(labels)
         ax_ws.legend()
+        # plot mean percentages VS reset
+        f_ws_vs_res, ax_ws_vs_res = plt.subplots(ncols=len(labels),
+                                                 figsize=(12, 3))
+        for i_p in range(len(labels)):
+            ax_ws_vs_res[i_p].plot(mean_weights[:, i_p, 0], reset_mat, '.')
+            ax_ws_vs_res[i_p].plot(mean_weights[:, i_p, 1], reset_mat, '.')
+            corr_ac = np.corrcoef(mean_weights[:, i_p, 0], reset_mat)[0, 1]
+            corr_ae = np.corrcoef(mean_weights[:, i_p, 1], reset_mat)[0, 1]
+            ax_ws_vs_res[i_p].set_title(' corr. after corr.: ' +
+                                        str(np.round(corr_ac, 3)) +
+                                        ' / after err.: ' +
+                                        str(np.round(corr_ae, 3)))
+            ax_ws_vs_res[i_p].set_xlabel(labels[i_p]+' mean weight')
+            if i_p == 0:
+                ax_ws_vs_res[i_p].set_ylabel('Reset Index')
+
+        # plot mean weights
         save_fig(f=f_lp_ln, name=neural_folder+'/p_vs_n_'+str(n_ch)+'_' +
                  str(lag)+FIGS_VER+'.png')
         save_fig(f=f_perc, name=neural_folder+'/perc_sign_'+str(n_ch)+'_' +
                  str(lag)+FIGS_VER+'.png')
         save_fig(f=f_ws, name=neural_folder+'/weights_'+str(n_ch)+'_' +
                  str(lag)+FIGS_VER+'.png')
+        save_fig(f=f_ws_vs_res, name=neural_folder+'/weights_vs_res_' +
+                 str(n_ch)+'_'+str(lag)+FIGS_VER+'.png')
+        save_fig(f=f_perc_vs_res, name=neural_folder+'/perc_vs_res_' +
+                 str(n_ch)+'_'+str(lag)+FIGS_VER+'.png')
 
 
 def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
@@ -990,8 +1043,8 @@ def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
                     cl_qlt = e_data['clstrs_qlt'][i_cl]
                     if cl_qlt in sel_qlts:
                         for i_e, ev in enumerate(ev_keys):
-                            neuroGLM(b_data=b_data, e_data=e_data, ev=ev, cl=cl,
-                                     std_conv=std_conv, margin_psth=margin_psth)
+                            GLMs(b_data=b_data, e_data=e_data, ev=ev, cl=cl,
+                                 std_conv=std_conv, margin_psth=margin_psth)
                             plt.title(session)
         # name = ''.join([i[0]+str(i[1]) for i in conditioning.items()])
         # f.savefig(sv_folder+name+'.png')

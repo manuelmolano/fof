@@ -64,7 +64,7 @@ def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
         for i in range(4):
             ax_tmp[i].set_ylabel('Weight '+regrss[i])
     elif GLM_VER == 'minimal':
-        # EVIDENCE
+        # zT
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
                      regressors=['zT'], ax=ax[0:1],
                      behav_neural=behav_neural)
@@ -80,10 +80,12 @@ def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
     regrss = ['L+', 'L-']
     ax[2].set_ylabel('Weight L+')
     ax[6].set_ylabel('Weight L-')
-    # EVIDENCE
-    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                 regressors=['evidence'], ax=ax[3:4], behav_neural=behav_neural)
-    ax[3].set_ylabel('Weight evidence')
+    if GLM_VER == 'full':
+        # EVIDENCE
+        plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                     regressors=['evidence'], ax=ax[3:4],
+                     behav_neural=behav_neural)
+        ax[3].set_ylabel('Weight evidence')
     # TRANSITION-BIAS
     if behav_neural == 'neural':
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,

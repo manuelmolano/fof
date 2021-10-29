@@ -38,6 +38,10 @@ GLM_VER = 'minimal'
 FIGS_VER = '_minimal'
 
 
+def save_fig(f, name):
+    f.tight_layout()
+    f.savefig(name, dpi=400, bbox_inches='tight')
+
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
     f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharey=True)
     if ncols == 1 and nrows == 1:
@@ -210,9 +214,7 @@ def plt_p_VS_n(folder, lag, ax=None):
     ax[1].set_ylabel('Transition-bias -')
 
     if save_fig:
-        f.tight_layout()
-        f.savefig(folder+'/p_VS_n_'+str(lag)+FIGS_VER+'.png', dpi=400,
-                  bbox_inches='tight')
+        save_fig(f=f, name=folder+'/p_VS_n_'+str(lag)+FIGS_VER+'.png')
 
 
 def plot_weights_distr(folder, lag):
@@ -251,9 +253,7 @@ def plot_weights_distr(folder, lag):
         std_ws.append([np.std(w_ac), np.std(w_ae)])
 
     # ax[0].legend()
-    fig.tight_layout()
-    fig.savefig(folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png', dpi=400,
-                bbox_inches='tight')
+    save_fig(f=fig, name=folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png')
     plt.close(fig)
     return mean_ws, std_ws
 
@@ -309,9 +309,7 @@ def plot_perc_sign(folder, lag):
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.legend()
-    fig.tight_layout()
-    fig.savefig(folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png',
-                dpi=400, bbox_inches='tight')
+    save_fig(f=fig, name=folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png')
     plt.close(fig)
     return perc_ac, perc_ae, labels
 
@@ -843,8 +841,7 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0],
                      behav_neural='behav')
-    f.savefig(folder+'/behav_GLM'+FIGS_VER+'.png', dpi=400,
-              bbox_inches='tight')
+    save_fig(f=f, name=folder+'/behav_GLM'+FIGS_VER+'.png')
     plt.close(f)
 
     # NEURO-GLM
@@ -906,7 +903,10 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
 
 
 def batch_neuroGLM(main_folder, lag=0, redo=False):
-    seeds = [[0, 2], [12, 13, 14, 15]]  # seed 1 and 3 for n-ch=2 don't do the task
+    neural_folder = main_folder+'/neural_analysys/'
+    if not os.path.exists(neural_folder):
+        os.mkdir(neural_folder)
+    seeds = [[0, 2], np.arange(16)]  # seed 1 and 3 for n-ch=2 don't do the task
     for i_n, n_ch in enumerate([2, 16]):
         f_lp_ln, ax_lp_ln = plt.subplots(ncols=2)
         f_perc, ax_perc = plt.subplots()
@@ -956,6 +956,12 @@ def batch_neuroGLM(main_folder, lag=0, redo=False):
         ax_ws.set_xticks(xs)
         ax_ws.set_xticklabels(labels)
         ax_ws.legend()
+        save_fig(f=f_lp_ln, name=neural_folder+'/p_vs_n_'+str(n_ch)+'_' +
+                 str(lag)+FIGS_VER+'.png')
+        save_fig(f=f_perc, name=neural_folder+'/perc_sign_'+str(n_ch)+'_' +
+                 str(lag)+FIGS_VER+'.png')
+        save_fig(f=f_ws, name=neural_folder+'/weights_'+str(n_ch)+'_' +
+                 str(lag)+FIGS_VER+'.png')
 
 
 def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,

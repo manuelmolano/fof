@@ -34,13 +34,14 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
-GLM_VER = 'minimal'
+GLM_VER = {'neural': 'minimal', 'behav': 'full'}
 FIGS_VER = '_minimal'
 
 
 def save_fig(f, name):
     f.tight_layout()
     f.savefig(name, dpi=400, bbox_inches='tight')
+
 
 def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
     f, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharey=True)
@@ -56,14 +57,14 @@ def get_fig(ncols=2, nrows=2, figsize=(8, 6)):
 
 def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
     # TRANSITION WEIGHTS
-    if GLM_VER == 'full':
+    if GLM_VER[behav_neural] == 'full':
         regrss = ['T++', 'T-+', 'T+-', 'T--']
         ax_tmp = np.array([ax[0:2], ax[4:6]]).flatten()
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
                      regressors=regrss, ax=ax_tmp, behav_neural=behav_neural)
         for i in range(4):
             ax_tmp[i].set_ylabel('Weight '+regrss[i])
-    elif GLM_VER == 'minimal':
+    elif GLM_VER[behav_neural] == 'minimal':
         # zT
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
                      regressors=['zT'], ax=ax[0:1],
@@ -80,7 +81,7 @@ def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
     regrss = ['L+', 'L-']
     ax[2].set_ylabel('Weight L+')
     ax[6].set_ylabel('Weight L-')
-    if GLM_VER == 'full':
+    if GLM_VER[behav_neural] == 'full':
         # EVIDENCE
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
                      regressors=['evidence'], ax=ax[3:4],
@@ -323,7 +324,7 @@ def filter_regressors(regrs):
 
 
 def get_regressors(behav_neural):
-    if GLM_VER == 'full':
+    if GLM_VER[behav_neural] == 'full':
         if behav_neural == 'neural':
             cols = ['evidence',
                     'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
@@ -342,7 +343,7 @@ def get_regressors(behav_neural):
                     'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
                     'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
                     'intercept']
-    elif GLM_VER == 'minimal':
+    elif GLM_VER[behav_neural] == 'minimal':
         if behav_neural == 'neural':
             cols = ['L+1', 'L-1', 'zT', 'intercept', 'trans_bias']  # 'evidence',
             # 'curr_ch']
@@ -567,7 +568,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     df.loc[df.hit == 1, 'L-1'] = 0
     df['L-1'] = df['L-1'].shift(1)
     df.loc[df.origidx == 1, 'L-1'] = np.nan
-    if GLM_VER == 'full':
+    if GLM_VER[behav_neural] == 'full':
         # shifts
         for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
             df['L+'+str(item)] = df['L+'+str(item-1)].shift(1)
@@ -598,7 +599,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df.loc[(df.aftererror == 0) & (df.hit == 1), 'rep_response_11']
     df.loc[(df.aftererror == 1) | (df.hit == 0), 'T++1'] = 0
     df['T++1'] = df['T++1'].shift(1)
-    if GLM_VER == 'full':
+    if GLM_VER[behav_neural] == 'full':
         # T+-
         df['T+-1'] = np.nan  # np.nan
         df.loc[(df.aftererror == 0) & (df.hit == 0), 'T+-1'] =\
@@ -651,13 +652,13 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df['trans_bias'] = zt*(df['L+1']+df['L-1'])
         # df['curr_ch'] = df['L+1']+df['L-1']
         # df['curr_ch'] = df['curr_ch'].shift(-1)
-        if GLM_VER == 'minimal':
+        if GLM_VER[behav_neural] == 'minimal':
             df['zT'] = zt
     elif behav_neural == 'behav':
         # transforming transitions to left/right space
         for col in [x for x in df.columns if x.startswith('T')]:
             df[col] = df[col] * (df.R_response.shift(1)*2-1)
-        if GLM_VER == 'minimal':
+        if GLM_VER[behav_neural] == 'minimal':
             zt_comps = df['T++1']
             limit = -krnl_len+1
             kernel = np.exp(-np.arange(krnl_len)/tau)
@@ -751,7 +752,7 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
 
 
 def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
-             **exp_data):
+             redo=False, file_name='', **exp_data):
     """
     Compute both behavioral and neuro GLM.
 
@@ -786,6 +787,7 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     weights_mat: list
         list with the weights associated to the regressors in idx_max.
     """
+    file_name = folder+'/pvalues_'+str(lag)+'.npz'
     lags = [lag, lag+1]
     if exp_nets == 'exps':
         raise Exception('Code for experimental data is not up to date')
@@ -845,63 +847,60 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                      behav_neural='behav')
     save_fig(f=f, name=folder+'/behav_GLM'+FIGS_VER+'.png')
     plt.close(f)
+    if not os.path.exists(file_name) or redo:
+        # NEURO-GLM
+        df = compute_GLM_regressors(data=data, exp_nets=exp_nets,
+                                    mask=indx_good_evs, chck_corr=False,
+                                    lags=lags, behav_neural='neural')
+        # build data set
+        not_nan_indx = df['R_response'].notna()
 
-    # NEURO-GLM
-    df = compute_GLM_regressors(data=data, exp_nets=exp_nets, mask=indx_good_evs,
-                                chck_corr=False, lags=lags, behav_neural='neural')
-    # build data set
-    not_nan_indx = df['R_response'].notna()
+        # after correct/error regressors
+        ac_cols, ae_cols, _ = get_regressors(behav_neural='neural')
+        X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
+                         ac_cols].fillna(value=0)
+        X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
+                         ae_cols].fillna(value=0)
+        num_neurons = num_units  # XXX: for exps this should be 1
 
-    # after correct/error regressors
-    ac_cols, ae_cols, _ = get_regressors(behav_neural='neural')
-    X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
-                     ac_cols].fillna(value=0)
-    X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
-                     ae_cols].fillna(value=0)
-    num_neurons = num_units  # XXX: for exps this should be 1
-    # for rgrs in list(X_df_ac):
-    #     X_df_ac[rgrs] = X_df_ac[rgrs]/np.max(X_df_ac[rgrs])
-    #     print('-------')
-    #     print(rgrs)
-    #     print(np.max(X_df_ac[rgrs]))
-    #     print(np.min(X_df_ac[rgrs]))
-
-    if plot:
-        f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
-        f.suptitle(str(lag))
-    idx_mat = []
-    weights_mat = []
-    pvalues = []
-    for i_n in range(num_neurons):
-        # print('Neuron ', i_n)
-        # AFTER CORRECT
-        resps_ac = data['states'][np.logical_and((df.aftererror == 0),
-                                                 not_nan_indx).values, i_n]
-        exog, endog = sm.add_constant(X_df_ac), resps_ac
-        mod = sm.GLM(endog, exog,
-                     family=sm.families.Poisson(link=sm.families.links.log))
-        res = mod.fit()
-        weights_ac = res.params
-        idx_mat += [x+'_ac' for x in res.pvalues.index]
-        pvalues += list(res.pvalues)
-        weights_mat += list(weights_ac)
-        # AFTER ERROR
-        resps_ae = data['states'][np.logical_and((df.aftererror == 1),
-                                                 not_nan_indx).values, i_n]
-        exog, endog = sm.add_constant(X_df_ae), resps_ae
-        mod = sm.GLM(endog, exog,
-                     family=sm.families.Poisson(link=sm.families.links.log))
-        res = mod.fit()
-        weights_ae = res.params
-        idx_mat += [x+'_ae' for x in res.pvalues.index]
-        pvalues += list(res.pvalues)
-        weights_mat += list(weights_ae)
         if plot:
-            plot_all_weights(ax=ax, weights_ac=weights_ac.values,
-                             weights_ae=weights_ae.values)
-        # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
-        # asdasd
-    return idx_mat, pvalues, weights_mat
+            f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
+            f.suptitle(str(lag))
+        idx_mat = []
+        weights_mat = []
+        pvalues = []
+        for i_n in range(num_neurons):
+            # print('Neuron ', i_n)
+            # AFTER CORRECT
+            resps_ac = data['states'][np.logical_and((df.aftererror == 0),
+                                                     not_nan_indx).values, i_n]
+            exog, endog = sm.add_constant(X_df_ac), resps_ac
+            mod = sm.GLM(endog, exog,
+                         family=sm.families.Poisson(link=sm.families.links.log))
+            res = mod.fit()
+            weights_ac = res.params
+            idx_mat += [x+'_ac' for x in res.pvalues.index]
+            pvalues += list(res.pvalues)
+            weights_mat += list(weights_ac)
+            # AFTER ERROR
+            resps_ae = data['states'][np.logical_and((df.aftererror == 1),
+                                                     not_nan_indx).values, i_n]
+            exog, endog = sm.add_constant(X_df_ae), resps_ae
+            mod = sm.GLM(endog, exog,
+                         family=sm.families.Poisson(link=sm.families.links.log))
+            res = mod.fit()
+            weights_ae = res.params
+            idx_mat += [x+'_ae' for x in res.pvalues.index]
+            pvalues += list(res.pvalues)
+            weights_mat += list(weights_ae)
+            if plot:
+                plot_all_weights(ax=ax, weights_ac=weights_ac.values,
+                                 weights_ae=weights_ae.values)
+            # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
+            # asdasd
+        data = {'idx_mat': idx_mat, 'pvalues': pvalues,
+                'weights': weights_mat}
+        np.savez(file_name, **data)
 
 
 def batch_neuroGLM(main_folder, lag=0, redo=False):
@@ -922,15 +921,8 @@ def batch_neuroGLM(main_folder, lag=0, redo=False):
         for seed in sds:
             folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
                 '/test_2AFC_activity/'
-            file_name = folder+'/pvalues_'+str(lag)+'.npz'
-            if not os.path.exists(file_name) or redo:
-                idx_mat, pvalues, weights = neuroGLM(folder=folder,
-                                                     exp_nets='nets',
-                                                     plt=False, lag=lag,
-                                                     num_units=1024)
-                data = {'idx_mat': idx_mat, 'pvalues': pvalues,
-                        'weights': weights}
-                np.savez(file_name, **data)
+            neuroGLM(folder=folder, exp_nets='nets', plt=False, lag=lag,
+                     num_units=1024, redo=redo)
             perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag)
             mean_percs.append([perc_ac, perc_ae])
             mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag)
@@ -1036,7 +1028,7 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = True
+        redo = False
         print('Using lag: ', lag)
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
         batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo)

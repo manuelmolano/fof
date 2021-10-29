@@ -180,23 +180,39 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
     return f, kernel_ac, kernel_ae, xs_ac, xs_ae
 
 
-def plt_Lp_VS_Ln(folder, lag):
-    data = np.load(main_folder+'/pvalues_'+str(lag)+'.npz')
+def plt_p_VS_n(folder, lag, ax=None):
+    data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
     idx_mat = data['idx_mat']
     weights = data['weights']
-    f, ax = plt.subplots()
+    if ax is None:
+        f, ax = plt.subplots(ncols=2)
+        save_fig = True
+    else:
+        save_fig = False
     w_lp = weights[idx_mat == 'L+1_ac']
     w_lp = np.abs(w_lp)
     w_ln = weights[idx_mat == 'L-1_ae']
     w_ln = np.abs(w_ln)
-    ax.plot(w_lp, w_ln, '.')
-    ax.plot([np.min(w_lp), np.max(w_lp)], [np.min(w_lp), np.max(w_lp)],
-            '--k', lw=0.5)
-    ax.set_xlabel('L+1')
-    ax.set_ylabel('L-1')
-    f.tight_layout()
-    f.savefig(main_folder+'/Lp_VS_Ln_'+str(lag)+FIGS_VER+'.png', dpi=400,
-              bbox_inches='tight')
+    ax[0].plot(w_lp, w_ln, '.')
+    ax[0].plot([np.min(w_lp), np.max(w_lp)], [np.min(w_lp), np.max(w_lp)],
+               '--k', lw=0.5)
+    ax[0].set_xlabel('L+1')
+    ax[0].set_ylabel('L-1')
+
+    w_trbp = weights[idx_mat == 'trans_bias_ac']
+    w_trbp = np.abs(w_trbp)
+    w_trbn = weights[idx_mat == 'trans_bias_ae']
+    w_trbn = np.abs(w_trbn)
+    ax[1].plot(w_trbp, w_trbn, '.')
+    ax[1].plot([np.min(w_trbp), np.max(w_trbp)], [np.min(w_trbp), np.max(w_trbp)],
+               '--k', lw=0.5)
+    ax[1].set_xlabel('Transition-bias +')
+    ax[1].set_ylabel('Transition-bias -')
+
+    if save_fig:
+        f.tight_layout()
+        f.savefig(folder+'/p_VS_n_'+str(lag)+FIGS_VER+'.png', dpi=400,
+                  bbox_inches='tight')
 
 
 def plot_weights_distr(folder, lag):
@@ -215,25 +231,31 @@ def plot_weights_distr(folder, lag):
     None.
 
     """
-    data = np.load(main_folder+'/pvalues_'+str(lag)+'.npz')
+    data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
     idx_mat = data['idx_mat']
     weights = data['weights']
     unq_regrs = np.unique(idx_mat)
     unq_regrs = filter_regressors(regrs=unq_regrs)
     fig, ax = plt.subplots(nrows=4, ncols=5, figsize=(18, 12))
     ax = ax.flatten()
+    mean_ws = []
+    std_ws = []
     for i_r, rgrs in enumerate(unq_regrs):
         rgrs_ac = rgrs+'_ac'
-        w_ac = weights[idx_mat == rgrs_ac]
+        w_ac = np.abs(weights[idx_mat == rgrs_ac])
         rgrs_ae = rgrs+'_ae'
-        w_ae = weights[idx_mat == rgrs_ae]
+        w_ae = np.abs(weights[idx_mat == rgrs_ae])
         ax[i_r].hist([w_ac, w_ae], 20)
         ax[i_r].set_title(rgrs)
+        mean_ws.append([np.mean(w_ac), np.mean(w_ae)])
+        std_ws.append([np.std(w_ac), np.std(w_ae)])
 
     # ax[0].legend()
     fig.tight_layout()
-    fig.savefig(main_folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png', dpi=400,
+    fig.savefig(folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png', dpi=400,
                 bbox_inches='tight')
+    plt.close(fig)
+    return mean_ws, std_ws
 
 
 def plot_perc_sign(folder, lag):
@@ -252,7 +274,7 @@ def plot_perc_sign(folder, lag):
     None.
 
     """
-    data = np.load(main_folder+'/pvalues_'+str(lag)+'.npz')
+    data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
     idx_mat = data['idx_mat']
     pvalues = data['pvalues']
     perc_ac = []
@@ -288,8 +310,10 @@ def plot_perc_sign(folder, lag):
     ax.set_xticklabels(labels)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(main_folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png',
+    fig.savefig(folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png',
                 dpi=400, bbox_inches='tight')
+    plt.close(fig)
+    return perc_ac, perc_ae, labels
 
 
 def filter_regressors(regrs):
@@ -320,7 +344,7 @@ def get_regressors(behav_neural):
                     'intercept']
     elif GLM_VER == 'minimal':
         if behav_neural == 'neural':
-            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
+            cols = ['L+1', 'L-1', 'zT', 'intercept', 'trans_bias']  # 'evidence',
             # 'curr_ch']
         elif behav_neural == 'behav':
             cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
@@ -790,6 +814,8 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         datasets = glob.glob(folder+'data_*')
         data = {'choice': [], 'performance': [], 'prev_perf': [],
                 'states': np.empty((0, num_units)), 'signed_evidence': []}
+        print('Experiment '+folder)
+        print('Loading '+str(len(datasets))+' datasets')
         for f in datasets:
             data_tmp = np.load(f, allow_pickle=1)
             fix_tms = get_fixation_times(data=data_tmp, lags=lags)
@@ -803,7 +829,8 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             states = sstats.zscore(states, axis=0)
             states -= np.min(states, axis=0)
             states = states[fix_tms+lag, :]
-            data['states'] = np.concatenate((data['states'], states), axis=0)
+            data['states'] = np.concatenate((data['states'],
+                                             states[:, :num_units]), axis=0)
 
         for k in data.keys():
             data[k] = np.array(data[k])
@@ -816,7 +843,7 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
     plot_all_weights(ax=ax, weights_ac=weights_ac[0], weights_ae=weights_ae[0],
                      behav_neural='behav')
-    f.savefig(main_folder+'/behav_GLM'+FIGS_VER+'.png', dpi=400,
+    f.savefig(folder+'/behav_GLM'+FIGS_VER+'.png', dpi=400,
               bbox_inches='tight')
     plt.close(f)
 
@@ -833,12 +860,12 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
                      ae_cols].fillna(value=0)
     num_neurons = num_units  # XXX: for exps this should be 1
-    for rgrs in list(X_df_ac):
-        X_df_ac[rgrs] = X_df_ac[rgrs]/np.max(X_df_ac[rgrs])
-        print('-------')
-        print(rgrs)
-        print(np.max(X_df_ac[rgrs]))
-        print(np.min(X_df_ac[rgrs]))
+    # for rgrs in list(X_df_ac):
+    #     X_df_ac[rgrs] = X_df_ac[rgrs]/np.max(X_df_ac[rgrs])
+    #     print('-------')
+    #     print(rgrs)
+    #     print(np.max(X_df_ac[rgrs]))
+    #     print(np.min(X_df_ac[rgrs]))
 
     if plot:
         f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
@@ -847,7 +874,7 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     weights_mat = []
     pvalues = []
     for i_n in range(num_neurons):
-        print(i_n)
+        print('Neuron ', i_n)
         # AFTER CORRECT
         resps_ac = data['states'][np.logical_and((df.aftererror == 0),
                                                  not_nan_indx).values, i_n]
@@ -875,8 +902,60 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                              weights_ae=weights_ae.values)
         # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
         # asdasd
-    print(1)
     return idx_mat, pvalues, weights_mat
+
+
+def batch_neuroGLM(main_folder, lag=0, redo=False):
+    seeds = [[0, 2], [12, 13, 14, 15]]  # seed 1 and 3 for n-ch=2 don't do the task
+    for i_n, n_ch in enumerate([2, 16]):
+        f_lp_ln, ax_lp_ln = plt.subplots(ncols=2)
+        f_perc, ax_perc = plt.subplots()
+        f_ws, ax_ws = plt.subplots()
+        ax_perc.set_title('Percentages '+str(n_ch))
+        ax_ws.set_title('Weights '+str(n_ch))
+        mean_percs = []
+        mean_weights = []
+        sds = seeds[i_n]
+        for seed in sds:
+            folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
+                '/test_2AFC_activity/'
+            file_name = folder+'/pvalues_'+str(lag)+'.npz'
+            if not os.path.exists(file_name) or redo:
+                idx_mat, pvalues, weights = neuroGLM(folder=folder,
+                                                     exp_nets='nets',
+                                                     plt=False, lag=lag,
+                                                     num_units=1024)
+                data = {'idx_mat': idx_mat, 'pvalues': pvalues,
+                        'weights': weights}
+                np.savez(file_name, **data)
+            perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag)
+            mean_percs.append([perc_ac, perc_ae])
+            mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag)
+            mean_weights.append(mean_ws)
+            plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
+        xs = np.arange(len(labels))
+        mean_percs = np.array(mean_percs)
+        m_p = np.mean(mean_percs, axis=0)
+        std_p = np.std(mean_percs, axis=0)
+        ax_perc.errorbar(xs, m_p[0], std_p[0], marker='+',
+                         linestyle='none', label='After correct')
+        ax_perc.errorbar(xs, m_p[1], std_p[1], marker='+',
+                         linestyle='none', label='After error')
+
+        mean_weights = np.array(mean_weights)
+        m_w = np.mean(mean_weights, axis=0).T
+        std_w = np.std(mean_weights, axis=0).T
+        ax_ws.errorbar(xs, m_w[0], std_w[0], marker='+',
+                       linestyle='none', label='After correct')
+        ax_ws.errorbar(xs, m_w[1], std_w[1], marker='+',
+                       linestyle='none', label='After error')
+        ax_perc.set_xticks(xs)
+        ax_perc.set_xticklabels(labels)
+        ax_perc.legend()
+        ax_perc.set_ylim([0, 100])
+        ax_ws.set_xticks(xs)
+        ax_ws.set_xticklabels(labels)
+        ax_ws.legend()
 
 
 def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
@@ -948,18 +1027,7 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = True
+        redo = False
         print('Using lag: ', lag)
-        # main_folder = '/home/molano/Dropbox/project_Barna/FOF_project/' +\
-        #     'networks/pretrained_RNNs_N2_fina_models/test_2AFC_activity/'
-        main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
-            'alg_ACER_seed_1_n_ch_16/test_2AFC_activity/'
-        if not os.path.exists(main_folder+'/pvalues_'+str(lag)+'.npz') or redo:
-            idx_mat, pvalues, weights = neuroGLM(folder=main_folder,
-                                                 exp_nets='nets',
-                                                 plt=False, lag=lag)
-            data = {'idx_mat': idx_mat, 'pvalues': pvalues, 'weights': weights}
-            np.savez(main_folder+'/pvalues_'+str(lag)+'.npz', **data)
-        plot_perc_sign(folder=main_folder, lag=lag)
-        plot_weights_distr(folder=main_folder, lag=lag)
-        plt_Lp_VS_Ln(folder=main_folder, lag=lag)
+        main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
+        batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo)

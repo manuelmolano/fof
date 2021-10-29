@@ -873,7 +873,7 @@ def neuroGLM(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     weights_mat = []
     pvalues = []
     for i_n in range(num_neurons):
-        print('Neuron ', i_n)
+        # print('Neuron ', i_n)
         # AFTER CORRECT
         resps_ac = data['states'][np.logical_and((df.aftererror == 0),
                                                  not_nan_indx).values, i_n]

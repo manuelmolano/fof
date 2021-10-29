@@ -908,8 +908,9 @@ def batch_neuroGLM(main_folder, lag=0, redo=False):
     neural_folder = main_folder+'/neural_analysys/'
     if not os.path.exists(neural_folder):
         os.mkdir(neural_folder)
-    seeds = [[0, 2], np.arange(16)]  # seed 1 and 3 for n-ch=2 don't do the task
-    for i_n, n_ch in enumerate([2, 16]):
+    # seeds = [[0, 2], np.arange(12, 16)]  # seeds 1, 3 for nch=2 don't do the task
+    seeds = [np.arange(12, 16)]
+    for i_n, n_ch in enumerate([16]):  # [2, 16]):
         f_lp_ln, ax_lp_ln = plt.subplots(ncols=2)
         f_perc, ax_perc = plt.subplots()
         f_ws, ax_ws = plt.subplots()
@@ -1035,7 +1036,7 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = False
+        redo = True
         print('Using lag: ', lag)
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
         batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo)

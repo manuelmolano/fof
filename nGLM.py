@@ -36,7 +36,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'minimal', 'behav': 'full'}
-FIGS_VER = '_minimal'
+FIGS_VER = '_zT2'  # _minimal (<=29/10/21)
 
 
 def save_fig(f, name):
@@ -647,7 +647,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
 
     # zT
     if behav_neural == 'neural':
-        zt_comps = df['T++1']
+        zt_comps = df['T++1'].shift(1)
         limit = -krnl_len+1
         kernel = np.exp(-np.arange(krnl_len)/tau)
         zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
@@ -661,7 +661,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         for col in [x for x in df.columns if x.startswith('T')]:
             df[col] = df[col] * (df.R_response.shift(1)*2-1)
         if GLM_VER[behav_neural] == 'minimal':
-            zt_comps = df['T++1']
+            zt_comps = df['T++1'].shift(1)
             limit = -krnl_len+1
             kernel = np.exp(-np.arange(krnl_len)/tau)
             df['zT'] = np.convolve(zt_comps, kernel, mode='full')[0:limit]
@@ -789,8 +789,8 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     weights_mat: list
         list with the weights associated to the regressors in idx_max.
     """
-    n_file_name = folder+'/pvalues_'+str(lag)+'.npz'
-    b_file_name = folder+'/behav.npz'
+    n_file_name = folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz'
+    b_file_name = folder+'/behav_'+FIGS_VER+'.npz'
     if not os.path.exists(b_file_name) or not os.path.exists(n_file_name) or redo:
         lags = [lag, lag+1]
         if exp_nets == 'exps':

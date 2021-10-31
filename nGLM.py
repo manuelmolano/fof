@@ -194,9 +194,9 @@ def plt_p_VS_n(folder, lag, ax=None):
     weights = data['weights']
     if ax is None:
         f, ax = plt.subplots(ncols=2)
-        save_fig = True
+        sv_fig = True
     else:
-        save_fig = False
+        sv_fig = False
     w_lp = weights[idx_mat == 'L+1_ac']
     w_lp = np.abs(w_lp)
     w_ln = weights[idx_mat == 'L-1_ae']
@@ -217,7 +217,7 @@ def plt_p_VS_n(folder, lag, ax=None):
     ax[1].set_xlabel('Transition-bias +')
     ax[1].set_ylabel('Transition-bias -')
 
-    if save_fig:
+    if sv_fig:
         save_fig(f=f, name=folder+'/p_VS_n_'+str(lag)+FIGS_VER+'.png')
 
 

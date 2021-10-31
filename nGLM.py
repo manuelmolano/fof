@@ -1094,6 +1094,7 @@ if __name__ == '__main__':
         else:
             lag = int(sys.argv[1])
         redo = False
-        print('Using lag: ', lag)
-        main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
-        batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo)
+        for lag in [-1, 0, 1, 2, 3]:
+            print('Using lag: ', lag)
+            main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
+            batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo)

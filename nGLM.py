@@ -35,8 +35,10 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
-GLM_VER = {'neural': 'minimal', 'behav': 'full'}
-FIGS_VER = '_zT2'  # _minimal (<=29/10/21)
+GLM_VER = {'neural': 'lateral', 'behav': 'full'}
+FIGS_VER = ''  # _minimal (<=29/10/21)
+for k in GLM_VER.keys():
+    FIGS_VER += '_'+k[0]+GLM_VER[k]
 
 
 def save_fig(f, name):
@@ -65,7 +67,7 @@ def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
                      regressors=regrss, ax=ax_tmp, behav_neural=behav_neural)
         for i in range(4):
             ax_tmp[i].set_ylabel('Weight '+regrss[i])
-    elif GLM_VER[behav_neural] == 'minimal':
+    elif GLM_VER[behav_neural] in ['lateral', 'minimal']:
         # zT
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
                      regressors=['zT'], ax=ax[0:1],
@@ -82,12 +84,11 @@ def plot_all_weights(ax, weights_ac, weights_ae, behav_neural='neural'):
     regrss = ['L+', 'L-']
     ax[2].set_ylabel('Weight L+')
     ax[6].set_ylabel('Weight L-')
-    if GLM_VER[behav_neural] == 'full':
-        # EVIDENCE
-        plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
-                     regressors=['evidence'], ax=ax[3:4],
-                     behav_neural=behav_neural)
-        ax[3].set_ylabel('Weight evidence')
+    # EVIDENCE
+    plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
+                 regressors=['evidence'], ax=ax[3:4],
+                 behav_neural=behav_neural)
+    ax[3].set_ylabel('Weight evidence')
     # TRANSITION-BIAS
     if behav_neural == 'neural':
         plot_kernels(weights_ac=weights_ac, weights_ae=weights_ae,
@@ -326,7 +327,7 @@ def filter_regressors(regrs):
 
 
 def get_regressors(behav_neural):
-    if GLM_VER[behav_neural] == 'full':
+    if GLM_VER[behav_neural] == 'full':  # all regressors (L, Tr, ev, trans-bias)
         if behav_neural == 'neural':
             cols = ['evidence',
                     'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
@@ -345,9 +346,20 @@ def get_regressors(behav_neural):
                     'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
                     'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
                     'intercept']
+    elif GLM_VER[behav_neural] == 'lateral':  # L, zT, ev, trans-bias
+        if behav_neural == 'neural':
+            cols = ['evidence',
+                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                    'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT',
+                    'intercept', 'trans_bias']  # , 'curr_ch']
+        elif behav_neural == 'behav':
+            cols = ['evidence',
+                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                    'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT', 'intercept']
+
     elif GLM_VER[behav_neural] == 'minimal':
         if behav_neural == 'neural':
-            cols = ['L+1', 'L-1', 'zT', 'intercept', 'trans_bias']  # 'evidence',
+            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
             # 'curr_ch']
         elif behav_neural == 'behav':
             cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
@@ -570,7 +582,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     df.loc[df.hit == 1, 'L-1'] = 0
     df['L-1'] = df['L-1'].shift(1)
     df.loc[df.origidx == 1, 'L-1'] = np.nan
-    if GLM_VER[behav_neural] == 'full':
+    if GLM_VER[behav_neural] in ['lateral', 'full']:
         # shifts
         for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
             df['L+'+str(item)] = df['L+'+str(item-1)].shift(1)
@@ -654,13 +666,13 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df['trans_bias'] = zt*(df['L+1']+df['L-1'])
         # df['curr_ch'] = df['L+1']+df['L-1']
         # df['curr_ch'] = df['curr_ch'].shift(-1)
-        if GLM_VER[behav_neural] == 'minimal':
+        if GLM_VER[behav_neural] in ['lateral', 'minimal']:
             df['zT'] = zt
     elif behav_neural == 'behav':
         # transforming transitions to left/right space
         for col in [x for x in df.columns if x.startswith('T')]:
             df[col] = df[col] * (df.R_response.shift(1)*2-1)
-        if GLM_VER[behav_neural] == 'minimal':
+        if GLM_VER[behav_neural] in ['lateral', 'minimal']:
             zt_comps = df['T++1'].shift(1)
             limit = -krnl_len+1
             kernel = np.exp(-np.arange(krnl_len)/tau)

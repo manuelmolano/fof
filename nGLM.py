@@ -189,7 +189,7 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
 
 
 def plt_p_VS_n(folder, lag, ax=None):
-    data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
+    data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
     idx_mat = data['idx_mat']
     weights = data['weights']
     if ax is None:
@@ -237,7 +237,7 @@ def plot_weights_distr(folder, lag):
     None.
 
     """
-    data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
+    data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
     idx_mat = data['idx_mat']
     pvalues = data['pvalues']
     weights = data['weights']
@@ -279,7 +279,7 @@ def plot_perc_sign(folder, lag):
     None.
 
     """
-    data = np.load(folder+'/pvalues_'+str(lag)+'.npz')
+    data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
     idx_mat = data['idx_mat']
     pvalues = data['pvalues']
     perc_ac = []

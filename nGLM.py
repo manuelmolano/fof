@@ -349,46 +349,33 @@ def filter_regressors(regrs):
 
 def get_regressors(behav_neural):
     if GLM_VER[behav_neural] == 'full':  # all regressors (L, Tr, ev, trans-bias)
+        cols = ['evidence',
+                'L+1', 'L-1', 'L+3', 'L-3', 'L+4', 'L-4',
+                'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+                'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+                'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+                'intercept']
         if behav_neural == 'neural':
-            cols = ['evidence',
-                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-                    'L+5', 'L-5', 'L+6-10', 'L-6-10',
-                    'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-                    'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-                    'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-                    'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-                    'intercept', 'trans_bias']  # , 'curr_ch']
-        elif behav_neural == 'behav':
-            cols = ['evidence',
-                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-                    'L+5', 'L-5', 'L+6-10', 'L-6-10',
-                    'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
-                    'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
-                    'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-                    'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
-                    'intercept']
+            cols.append('trans_bias')  # , 'curr_ch']
+        afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1']]
+        aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1']]
     elif GLM_VER[behav_neural] == 'lateral':  # L, zT, ev, trans-bias
+        cols = ['evidence',
+                'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT', 'intercept']
         if behav_neural == 'neural':
-            cols = ['evidence',
-                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-                    'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT',
-                    'intercept', 'trans_bias']  # , 'curr_ch']
-        elif behav_neural == 'behav':
-            cols = ['evidence',
-                    'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
-                    'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT', 'intercept']
+            cols.append('trans_bias')  # , 'curr_ch']
+        afterc_cols = [x for x in cols if x not in ['L-1']]
+        aftere_cols = [x for x in cols if x not in ['L+1']]
 
     elif GLM_VER[behav_neural] == 'minimal':
+        cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
         if behav_neural == 'neural':
-            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept', 'trans_bias']
-            # 'curr_ch']
-        elif behav_neural == 'behav':
-            cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
-
-    afterc_cols = [x for x in cols if x not in ['L+2', 'L-1', 'L-2',
-                                                'T+-1', 'T--1']]
-    aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1',
-                                                'L+2', 'L-2']]
+            cols.append('trans_bias')  # , 'curr_ch']
+        afterc_cols = [x for x in cols if x not in ['L-1']]
+        aftere_cols = [x for x in cols if x not in ['L+1']]
     return afterc_cols, aftere_cols, cols
 
 

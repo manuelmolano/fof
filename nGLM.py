@@ -1077,7 +1077,7 @@ if __name__ == '__main__':
         else:
             lag = int(sys.argv[1])
         redo = False
-        plot = False
+        plot = True
         mean_perc_mat = []
         std_perc_mat = []
         mean_ws_mat = []

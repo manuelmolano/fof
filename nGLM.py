@@ -36,7 +36,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'lateral', 'behav': 'full'}
-FIGS_VER = ''  # _minimal (<=29/10/21)
+FIGS_VER = 'link_guassian'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -852,7 +852,6 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                 states = data_tmp['states']
                 states = states[:, int(states.shape[1]/2):]
                 states = sstats.zscore(states, axis=0)
-                states -= np.min(states, axis=0)
                 states = states[fix_tms+lag, :]
                 data['states'] = np.concatenate((data['states'],
                                                  states[:, :num_units]), axis=0)
@@ -910,8 +909,8 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             resps_ac = data['states'][np.logical_and((df.aftererror == 0),
                                                      not_nan_indx).values, i_n]
             exog, endog = sm.add_constant(X_df_ac), resps_ac
-            mod = sm.GLM(endog, exog,
-                         family=sm.families.Poisson(link=sm.families.links.log))
+            mod = sm.GLM(endog, exog)  # default is gaussian
+            # family=sm.families.Poisson(link=sm.families.links.log))
             res = mod.fit()
             weights_ac = res.params
             idx_mat += [x+'_ac' for x in res.pvalues.index]
@@ -921,8 +920,8 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             resps_ae = data['states'][np.logical_and((df.aftererror == 1),
                                                      not_nan_indx).values, i_n]
             exog, endog = sm.add_constant(X_df_ae), resps_ae
-            mod = sm.GLM(endog, exog,
-                         family=sm.families.Poisson(link=sm.families.links.log))
+            mod = sm.GLM(endog, exog)  # default is gaussian
+            # family=sm.families.Poisson(link=sm.families.links.log))
             res = mod.fit()
             weights_ae = res.params
             idx_mat += [x+'_ae' for x in res.pvalues.index]
@@ -1085,7 +1084,7 @@ if __name__ == '__main__':
         std_ws_mat = []
         corr_ac_mat = []
         corr_ae_mat = []
-        lags = [-1, 0, 1, 2]
+        lags = [0, -1, 1, 2]
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'

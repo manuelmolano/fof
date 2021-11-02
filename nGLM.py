@@ -357,25 +357,17 @@ def get_regressors(behav_neural):
                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
                 'intercept']
-        if behav_neural == 'neural':
-            cols.append('trans_bias')  # , 'curr_ch']
-        afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1']]
-        aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1']]
     elif GLM_VER[behav_neural] == 'lateral':  # L, zT, ev, trans-bias
         cols = ['evidence',
                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
                 'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT', 'intercept']
-        if behav_neural == 'neural':
-            cols.append('trans_bias')  # , 'curr_ch']
-        afterc_cols = [x for x in cols if x not in ['L-1']]
-        aftere_cols = [x for x in cols if x not in ['L+1']]
-
     elif GLM_VER[behav_neural] == 'minimal':
         cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
-        if behav_neural == 'neural':
-            cols.append('trans_bias')  # , 'curr_ch']
-        afterc_cols = [x for x in cols if x not in ['L-1']]
-        aftere_cols = [x for x in cols if x not in ['L+1']]
+    if behav_neural == 'neural':
+        cols.append('trans_bias')
+        cols.append('curr_ch')  # , 'curr_ch']
+    afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1']]
+    aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1']]
     return afterc_cols, aftere_cols, cols
 
 
@@ -672,8 +664,9 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         kernel = np.exp(-np.arange(krnl_len)/tau)
         zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
         df['trans_bias'] = zt*(df['L+1']+df['L-1'])
-        # df['curr_ch'] = df['L+1']+df['L-1']
-        # df['curr_ch'] = df['curr_ch'].shift(-1)
+        if 'curr_ch' in model_cols:
+            df['curr_ch'] = df['L+1']+df['L-1']
+            df['curr_ch'] = df['curr_ch'].shift(-1)
         if GLM_VER[behav_neural] in ['lateral', 'minimal']:
             df['zT'] = zt
     elif behav_neural == 'behav':

@@ -222,7 +222,7 @@ def plt_p_VS_n(folder, lag, ax=None):
         save_fig(f=f, name=folder+'/p_VS_n_'+str(lag)+FIGS_VER+'.png')
 
 
-def plot_weights_distr(folder, lag):
+def plot_weights_distr(folder, lag, plot=True):
     """
     Plot percentage of significant neurons to each regressor.
 
@@ -244,8 +244,9 @@ def plot_weights_distr(folder, lag):
     weights = data['weights']
     unq_regrs = np.unique(idx_mat)
     unq_regrs = filter_regressors(regrs=unq_regrs)
-    fig, ax = plt.subplots(nrows=4, ncols=5, figsize=(18, 12))
-    ax = ax.flatten()
+    if plot:
+        fig, ax = plt.subplots(nrows=4, ncols=5, figsize=(18, 12))
+        ax = ax.flatten()
     mean_ws = []
     std_ws = []
     for i_r, rgrs in enumerate(unq_regrs):
@@ -253,18 +254,20 @@ def plot_weights_distr(folder, lag):
         w_ac = np.abs(weights[np.logical_and(idx_mat == rgrs_ac, pvalues < 0.01)])
         rgrs_ae = rgrs+'_ae'
         w_ae = np.abs(weights[np.logical_and(idx_mat == rgrs_ae, pvalues < 0.01)])
-        ax[i_r].hist([w_ac, w_ae], 20)
-        ax[i_r].set_title(rgrs)
+        if plot:
+            ax[i_r].hist([w_ac, w_ae], 20)
+            ax[i_r].set_title(rgrs)
         mean_ws.append([np.mean(w_ac), np.mean(w_ae)])
         std_ws.append([np.std(w_ac), np.std(w_ae)])
 
     # ax[0].legend()
-    save_fig(f=fig, name=folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png')
-    plt.close(fig)
+    if plot:
+        save_fig(f=fig, name=folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png')
+        plt.close(fig)
     return mean_ws, std_ws
 
 
-def plot_perc_sign(folder, lag):
+def plot_perc_sign(folder, lag, plot=True):
     """
     Plot percentage of significant neurons to each regressor.
 
@@ -302,27 +305,45 @@ def plot_perc_sign(folder, lag):
             perc_ae.append(100*num_sign/num_smpls)
         else:
             perc_ae.append(0)
-    labels = unq_regrs
-    x = np.arange(len(labels))  # the label locations
-    width = 0.35  # the width of the bars
-    fig, ax = plt.subplots(figsize=(18, 6))
-    ax.bar(x - width/2, perc_ac, width, label='after correct')
-    ax.bar(x + width/2, perc_ae, width, label='after error')
-    # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel('Percentage of significant neurons')
-    ax.set_ylim([0, 100])
-    # ax.set_title('Scores by group and gender')
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.legend()
-    save_fig(f=fig, name=folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png')
-    plt.close(fig)
-    return perc_ac, perc_ae, labels
+    if plot:
+        x = np.arange(len(unq_regrs))  # the label locations
+        width = 0.35  # the width of the bars
+        fig, ax = plt.subplots(figsize=(18, 6))
+        ax.bar(x - width/2, perc_ac, width, label='after correct')
+        ax.bar(x + width/2, perc_ae, width, label='after error')
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_ylabel('Percentage of significant neurons')
+        ax.set_ylim([0, 100])
+        # ax.set_title('Scores by group and gender')
+        ax.set_xticks(x)
+        ax.set_xticklabels(unq_regrs)
+        ax.legend()
+        save_fig(f=fig, name=folder+'/perc_sign_neurons_'+str(lag)+FIGS_VER+'.png')
+        plt.close(fig)
+    return perc_ac, perc_ae, unq_regrs
+
+
+def plot_corrs(mat, reset_mat, labels):
+    f, ax = plt.subplots(ncols=mat.shape[2], figsize=(12, 3))
+    corr_ac_mat = []
+    corr_ae_mat = []
+    for i_p in range(mat.shape[2]):
+        ax[i_p].plot(mat[:, 0, i_p], reset_mat, '.')
+        ax[i_p].plot(mat[:, 1, i_p], reset_mat, '.')
+        corr_ac = np.corrcoef(mat[:, 0, i_p], reset_mat)[0, 1]
+        corr_ae = np.corrcoef(mat[:, 1, i_p], reset_mat)[0, 1]
+        ax[i_p].set_title(' corr. AC: '+str(np.round(corr_ac, 3))+' / AE: ' +
+                          str(np.round(corr_ae, 3)))
+        ax[i_p].set_xlabel(labels[i_p]+' mean weight')
+        ax[i_p].set_ylabel('Reset Index')
+        corr_ac_mat.append(corr_ac)
+        corr_ae_mat.append(corr_ae)
+    return corr_ac_mat, corr_ae_mat, f
 
 
 def filter_regressors(regrs):
     return np.unique([x[:-3] for x in regrs if ('6-10' not in x) and
-                      ('5' not in x) and ('4' not in x) and
+                      ('5' not in x) and ('4' not in x) and ('3' not in x) and
                       (not x.startswith('intercept'))])
 
 
@@ -860,11 +881,12 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         weights_ac = Lreg_ac.coef_
         weights_ae = Lreg_ae.coef_
         xtcks = ['T++'+x for x in ['2', '3', '4', '5', '6-10']]
-        reset, _, _ = pf.compute_reset_index(weights_ac[None, :],
-                                             weights_ae[None, :],
-                                             xtcks=xtcks, full_reset_index=False)
+        reset, krnl_ac, krnl_ae = pf.compute_reset_index(weights_ac[None, :],
+                                                         weights_ae[None, :],
+                                                         xtcks=xtcks,
+                                                         full_reset_index=False)
         data_bhv = {'weights_ac': weights_ac, 'weights_ae': weights_ae,
-                    'reset': reset}
+                    'reset': reset, 'krnl_ac': krnl_ac, 'krnl_ae': krnl_ae}
         np.savez(b_file_name, **data_bhv)
 
         f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
@@ -929,99 +951,74 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         np.savez(n_file_name, **data)
 
 
-def batch_neuroGLM(main_folder, lag=0, redo=False):
+def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True):
     neural_folder = main_folder+'/neural_analysys/'
     if not os.path.exists(neural_folder):
         os.mkdir(neural_folder)
     # seeds = [[0, 2], np.arange(12, 16)]  # seeds 1, 3 for nch=2 don't do the task
-    seeds = [np.arange(16)]
-    for i_n, n_ch in enumerate([16]):  # [2, 16]):
-        f_lp_ln, ax_lp_ln = plt.subplots(ncols=2)
-        mean_percs = []
-        mean_weights = []
-        reset_mat = []
-        sds = seeds[i_n]
-        for seed in sds:
-            folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
-                '/test_2AFC_activity/'
-            GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
-                 num_units=1024, redo=redo)
-            perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag)
-            mean_percs.append([perc_ac, perc_ae])
-            mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag)
-            mean_weights.append(mean_ws)
-            plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
-            beahv_data = np.load(folder+'/behav.npz')
-            reset_mat.append(beahv_data['reset'])
-        xs = np.arange(len(labels))
-        # plot mean percentages
-        mean_percs = np.array(mean_percs)
-        m_p = np.mean(mean_percs, axis=0)
-        std_p = np.std(mean_percs, axis=0)
-        f_perc, ax_perc = plt.subplots()
-        ax_perc.set_title('Percentages '+str(n_ch))
-        ax_perc.errorbar(xs, m_p[0], std_p[0], marker='+',
-                         linestyle='none', label='After correct')
-        ax_perc.errorbar(xs, m_p[1], std_p[1], marker='+',
-                         linestyle='none', label='After error')
-        ax_perc.set_xticks(xs)
-        ax_perc.set_xticklabels(labels)
-        ax_perc.legend()
-        ax_perc.set_ylim([0, 100])
-        # plot mean percentages VS reset
-        f_perc_vs_res, ax_perc_vs_res = plt.subplots(ncols=len(labels),
-                                                     figsize=(12, 3))
-        for i_p in range(len(labels)):
-            ax_perc_vs_res[i_p].plot(mean_percs[:, 0, i_p], reset_mat, '.')
-            ax_perc_vs_res[i_p].plot(mean_percs[:, 1, i_p], reset_mat, '.')
-            corr_ac = np.corrcoef(mean_percs[:, 0, i_p], reset_mat)[0, 1]
-            corr_ae = np.corrcoef(mean_percs[:, 1, i_p], reset_mat)[0, 1]
-            ax_perc_vs_res[i_p].set_title(' corr. after corr.: ' +
-                                          str(np.round(corr_ac, 3)) +
-                                          ' / after err.: ' +
-                                          str(np.round(corr_ae, 3)))
-            ax_perc_vs_res[i_p].set_xlabel(labels[i_p]+' mean weight')
-            ax_perc_vs_res[i_p].set_ylabel('Reset Index')
-        # plot mean weights
-        mean_weights = np.array(mean_weights)
-        m_w = np.mean(mean_weights, axis=0).T
-        std_w = np.std(mean_weights, axis=0).T
-        f_ws, ax_ws = plt.subplots()
-        ax_ws.set_title('Weights '+str(n_ch))
-        ax_ws.errorbar(xs, m_w[0], std_w[0], marker='+',
-                       linestyle='none', label='After correct')
-        ax_ws.errorbar(xs, m_w[1], std_w[1], marker='+',
-                       linestyle='none', label='After error')
-        ax_ws.set_xticks(xs)
-        ax_ws.set_xticklabels(labels)
-        ax_ws.legend()
-        # plot mean percentages VS reset
-        f_ws_vs_res, ax_ws_vs_res = plt.subplots(ncols=len(labels),
-                                                 figsize=(12, 3))
-        for i_p in range(len(labels)):
-            ax_ws_vs_res[i_p].plot(mean_weights[:, i_p, 0], reset_mat, '.')
-            ax_ws_vs_res[i_p].plot(mean_weights[:, i_p, 1], reset_mat, '.')
-            corr_ac = np.corrcoef(mean_weights[:, i_p, 0], reset_mat)[0, 1]
-            corr_ae = np.corrcoef(mean_weights[:, i_p, 1], reset_mat)[0, 1]
-            ax_ws_vs_res[i_p].set_title(' corr. after corr.: ' +
-                                        str(np.round(corr_ac, 3)) +
-                                        ' / after err.: ' +
-                                        str(np.round(corr_ae, 3)))
-            ax_ws_vs_res[i_p].set_xlabel(labels[i_p]+' mean weight')
-            if i_p == 0:
-                ax_ws_vs_res[i_p].set_ylabel('Reset Index')
-
-        # plot mean weights
-        save_fig(f=f_lp_ln, name=neural_folder+'/p_vs_n_'+str(n_ch)+'_' +
-                 str(lag)+FIGS_VER+'.png')
-        save_fig(f=f_perc, name=neural_folder+'/perc_sign_'+str(n_ch)+'_' +
-                 str(lag)+FIGS_VER+'.png')
-        save_fig(f=f_ws, name=neural_folder+'/weights_'+str(n_ch)+'_' +
-                 str(lag)+FIGS_VER+'.png')
-        save_fig(f=f_ws_vs_res, name=neural_folder+'/weights_vs_res_' +
-                 str(n_ch)+'_'+str(lag)+FIGS_VER+'.png')
-        save_fig(f=f_perc_vs_res, name=neural_folder+'/perc_vs_res_' +
-                 str(n_ch)+'_'+str(lag)+FIGS_VER+'.png')
+    f_lp_ln, ax_lp_ln = plt.subplots(ncols=2)
+    mean_percs = []
+    mean_weights = []
+    reset_mat = []
+    for seed in np.arange(16):
+        folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
+            '/test_2AFC_activity/'
+        GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
+             num_units=1024, redo=redo)
+        perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag,
+                                                  plot=plot)
+        mean_percs.append([perc_ac, perc_ae])
+        mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag, plot=plot)
+        mean_weights.append(mean_ws)
+        plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
+        beahv_data = np.load(folder+'/behav.npz')
+        reset_mat.append(beahv_data['reset'])
+    xs = np.arange(len(labels))
+    # plot mean percentages
+    mean_percs = np.array(mean_percs)
+    m_p = np.mean(mean_percs, axis=0)
+    std_p = np.std(mean_percs, axis=0)
+    f_perc, ax_perc = plt.subplots()
+    ax_perc.set_title('Percentages '+str(n_ch))
+    ax_perc.errorbar(xs, m_p[0], std_p[0], marker='+',
+                     linestyle='none', label='After correct')
+    ax_perc.errorbar(xs, m_p[1], std_p[1], marker='+',
+                     linestyle='none', label='After error')
+    ax_perc.set_xticks(xs)
+    ax_perc.set_xticklabels(labels)
+    ax_perc.legend()
+    ax_perc.set_ylim([0, 100])
+    # plot mean percentages VS reset
+    corr_perc_ac, corr_perc_ae, f_perc_vs_res =\
+        plot_corrs(mat=mean_percs, reset_mat=reset_mat, labels=labels)
+    # plot mean weights
+    mean_weights = np.array(mean_weights)
+    m_w = np.mean(mean_weights, axis=0).T
+    std_w = np.std(mean_weights, axis=0).T
+    f_ws, ax_ws = plt.subplots()
+    ax_ws.set_title('Weights '+str(n_ch))
+    ax_ws.errorbar(xs, m_w[0], std_w[0], marker='+',
+                   linestyle='none', label='After correct')
+    ax_ws.errorbar(xs, m_w[1], std_w[1], marker='+',
+                   linestyle='none', label='After error')
+    ax_ws.set_xticks(xs)
+    ax_ws.set_xticklabels(labels)
+    ax_ws.legend()
+    # plot mean percentages VS reset
+    corr_ws_ac, corr_ws_ae, f_ws_vs_res =\
+        plot_corrs(mat=mean_weights, reset_mat=reset_mat, labels=labels)
+    # plot mean weights
+    save_fig(f=f_lp_ln, name=neural_folder+'/p_vs_n_'+str(n_ch)+'_' +
+             str(lag)+FIGS_VER+'.png')
+    save_fig(f=f_perc, name=neural_folder+'/perc_sign_'+str(n_ch)+'_' +
+             str(lag)+FIGS_VER+'.png')
+    save_fig(f=f_ws, name=neural_folder+'/weights_'+str(n_ch)+'_' +
+             str(lag)+FIGS_VER+'.png')
+    save_fig(f=f_ws_vs_res, name=neural_folder+'/weights_vs_res_' +
+             str(n_ch)+'_'+str(lag)+FIGS_VER+'.png')
+    save_fig(f=f_perc_vs_res, name=neural_folder+'/perc_vs_res_' +
+             str(n_ch)+'_'+str(lag)+FIGS_VER+'.png')
+    return m_p, m_w, std_p, std_w, labels, corr_perc_ac, corr_perc_ae
 
 
 def compute_nGLM_exps(main_folder, sel_sess, sel_rats, inv, std_conv=20,
@@ -1094,7 +1091,60 @@ if __name__ == '__main__':
         else:
             lag = int(sys.argv[1])
         redo = False
-        for lag in [-1, 0, 1, 2, 3]:
+        plot = False
+        mean_perc_mat = []
+        std_perc_mat = []
+        mean_ws_mat = []
+        std_ws_mat = []
+        corr_ac_mat = []
+        corr_ae_mat = []
+        lags = [-1, 0, 1, 2]
+        for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
-            batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo)
+            m_p, m_w, std_p, std_w, labels, corr_perc_ac, corr_perc_ae =\
+                batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo,
+                               plot=plot)
+            mean_perc_mat.append(m_p)
+            std_perc_mat.append(std_p)
+            mean_ws_mat.append(m_w)
+            std_ws_mat.append(std_w)
+            corr_ac_mat.append(corr_perc_ac)
+            corr_ae_mat.append(corr_perc_ae)
+        plt.close('all')
+        mean_perc_mat = np.array(mean_perc_mat)
+        std_perc_mat = np.array(std_perc_mat)
+        mean_ws_mat = np.array(mean_ws_mat)
+        std_ws_mat = np.array(std_ws_mat)
+        corr_ac_mat = np.array(corr_ac_mat)
+        corr_ae_mat = np.array(corr_ae_mat)
+
+        f, ax = plt.subplots(nrows=3)
+        clrs = sns.color_palette()
+        for i_r in range(mean_perc_mat.shape[2]):
+            if np.sum(std_perc_mat[:, 0, i_r]) != 0:
+                ax[0].errorbar(lags, mean_perc_mat[:, 0, i_r],
+                               std_perc_mat[:, 0, i_r],
+                               color=clrs[i_r], label=labels[i_r])
+                ax[1].errorbar(lags, mean_ws_mat[:, 0, i_r],
+                               std_ws_mat[:, 0, i_r],
+                               color=clrs[i_r], label=labels[i_r])
+                ax[2].plot(lags, corr_ac_mat[:, i_r], color=clrs[i_r],
+                           label=labels[i_r])
+            if np.sum(std_perc_mat[:, 1, i_r]) != 0:
+                ax[0].errorbar(lags, mean_perc_mat[:, 1, i_r],
+                               std_perc_mat[:, 1, i_r],
+                               color=clrs[i_r], linestyle='--')
+                ax[1].errorbar(lags, mean_ws_mat[:, 1, i_r],
+                               std_ws_mat[:, 1, i_r],
+                               color=clrs[i_r], linestyle='--')
+                ax[2].plot(lags, corr_ae_mat[:, i_r], color=clrs[i_r],
+                           label=labels[i_r],  linestyle='--')
+
+        ax[1].set_ylabel('Weights')
+        ax[1].set_xlabel('Lag')
+        ax[0].set_ylabel('Percentage sign. neurons')
+        ax[2].set_ylabel('Correlation with Reset Index')
+        for a in ax:
+            a.legend()
+            a.set_xticks(lags)

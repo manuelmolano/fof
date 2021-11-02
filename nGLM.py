@@ -36,7 +36,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'lateral', 'behav': 'full'}
-FIGS_VER = 'link_guassian'  # _minimal (<=29/10/21)
+FIGS_VER = 'link_guassian_w_currCh'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 

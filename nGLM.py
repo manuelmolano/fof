@@ -696,15 +696,16 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
     lags_mat = np.arange(np.sum(lags))-lags[0]
     if exp_nets == 'exps':
         print('PSTHs not implemented for experimental data yet')
-    elif False:
+    elif exp_nets == 'nets':
         states = data['states']
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         states -= np.min(states, axis=0)
         fix_tms = get_fixation_times(data, lags=lags)
         states = np.array([states[fxt-lags[0]:fxt+lags[1], :] for fxt in fix_tms])
-        # ch = data['choice'][fix_tms].astype(float)
+        f, ax = plt.subplots(ncols=3)
         ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
+        # CHOICE
         sts_1 = states[ch == 1]
         sts_2 = states[ch == 2]
         sign = []
@@ -714,9 +715,9 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
                       for i in range(states.shape[2])]
             sign.append(np.sum(sign_n)/states.shape[2])
-        f, ax = plt.subplots(ncols=3)
         ax[0].plot(lags_mat, sign, '+-', label='choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        # PREVIOUS CHOICE
         prev_ch = shift(ch, shift=1, cval=0)
         sts_1 = states[prev_ch == 1]
         sts_2 = states[prev_ch == 2]
@@ -730,6 +731,7 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
         ax[0].plot(lags_mat, sign, '+-', label='prev. choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         ax[0].legend()
+        # PERFORMANCE
         sts_1 = states[perf == 0]
         sts_2 = states[perf == 1]
         sign = []
@@ -741,6 +743,7 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
             sign.append(np.sum(sign_n)/states.shape[2])
         ax[1].plot(lags_mat, sign, '+-', label='perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        # PREVIOUS PERFORMANCE
         sts_1 = states[prev_perf == 0]
         sts_2 = states[prev_perf == 1]
         sign = []
@@ -753,6 +756,7 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
         ax[1].plot(lags_mat, sign, '+-', label='prev. perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         ax[1].legend()
+        # EVIDENCE
         sts_1 = states[ev < 5]
         sts_2 = states[ev > 15]
         sign = []

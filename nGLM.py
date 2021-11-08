@@ -767,7 +767,7 @@ def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
 
 
 def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
-         redo=False, **exp_data):
+         redo=False, shf=False, **exp_data):
     """
     Compute both behavioral and neuro GLM.
 
@@ -875,6 +875,8 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         save_fig(f=f, name=folder+'/behav_GLM'+FIGS_VER+'.png')
         plt.close(f)
     if not os.path.exists(n_file_name) or redo:
+        if shf:
+            np.random.shuffle(data['states'])
         # NEURO-GLM
         df = compute_GLM_regressors(data=data, exp_nets=exp_nets,
                                     mask=indx_good_evs, chck_corr=False,
@@ -930,7 +932,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         np.savez(n_file_name, **data)
 
 
-def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True):
+def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False):
     neural_folder = main_folder+'/neural_analysys/'
     if not os.path.exists(neural_folder):
         os.mkdir(neural_folder)
@@ -943,7 +945,7 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True):
         folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
             '/test_2AFC_activity/'
         GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
-             num_units=1024, redo=redo)
+             num_units=1024, redo=redo, shf=shf)
         perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag,
                                                   plot=plot)
         mean_percs.append([perc_ac, perc_ae])
@@ -1071,19 +1073,22 @@ if __name__ == '__main__':
             lag = int(sys.argv[1])
         redo = False
         plot = True
+        shuffling = True
+        shf_name = '_shf' if shuffling else ''
+        FIGS_VER += shf_name
         mean_perc_mat = []
         std_perc_mat = []
         mean_ws_mat = []
         std_ws_mat = []
         corr_ac_mat = []
         corr_ae_mat = []
-        lags = [0, -1, 1, 2]
+        lags = [0]  # , -1, 1, 2]
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
             m_p, m_w, std_p, std_w, labels, corr_perc_ac, corr_perc_ae =\
                 batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo,
-                               plot=plot)
+                               plot=plot, shf=shuffling)
             mean_perc_mat.append(m_p)
             std_perc_mat.append(std_p)
             mean_ws_mat.append(m_w)

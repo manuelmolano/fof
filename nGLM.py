@@ -36,7 +36,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'lateral', 'behav': 'full'}
-FIGS_VER = 'link_guassian_w_currCh'  # _minimal (<=29/10/21)
+FIGS_VER = 'link_guassian_w_currCh_v2'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -361,6 +361,14 @@ def get_regressors(behav_neural):
         cols = ['evidence',
                 'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
                 'L+5', 'L-5', 'L+6-10', 'L-6-10', 'zT', 'intercept']
+    elif GLM_VER[behav_neural] == 'split':  # L, zT, ev, trans-bias
+        cols = ['evidence',
+                'L+1', 'L-1', 'L+2', 'L-2', 'L+3', 'L-3', 'L+4', 'L-4',
+                'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                'R+1', 'R-1', 'R+2', 'R-2', 'R+3', 'R-3', 'R+4', 'R-4',
+                'R+5', 'R-5', 'R+6-10', 'R-6-10',
+                'zT_rep', 'zT_alt',
+                'intercept']
     elif GLM_VER[behav_neural] == 'minimal':
         cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
     if behav_neural == 'neural':
@@ -471,13 +479,13 @@ def behavioral_glm(df):
     ac_cols, ae_cols, _ = get_regressors(behav_neural='behav')
     not_nan_indx = df['R_response'].notna()
     X_df_ac, y_df_ac =\
-        df.loc[(df.aftererror == 0) & not_nan_indx,
+        df.loc[(df.afterr == 0) & not_nan_indx,
                ac_cols].fillna(value=0),\
-        df.loc[(df.aftererror == 0) & not_nan_indx, 'R_response']
+        df.loc[(df.afterr == 0) & not_nan_indx, 'R_response']
     X_df_ae, y_df_ae =\
-        df.loc[(df.aftererror == 1) & not_nan_indx,
+        df.loc[(df.afterr == 1) & not_nan_indx,
                ae_cols].fillna(value=0),\
-        df.loc[(df.aftererror == 1) & not_nan_indx, 'R_response']
+        df.loc[(df.afterr == 1) & not_nan_indx, 'R_response']
 
     if len(np.unique(y_df_ac.values)) == 2 and len(np.unique(y_df_ae.values)) == 2:
         Lreg_ac = LogisticRegression(C=1, fit_intercept=False, penalty='l2',
@@ -560,103 +568,69 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     # 'res_sound': stimulus (left - right) [frame_i, .., frame_i+n]
     # 'sound_len': stim duration
     # 'frames_listened'
-    # 'aftererror': not(performance) shifted
+    # 'afterr': not(performance) shifted
     # 'rep_response'
     df = {'origidx': np.arange(ch.shape[0]), 'R_response': ch, 'hit': perf,
-          'evidence': ev, 'aftererror': 1*(prev_perf == 0),
+          'evidence': ev, 'afterr': 1*(prev_perf == 0),
           'rep_response': rep_ch_}
     df = pd.DataFrame(df)
-
+    
     # Lateral module
-    # L+
-    df['L+1'] = np.nan  # np.nan considering invalids as errors
-    df.loc[(df.R_response == 1) & (df.hit == 1), 'L+1'] = 1
-    df.loc[(df.R_response == 0) & (df.hit == 1), 'L+1'] = -1
-    df.loc[df.hit == 0, 'L+1'] = 0
-    df['L+1'] = df['L+1'].shift(1)
-    df.loc[df.origidx == 1, 'L+1'] = np.nan
-    # L-
-    df['L-1'] = np.nan
-    df.loc[(df.R_response == 1) & (df.hit == 0), 'L-1'] = 1
-    df.loc[(df.R_response == 0) & (df.hit == 0), 'L-1'] = -1
-    df.loc[df.hit == 1, 'L-1'] = 0
-    df['L-1'] = df['L-1'].shift(1)
-    df.loc[df.origidx == 1, 'L-1'] = np.nan
-    if GLM_VER[behav_neural] in ['lateral', 'full']:
-        # shifts
-        for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
-            df['L+'+str(item)] = df['L+'+str(item-1)].shift(1)
-            df['L-'+str(item)] = df['L-'+str(item-1)].shift(1)
-            df.loc[df.origidx == 1, 'L+'+str(item)] = np.nan
-            df.loc[df.origidx == 1, 'L-'+str(item)] = np.nan
-
-        # add from 6 to 10, assign them and drop prev cols cols
-        cols_lp = ['L+'+str(x) for x in range(6, 11)]
-        cols_ln = ['L-'+str(x) for x in range(6, 11)]
-
-        df['L+6-10'] = np.nansum(df[cols_lp].values, axis=1)
-        df['L-6-10'] = np.nansum(df[cols_ln].values, axis=1)
-        df.drop(cols_lp+cols_ln, axis=1, inplace=True)
-        df.loc[df.origidx <= 6, 'L+6-10'] = np.nan
-        df.loc[df.origidx <= 6, 'L-6-10'] = np.nan
+    # if GLM_VER[behav_neural] in ['lateral', 'full']:
+        
+    for i_o, outc in enumerate(['-', '+']):
+        df['L'+outc+'1'] = np.nan  # np.nan considering invalids as errors
+        df.loc[(df.R_response == 1) & (df.hit == i_o), 'L'+outc+'1'] = 1
+        df.loc[(df.R_response == 0) & (df.hit == i_o), 'L'+outc+'1'] = -1
+        df.loc[df.hit != i_o, 'L'+outc+'1'] = 0
+        df['L'+outc+'1'] = df['L'+outc+'1'].shift(1)
+        df.loc[df.origidx == 1, 'L'+outc+'1'] = np.nan
+        if GLM_VER[behav_neural] in ['lateral', 'full']:
+            # shifts
+            for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
+                df['L'+outc+str(item)] = df['L'+outc+str(item-1)].shift(1)
+                df.loc[df.origidx == 1, 'L'+outc+str(item)] = np.nan
+            # add from 6 to 10, assign them and drop prev cols cols
+            cols = ['L'+outc+str(x) for x in range(6, 11)]
+            df['L'+outc+'6-10'] = np.nansum(df[cols].values, axis=1)
+            df.drop(cols, axis=1, inplace=True)
+            df.loc[df.origidx <= 6, 'L'+outc+'6-10'] = np.nan
 
     # pre transition module
     df.loc[df.origidx == 1, 'rep_response'] = np.nan
     df['rep_response_11'] = df.rep_response
     df.loc[df.rep_response == 0, 'rep_response_11'] = -1
     df.rep_response_11.fillna(value=0, inplace=True)
-    df.loc[df.origidx == 1, 'aftererror'] = np.nan
+    df.loc[df.origidx == 1, 'afterr'] = np.nan
 
     # transition module
     df['T++1'] = np.nan  # np.nan
-    df.loc[(df.aftererror == 0) & (df.hit == 1), 'T++1'] =\
-        df.loc[(df.aftererror == 0) & (df.hit == 1), 'rep_response_11']
-    df.loc[(df.aftererror == 1) | (df.hit == 0), 'T++1'] = 0
+    df.loc[(df.afterr == 0) & (df.hit == 1), 'T++1'] =\
+        df.loc[(df.afterr == 0) & (df.hit == 1), 'rep_response_11']
+    df.loc[(df.afterr == 1) | (df.hit == 0), 'T++1'] = 0
     df['T++1'] = df['T++1'].shift(1)
     if GLM_VER[behav_neural] == 'full':
-        # T+-
-        df['T+-1'] = np.nan  # np.nan
-        df.loc[(df.aftererror == 0) & (df.hit == 0), 'T+-1'] =\
-            df.loc[(df.aftererror == 0) & (df.hit == 0), 'rep_response_11']
-        df.loc[(df.aftererror == 1) | (df.hit == 1), 'T+-1'] = 0
-        df['T+-1'] = df['T+-1'].shift(1)
-        # T-+
-        df['T-+1'] = np.nan  # np.nan
-        df.loc[(df.aftererror == 1) & (df.hit == 1), 'T-+1'] =\
-            df.loc[(df.aftererror == 1) & (df.hit == 1), 'rep_response_11']
-        df.loc[(df.aftererror == 0) | (df.hit == 0), 'T-+1'] = 0
-        df['T-+1'] = df['T-+1'].shift(1)
-        # T--
-        df['T--1'] = np.nan  # np.nan
-        df.loc[(df.aftererror == 1) & (df.hit == 0), 'T--1'] =\
-            df.loc[(df.aftererror == 1) & (df.hit == 0), 'rep_response_11']
-        df.loc[(df.aftererror == 0) | (df.hit == 1), 'T--1'] = 0
-        df['T--1'] = df['T--1'].shift(1)
-        # shifts now
-        for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
-            df['T++'+str(item)] = df['T++'+str(item-1)].shift(1)
-            df['T+-'+str(item)] = df['T+-'+str(item-1)].shift(1)
-            df['T-+'+str(item)] = df['T-+'+str(item-1)].shift(1)
-            df['T--'+str(item)] = df['T--'+str(item-1)].shift(1)
-            df.loc[df.origidx == 1, 'T++'+str(item)] = np.nan
-            df.loc[df.origidx == 1, 'T+-'+str(item)] = np.nan
-            df.loc[df.origidx == 1, 'T-+'+str(item)] = np.nan
-            df.loc[df.origidx == 1, 'T--'+str(item)] = np.nan
-        # sum trans. from 6 to 10
-        cols_tpp = ['T++'+str(x) for x in range(6, 11)]
-        cols_tpn = ['T+-'+str(x) for x in range(6, 11)]
-        cols_tnp = ['T-+'+str(x) for x in range(6, 11)]
-        cols_tnn = ['T--'+str(x) for x in range(6, 11)]
-        df['T++6-10'] = np.nansum(df[cols_tpp].values, axis=1)
-        df['T+-6-10'] = np.nansum(df[cols_tpn].values, axis=1)
-        df['T-+6-10'] = np.nansum(df[cols_tnp].values, axis=1)
-        df['T--6-10'] = np.nansum(df[cols_tnn].values, axis=1)
-        df.drop(cols_tpp+cols_tpn+cols_tnp+cols_tnn, axis=1, inplace=True)
-        df.loc[df.origidx < 6, ['T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10']] =\
-            np.nan
+        for tr in ['++', '+-', '-+', '--']:
+            hit_1 = tr[0] != '+'  # this will be compared with aftererror variable
+            hit_2 = tr[1] == '+'
+            if tr != '++':
+                df['T'+tr+'1'] = np.nan  # np.nan
+                df.loc[(df.afterr == hit_1) & (df.hit == hit_2), 'T'+tr+'1'] =\
+                    df.loc[(df.afterr == hit_1) & (df.hit == hit_2),
+                           'rep_response_11']
+                df.loc[(df.afterr != hit_1) | (df.hit != hit_2), 'T'+tr+'1'] = 0
+                df['T'+tr+'1'] = df['T'+tr+'1'].shift(1)
+            # shifts now
+            for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
+                df['T'+tr+''+str(item)] = df['T'+tr+''+str(item-1)].shift(1)
+                df.loc[df.origidx == 1, 'T'+tr+''+str(item)] = np.nan
+            # sum trans. from 6 to 10
+            cols = ['T'+tr+''+str(x) for x in range(6, 11)]
+            df['T'+tr+'6-10'] = np.nansum(df[cols].values, axis=1)
+            df.drop(cols, axis=1, inplace=True)
+            df.loc[df.origidx < 6, ['T'+tr+'6-10']] = np.nan
     # intercept
     df['intercept'] = 1
-
     # zT
     if behav_neural == 'neural':
         zt_comps = df['T++1'].shift(1)
@@ -685,7 +659,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         for j, (t, cols) in enumerate(zip(['after correct', 'after error'],
                                           [afterc_cols, aftere_cols])):
             fig, ax = plt.subplots(figsize=(16, 16))
-            sns.heatmap(df.loc[df.aftererror == j,
+            sns.heatmap(df.loc[df.afterr == j,
                                cols].fillna(value=0).corr(),
                         vmin=-1, vmax=1, cmap='coolwarm', ax=ax)
             ax.set_title(t)
@@ -914,9 +888,9 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
 
         # after correct/error regressors
         ac_cols, ae_cols, _ = get_regressors(behav_neural='neural')
-        X_df_ac = df.loc[(df.aftererror == 0) & not_nan_indx,
+        X_df_ac = df.loc[(df.afterr == 0) & not_nan_indx,
                          ac_cols].fillna(value=0)
-        X_df_ae = df.loc[(df.aftererror == 1) & not_nan_indx,
+        X_df_ae = df.loc[(df.afterr == 1) & not_nan_indx,
                          ae_cols].fillna(value=0)
         num_neurons = num_units  # XXX: for exps this should be 1
 
@@ -930,7 +904,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         for i_n in range(num_neurons):
             # print('Neuron ', i_n)
             # AFTER CORRECT
-            resps_ac = data['states'][np.logical_and((df.aftererror == 0),
+            resps_ac = data['states'][np.logical_and((df.afterr == 0),
                                                      not_nan_indx).values, i_n]
             exog, endog = sm.add_constant(X_df_ac), resps_ac
             mod = sm.GLM(endog, exog)  # default is gaussian
@@ -941,7 +915,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             pvalues += list(res.pvalues)
             weights_mat += list(weights_ac)
             # AFTER ERROR
-            resps_ae = data['states'][np.logical_and((df.aftererror == 1),
+            resps_ae = data['states'][np.logical_and((df.afterr == 1),
                                                      not_nan_indx).values, i_n]
             exog, endog = sm.add_constant(X_df_ae), resps_ae
             mod = sm.GLM(endog, exog)  # default is gaussian
@@ -956,7 +930,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                                  weights_ae=weights_ae.values)
             # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
             # asdasd
-            neuron += i_n*np.ones(len(weights_ac)+len(weights_ae))
+            neuron += (i_n*np.ones(len(weights_ac)+len(weights_ae))).tolist()
         data = {'w_name': w_name, 'pvalues': pvalues,
                 'weights': weights_mat, 'neuron_indx': neuron}
         np.savez(n_file_name, **data)
@@ -976,13 +950,14 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
             '/test_2AFC_activity/'
         GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
              num_units=1024, redo=redo, shf=shf)
-        cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[2, 2],
-                   num_units=1024)
+        # cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[2, 2],
+        #            num_units=1024)
         perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag,
                                                   plot=plot)
         mean_percs.append([perc_ac, perc_ae])
         mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag, plot=plot)
         mean_weights.append(mean_ws)
+        asdasd
         plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
         beahv_data = np.load(folder+'/behav.npz')
         reset_mat.append(beahv_data['reset'])
@@ -1103,8 +1078,8 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = True
-        plot = False
+        redo = False
+        plot = True
         shuffling = False
         shf_name = '_shf' if shuffling else ''
         FIGS_VER += shf_name

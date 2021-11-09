@@ -191,16 +191,16 @@ def plot_kernels(weights_ac, weights_ae, std_ac=None, std_ae=None, ax=None,
 
 def plt_p_VS_n(folder, lag, ax=None):
     data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
-    idx_mat = data['idx_mat']
+    w_name = data['w_name']
     weights = data['weights']
     if ax is None:
         f, ax = plt.subplots(ncols=2)
         sv_fig = True
     else:
         sv_fig = False
-    w_lp = weights[idx_mat == 'L+1_ac']
+    w_lp = weights[w_name == 'L+1_ac']
     w_lp = np.abs(w_lp)
-    w_ln = weights[idx_mat == 'L-1_ae']
+    w_ln = weights[w_name == 'L-1_ae']
     w_ln = np.abs(w_ln)
     ax[0].plot(w_lp, w_ln, '.')
     ax[0].plot([np.min(w_lp), np.max(w_lp)], [np.min(w_lp), np.max(w_lp)],
@@ -208,9 +208,9 @@ def plt_p_VS_n(folder, lag, ax=None):
     ax[0].set_xlabel('L+1')
     ax[0].set_ylabel('L-1')
 
-    w_trbp = weights[idx_mat == 'trans_bias_ac']
+    w_trbp = weights[w_name == 'trans_bias_ac']
     w_trbp = np.abs(w_trbp)
-    w_trbn = weights[idx_mat == 'trans_bias_ae']
+    w_trbn = weights[w_name == 'trans_bias_ae']
     w_trbn = np.abs(w_trbn)
     ax[1].plot(w_trbp, w_trbn, '.')
     ax[1].plot([np.min(w_trbp), np.max(w_trbp)], [np.min(w_trbp), np.max(w_trbp)],
@@ -239,10 +239,10 @@ def plot_weights_distr(folder, lag, plot=True):
 
     """
     data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
-    idx_mat = data['idx_mat']
+    w_name = data['w_name']
     pvalues = data['pvalues']
     weights = data['weights']
-    unq_regrs = np.unique(idx_mat)
+    unq_regrs = np.unique(w_name)
     unq_regrs = filter_regressors(regrs=unq_regrs)
     if plot:
         fig, ax = plt.subplots(nrows=4, ncols=5, figsize=(18, 12))
@@ -251,9 +251,9 @@ def plot_weights_distr(folder, lag, plot=True):
     std_ws = []
     for i_r, rgrs in enumerate(unq_regrs):
         rgrs_ac = rgrs+'_ac'
-        w_ac = np.abs(weights[np.logical_and(idx_mat == rgrs_ac, pvalues < 0.01)])
+        w_ac = np.abs(weights[np.logical_and(w_name == rgrs_ac, pvalues < 0.01)])
         rgrs_ae = rgrs+'_ae'
-        w_ae = np.abs(weights[np.logical_and(idx_mat == rgrs_ae, pvalues < 0.01)])
+        w_ae = np.abs(weights[np.logical_and(w_name == rgrs_ae, pvalues < 0.01)])
         if plot:
             ax[i_r].hist([w_ac, w_ae], 20)
             ax[i_r].set_title(rgrs)
@@ -284,24 +284,24 @@ def plot_perc_sign(folder, lag, plot=True):
 
     """
     data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
-    idx_mat = data['idx_mat']
+    w_name = data['w_name']
     pvalues = data['pvalues']
     perc_ac = []
     perc_ae = []
-    unq_regrs = np.unique(idx_mat)
+    unq_regrs = np.unique(w_name)
     unq_regrs = filter_regressors(regrs=unq_regrs)
     for rgrs in unq_regrs:
         rgrs_ac = rgrs+'_ac'
-        if (idx_mat == rgrs_ac).any():
-            num_smpls = np.sum(idx_mat == rgrs_ac)
-            num_sign = np.sum(pvalues[idx_mat == rgrs_ac] < 0.01)
+        if (w_name == rgrs_ac).any():
+            num_smpls = np.sum(w_name == rgrs_ac)
+            num_sign = np.sum(pvalues[w_name == rgrs_ac] < 0.01)
             perc_ac.append(100*num_sign/num_smpls)
         else:
             perc_ac.append(0)
         rgrs_ae = rgrs+'_ae'
-        if (idx_mat == rgrs_ae).any():
-            num_smpls = np.sum(idx_mat == rgrs_ae)
-            num_sign = np.sum(pvalues[idx_mat == rgrs_ae] < 0.01)
+        if (w_name == rgrs_ae).any():
+            num_smpls = np.sum(w_name == rgrs_ae)
+            num_sign = np.sum(pvalues[w_name == rgrs_ae] < 0.01)
             perc_ae.append(100*num_sign/num_smpls)
         else:
             perc_ae.append(0)
@@ -698,6 +698,7 @@ def cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
     if exp_nets == 'exps':
         print('PSTHs not implemented for experimental data yet')
     elif exp_nets == 'nets':
+        glm_data = np.load(folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz')
         datasets = glob.glob(folder+'data_*')
         data = {'choice': [], 'performance': [], 'prev_perf': [],
                 'states': [], 'signed_evidence': []}
@@ -734,9 +735,11 @@ def cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
         gr_clrs = sns.diverging_palette(145, 300, n=9)
         for i_e, ev in enumerate(np.unique(data['signed_evidence'])):
             sts = np.mean(data['states'][data['signed_evidence'] == ev], axis=0)
-            ax[2].plot(lags_mat, sts[:, 0], '+-', color=gr_clrs[i_e], alpha=0.2)
+            ax[2].plot(lags_mat, sts[:, 0], '+-', color=gr_clrs[i_e],
+                       label=str(ev))
             # ax[2].plot(lags_mat, np.mean(sts, axis=1), '+-', gr_clrs[i_e])
         ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        ax[2].legend()
         asdasd
         # CHOICE
         sts_1 = data['states'][data['choice'] == 1]
@@ -820,7 +823,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
 
     Returns
     -------
-    idx_mat : list
+    w_name : list
         list with the regressor corresponding to the p-values in pvalues.
     pvalues : list
         list with the p-values associated to the regressors in idx_max.
@@ -920,9 +923,10 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         if plot:
             f, ax = get_fig(ncols=4, nrows=2, figsize=(12, 6))
             f.suptitle(str(lag))
-        idx_mat = []
+        w_name = []
         weights_mat = []
         pvalues = []
+        neuron = []
         for i_n in range(num_neurons):
             # print('Neuron ', i_n)
             # AFTER CORRECT
@@ -933,7 +937,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             # family=sm.families.Poisson(link=sm.families.links.log))
             res = mod.fit()
             weights_ac = res.params
-            idx_mat += [x+'_ac' for x in res.pvalues.index]
+            w_name += [x+'_ac' for x in res.pvalues.index]
             pvalues += list(res.pvalues)
             weights_mat += list(weights_ac)
             # AFTER ERROR
@@ -944,7 +948,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             # family=sm.families.Poisson(link=sm.families.links.log))
             res = mod.fit()
             weights_ae = res.params
-            idx_mat += [x+'_ae' for x in res.pvalues.index]
+            w_name += [x+'_ae' for x in res.pvalues.index]
             pvalues += list(res.pvalues)
             weights_mat += list(weights_ae)
             if plot:
@@ -952,8 +956,9 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                                  weights_ae=weights_ae.values)
             # ax[9].plot(np.abs(kernel_ac[0]), np.abs(kernel_ae[0]), '+')
             # asdasd
-        data = {'idx_mat': idx_mat, 'pvalues': pvalues,
-                'weights': weights_mat}
+            neuron += i_n*np.ones(len(weights_ac)+len(weights_ae))
+        data = {'w_name': w_name, 'pvalues': pvalues,
+                'weights': weights_mat, 'neuron_indx': neuron}
         np.savez(n_file_name, **data)
 
 
@@ -969,10 +974,10 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
     for seed in np.arange(16):
         folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
             '/test_2AFC_activity/'
-        cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[2, 2],
-                   num_units=1024)
         GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
              num_units=1024, redo=redo, shf=shf)
+        cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[2, 2],
+                   num_units=1024)
         perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag,
                                                   plot=plot)
         mean_percs.append([perc_ac, perc_ae])

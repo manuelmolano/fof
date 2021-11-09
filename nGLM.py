@@ -692,82 +692,103 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     return df  # resulting df with lateralized T+
 
 
-def cond_psths(data, exp_nets='nets', pvalue=0.0001, lags=[3, 4]):
+def cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
+               num_units=1024):
     lags_mat = np.arange(np.sum(lags))-lags[0]
     if exp_nets == 'exps':
         print('PSTHs not implemented for experimental data yet')
     elif exp_nets == 'nets':
-        states = data['states']
-        states = states[:, int(states.shape[1]/2):]
-        states = sstats.zscore(states, axis=0)
-        states -= np.min(states, axis=0)
-        fix_tms = get_fixation_times(data, lags=lags)
-        states = np.array([states[fxt-lags[0]:fxt+lags[1], :] for fxt in fix_tms])
+        datasets = glob.glob(folder+'data_*')
+        data = {'choice': [], 'performance': [], 'prev_perf': [],
+                'states': [], 'signed_evidence': []}
+        for f in datasets:
+            data_tmp = np.load(f, allow_pickle=1)
+            fix_tms = get_fixation_times(data=data_tmp, lags=lags)
+            ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
+            data['choice'] += ch.tolist()
+            data['performance'] += perf.tolist()
+            data['prev_perf'] += prev_perf.tolist()
+            data['signed_evidence'] += ev.tolist()
+            states = data_tmp['states']
+            states = states[:, int(states.shape[1]/2):]
+            states = sstats.zscore(states, axis=0)
+            states = [states[fxt-lags[0]:fxt+lags[1], :] for fxt in fix_tms]
+            data['states'] += states
+        for k in data.keys():
+            data[k] = np.array(data[k])
         f, ax = plt.subplots(ncols=3)
-        ch, perf, prev_perf, ev = get_vars(data=data, fix_tms=fix_tms)
-        # CHOICE
-        sts_1 = states[ch == 1]
-        sts_2 = states[ch == 2]
+        # EVIDENCE
+        # sts_1 = data['states'][data['signed_evidence'] < 5]
+        # sts_2 = data['states'][data['signed_evidence'] > 15]
+        # sign = []
+        # for tmstp in range(data['states'].shape[1]):
+        #     s_tsp_1 = sts_1[:, tmstp, :]
+        #     s_tsp_2 = sts_2[:, tmstp, :]
+        #     sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
+        #               for i in range(data['states'].shape[2])]
+        #     sign.append(np.sum(sign_n)/data['states'].shape[2])
+        # ax[2].plot(lags_mat, sign, '+-', label='evidence')
+        # ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        sts_2 = data['states'][data['signed_evidence'] > 15]
         sign = []
-        for tmstp in range(states.shape[1]):
+        gr_clrs = sns.diverging_palette(145, 300, n=9)
+        for i_e, ev in enumerate(np.unique(data['signed_evidence'])):
+            sts = np.mean(data['states'][data['signed_evidence'] == ev], axis=0)
+            ax[2].plot(lags_mat, sts[:, 0], '+-', color=gr_clrs[i_e], alpha=0.2)
+            # ax[2].plot(lags_mat, np.mean(sts, axis=1), '+-', gr_clrs[i_e])
+        ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
+        asdasd
+        # CHOICE
+        sts_1 = data['states'][data['choice'] == 1]
+        sts_2 = data['states'][data['choice'] == 2]
+        sign = []
+        for tmstp in range(data['states'].shape[1]):
             s_tsp_1 = sts_1[:, tmstp, :]
             s_tsp_2 = sts_2[:, tmstp, :]
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
-                      for i in range(states.shape[2])]
-            sign.append(np.sum(sign_n)/states.shape[2])
+                      for i in range(data['states'].shape[2])]
+            sign.append(np.sum(sign_n)/data['states'].shape[2])
         ax[0].plot(lags_mat, sign, '+-', label='choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         # PREVIOUS CHOICE
-        prev_ch = shift(ch, shift=1, cval=0)
-        sts_1 = states[prev_ch == 1]
-        sts_2 = states[prev_ch == 2]
+        prev_ch = shift(data['choice'], shift=1, cval=0)
+        sts_1 = data['states'][prev_ch == 1]
+        sts_2 = data['states'][prev_ch == 2]
         sign = []
-        for tmstp in range(states.shape[1]):
+        for tmstp in range(data['states'].shape[1]):
             s_tsp_1 = sts_1[:, tmstp, :]
             s_tsp_2 = sts_2[:, tmstp, :]
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
-                      for i in range(states.shape[2])]
-            sign.append(np.sum(sign_n)/states.shape[2])
+                      for i in range(data['states'].shape[2])]
+            sign.append(np.sum(sign_n)/data['states'].shape[2])
         ax[0].plot(lags_mat, sign, '+-', label='prev. choice')
         ax[0].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         ax[0].legend()
         # PERFORMANCE
-        sts_1 = states[perf == 0]
-        sts_2 = states[perf == 1]
+        sts_1 = data['states'][data['performance'] == 0]
+        sts_2 = data['states'][data['performance'] == 1]
         sign = []
-        for tmstp in range(states.shape[1]):
+        for tmstp in range(data['states'].shape[1]):
             s_tsp_1 = sts_1[:, tmstp, :]
             s_tsp_2 = sts_2[:, tmstp, :]
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
-                      for i in range(states.shape[2])]
-            sign.append(np.sum(sign_n)/states.shape[2])
+                      for i in range(data['states'].shape[2])]
+            sign.append(np.sum(sign_n)/data['states'].shape[2])
         ax[1].plot(lags_mat, sign, '+-', label='perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         # PREVIOUS PERFORMANCE
-        sts_1 = states[prev_perf == 0]
-        sts_2 = states[prev_perf == 1]
+        sts_1 = data['states'][data['prev_perf'] == 0]
+        sts_2 = data['states'][data['prev_perf'] == 1]
         sign = []
-        for tmstp in range(states.shape[1]):
+        for tmstp in range(data['states'].shape[1]):
             s_tsp_1 = sts_1[:, tmstp, :]
             s_tsp_2 = sts_2[:, tmstp, :]
             sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
-                      for i in range(states.shape[2])]
-            sign.append(np.sum(sign_n)/states.shape[2])
+                      for i in range(data['states'].shape[2])]
+            sign.append(np.sum(sign_n)/data['states'].shape[2])
         ax[1].plot(lags_mat, sign, '+-', label='prev. perf')
         ax[1].axvline(x=0, color=(.7, .7, .7), linestyle='--')
         ax[1].legend()
-        # EVIDENCE
-        sts_1 = states[ev < 5]
-        sts_2 = states[ev > 15]
-        sign = []
-        for tmstp in range(states.shape[1]):
-            s_tsp_1 = sts_1[:, tmstp, :]
-            s_tsp_2 = sts_2[:, tmstp, :]
-            sign_n = [sstats.ranksums(s_tsp_1[:, i], s_tsp_2[:, i]).pvalue < pvalue
-                      for i in range(states.shape[2])]
-            sign.append(np.sum(sign_n)/states.shape[2])
-        ax[2].plot(lags_mat, sign, '+-', label='evidence')
-        ax[2].axvline(x=0, color=(.7, .7, .7), linestyle='--')
 
 
 def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
@@ -948,6 +969,8 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
     for seed in np.arange(16):
         folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
             '/test_2AFC_activity/'
+        cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[2, 2],
+                   num_units=1024)
         GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
              num_units=1024, redo=redo, shf=shf)
         perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag,
@@ -1075,9 +1098,9 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = False
-        plot = True
-        shuffling = True
+        redo = True
+        plot = False
+        shuffling = False
         shf_name = '_shf' if shuffling else ''
         FIGS_VER += shf_name
         mean_perc_mat = []
@@ -1086,7 +1109,7 @@ if __name__ == '__main__':
         std_ws_mat = []
         corr_ac_mat = []
         corr_ae_mat = []
-        lags = [0]  # , -1, 1, 2]
+        lags = [0, -1, 1, 2]
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'

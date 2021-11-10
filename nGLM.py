@@ -35,8 +35,8 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
-GLM_VER = {'neural': 'lateral', 'behav': 'full'}
-FIGS_VER = 'link_guassian_w_currCh_v2'  # _minimal (<=29/10/21)
+GLM_VER = {'neural': 'split', 'behav': 'full'}
+FIGS_VER = 'link_guassian_split'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -343,7 +343,7 @@ def plot_corrs(mat, reset_mat, labels):
 
 def filter_regressors(regrs):
     return np.unique([x[:-3] for x in regrs if ('6-10' not in x) and
-                      ('5' not in x) and ('4' not in x) and ('3' not in x) and
+                      ('5' not in x) and ('4' not in x) and  # ('3' not in x) and
                       (not x.startswith('intercept'))])
 
 
@@ -374,8 +374,8 @@ def get_regressors(behav_neural):
     if behav_neural == 'neural' and GLM_VER[behav_neural] != 'split':
         cols.append('trans_bias')
         cols.append('curr_ch')  # , 'curr_ch']
-    afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1']]
-    aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1']]
+    afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1', 'R-1']]
+    aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1', 'R+1']]
     return afterc_cols, aftere_cols, cols
 
 
@@ -477,15 +477,15 @@ def behavioral_glm(df):
 
     """
     ac_cols, ae_cols, _ = get_regressors(behav_neural='behav')
-    not_nan_indx = df['R_response'].notna()
+    not_nan_indx = df['resp'].notna()
     X_df_ac, y_df_ac =\
         df.loc[(df.afterr == 0) & not_nan_indx,
                ac_cols].fillna(value=0),\
-        df.loc[(df.afterr == 0) & not_nan_indx, 'R_response']
+        df.loc[(df.afterr == 0) & not_nan_indx, 'resp']
     X_df_ae, y_df_ae =\
         df.loc[(df.afterr == 1) & not_nan_indx,
                ae_cols].fillna(value=0),\
-        df.loc[(df.afterr == 1) & not_nan_indx, 'R_response']
+        df.loc[(df.afterr == 1) & not_nan_indx, 'resp']
 
     if len(np.unique(y_df_ac.values)) == 2 and len(np.unique(y_df_ae.values)) == 2:
         Lreg_ac = LogisticRegression(C=1, fit_intercept=False, penalty='l2',
@@ -527,7 +527,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     if exp_nets == 'exps':
         ev = data['coh'].values
         perf = data['hithistory'].values
-        ch = data['R_response'].values
+        ch = data['resp'].values
         # discard (make nan) non-standard-2afc task periods
         nan_indx = np.logical_and.reduce((ch != 1., ch != 2., ~mask))
         ev[nan_indx] = np.nan
@@ -562,7 +562,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     # 'origidx': trial index within session
     # 'rewside': ground truth
     # 'hithistory': performance
-    # 'R_response': choice (right == 1, left == 0, invalid == nan)
+    # 'resp': choice (right == 1, left == 0, invalid == nan)
     # 'subjid': subject
     # 'sessid': session
     # 'res_sound': stimulus (left - right) [frame_i, .., frame_i+n]
@@ -570,7 +570,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     # 'frames_listened'
     # 'afterr': not(performance) shifted
     # 'rep_resp'
-    df = {'origidx': np.arange(ch.shape[0]), 'R_response': ch, 'hit': perf,
+    df = {'origidx': np.arange(ch.shape[0]), 'resp': ch, 'hit': perf,
           'evidence': ev, 'afterr': 1*(prev_perf == 0),
           'rep_resp': rep_ch_}
     df = pd.DataFrame(df)
@@ -581,13 +581,13 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     for i_l, l_r in enumerate(lat_rgrss):
         for i_o, outc in enumerate(['-', '+']):
             df[l_r+outc+'1'] = np.nan  # np.nan considering invalids as errors
-            df.loc[(df.R_response == i_l) & (df.hit == i_o), l_r+outc+'1'] = 1
+            df.loc[(df.resp == i_l) & (df.hit == i_o), l_r+outc+'1'] = 1
             # can't use != because it would include NaNs
-            df.loc[df.R_response == np.abs(i_l-1), l_r+outc+'1'] = 0
+            df.loc[df.resp == np.abs(i_l-1), l_r+outc+'1'] = 0
             df.loc[df.hit == np.abs(i_o-1), l_r+outc+'1'] = 0
             df[l_r+outc+'1'] = df[l_r+outc+'1'].shift(1)
             df.loc[df.origidx == 1, l_r+outc+'1'] = np.nan
-            if GLM_VER[behav_neural] in ['lateral', 'full']:
+            if GLM_VER[behav_neural] in ['lateral', 'full', 'split']:
                 # shifts
                 for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
                     df[l_r+outc+str(item)] = df[l_r+outc+str(item-1)].shift(1)
@@ -623,16 +623,19 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df.loc[df.rep_resp == np.abs(i_tr-1), tr_r] = 0
         df[tr_r] = df[tr_r].shift(1)
         # zT
-        df['zt_'+tr_r] = df[tr_r].shift(1)
-        df['zt_'+tr_r] = np.convolve(df['zt_'+tr_r], kernel, mode='full')[0:limit]
-        df['trans_bias_'+tr_r] = df['zt_'+tr_r]*(df['L+1']+df['L-1'])
+        df['zT_'+tr_r] = df[tr_r].shift(1)
+        df['zT_'+tr_r] = np.convolve(df['zT_'+tr_r], kernel, mode='full')[0:limit]
+        df['trans_bias_'+tr_r] = df['zT_'+tr_r]*(df.resp.shift(1)*2-1)
 
     if GLM_VER[behav_neural] != 'split':
         df['T++1'] = df['rep']+df['alt']
-        df['zT'] = df['zt_rep']+df['zt_alt']
+        df['zT'] = df['zT_rep']+df['zT_alt']
         df['trans_bias'] = df['trans_bias_rep']+df['trans_bias_alt']
         df.drop([r for r in list(df) if r.endswith('alt') or r.endswith('rep')],
                 axis=1, inplace=True)
+    else:
+        df['zT_alt'] = -df['zT_alt']
+        df['trans_bias_alt'] = -df['trans_bias_alt']
 
     if GLM_VER[behav_neural] == 'full':
         for tr in ['++', '+-', '-+', '--']:
@@ -654,17 +657,16 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
             df['T'+tr+'6-10'] = np.nansum(df[cols].values, axis=1)
             df.drop(cols, axis=1, inplace=True)
             df.loc[df.origidx < 6, ['T'+tr+'6-10']] = np.nan
-    # intercept
-    df['intercept'] = 1
-    # curr choice and translate transitions to left/right space
-    if behav_neural == 'neural':
-        if 'curr_ch' in model_cols:
-            df['curr_ch'] = df['L+1']+df['L-1']
-            df['curr_ch'] = df['curr_ch'].shift(-1)
-    elif behav_neural == 'behav':
+    # translate transitions to left/right space
+    if behav_neural == 'behav':
         # transforming transitions to left/right space
         for col in [x for x in df.columns if x.startswith('T')]:
-            df[col] = df[col] * (df.R_response.shift(1)*2-1)
+            df[col] = df[col] * (df.resp.shift(1)*2-1)
+    # intercept
+    df['intercept'] = 1
+    # curr choice
+    if 'curr_ch' in model_cols:
+        df['curr_ch'] = df.resp.shift(-1)*2-1
 
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors
@@ -897,7 +899,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                                     mask=indx_good_evs, chck_corr=False,
                                     lags=lags, behav_neural='neural')
         # build data set
-        not_nan_indx = df['R_response'].notna()
+        not_nan_indx = df['resp'].notna()
 
         # after correct/error regressors
         ac_cols, ae_cols, _ = get_regressors(behav_neural='neural')
@@ -962,7 +964,7 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
         folder = main_folder+'/alg_ACER_seed_'+str(seed)+'_n_ch_'+str(n_ch) +\
             '/test_2AFC_activity/'
         GLMs(folder=folder, exp_nets='nets', plt=False, lag=lag,
-             num_units=1024, redo=redo, shf=shf)
+             num_units=1024, redo=redo, shf=shf, plot=False)
         # cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[2, 2],
         #            num_units=1024)
         perc_ac, perc_ae, labels = plot_perc_sign(folder=folder, lag=lag,
@@ -970,8 +972,7 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
         mean_percs.append([perc_ac, perc_ae])
         mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag, plot=plot)
         mean_weights.append(mean_ws)
-        asdasd
-        plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
+        # plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
         beahv_data = np.load(folder+'/behav.npz')
         reset_mat.append(beahv_data['reset'])
     xs = np.arange(len(labels))

@@ -367,11 +367,11 @@ def get_regressors(behav_neural):
                 'L+5', 'L-5', 'L+6-10', 'L-6-10',
                 'R+1', 'R-1', 'R+2', 'R-2', 'R+3', 'R-3', 'R+4', 'R-4',
                 'R+5', 'R-5', 'R+6-10', 'R-6-10',
-                'zT_rep', 'zT_alt',
+                'zT_rep', 'zT_alt', 'trans_bias_rep', 'trans_bias_alt',
                 'intercept']
     elif GLM_VER[behav_neural] == 'minimal':
         cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
-    if behav_neural == 'neural':
+    if behav_neural == 'neural' and GLM_VER[behav_neural] != 'split':
         cols.append('trans_bias')
         cols.append('curr_ch')  # , 'curr_ch']
     afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1']]
@@ -569,20 +569,46 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     # 'sound_len': stim duration
     # 'frames_listened'
     # 'afterr': not(performance) shifted
-    # 'rep_response'
+    # 'rep_resp'
     df = {'origidx': np.arange(ch.shape[0]), 'R_response': ch, 'hit': perf,
           'evidence': ev, 'afterr': 1*(prev_perf == 0),
-          'rep_response': rep_ch_}
+          'rep_resp': rep_ch_}
     df = pd.DataFrame(df)
-    
+
     # Lateral module
-    # if GLM_VER[behav_neural] in ['lateral', 'full']:
-        
-    for i_o, outc in enumerate(['-', '+']):
+    # build left and right regressors separately and sum them later if requested
+    lat_rgrss = ['R', 'L']
+    for i_l, l_r in enumerate(lat_rgrss):
+        for i_o, outc in enumerate(['-', '+']):
+            df[l_r+outc+'1'] = np.nan  # np.nan considering invalids as errors
+            df.loc[(df.R_response == i_l) & (df.hit == i_o), l_r+outc+'1'] = 1
+            # can't use != because it would include NaNs
+            df.loc[df.R_response == np.abs(i_l-1), l_r+outc+'1'] = 0
+            df.loc[df.hit == np.abs(i_o-1), l_r+outc+'1'] = 0
+            df[l_r+outc+'1'] = df[l_r+outc+'1'].shift(1)
+            df.loc[df.origidx == 1, l_r+outc+'1'] = np.nan
+            if GLM_VER[behav_neural] in ['lateral', 'full']:
+                # shifts
+                for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
+                    df[l_r+outc+str(item)] = df[l_r+outc+str(item-1)].shift(1)
+                    df.loc[df.origidx == 1, l_r+outc+str(item)] = np.nan
+                # add from 6 to 10, assign them and drop prev cols cols
+                cols = [l_r+outc+str(x) for x in range(6, 11)]
+                df[l_r+outc+'6-10'] = np.nansum(df[cols].values, axis=1)
+                df.drop(cols, axis=1, inplace=True)
+                df.loc[df.origidx <= 6, l_r+outc+'6-10'] = np.nan
+    if GLM_VER[behav_neural] != 'split':
+        rgrss = [r for r in list(df) if r.startswith('L')]
+        for r in rgrss:
+            df[r] = df[r]-df['R'+r[1:]]
+        df.drop([r for r in list(df) if r.startswith('R+')], axis=1, inplace=True)
+        df.drop([r for r in list(df) if r.startswith('R-')], axis=1, inplace=True)
+
+    for i_o, outc in enumerate(['bis-', 'bis+']):
         df['L'+outc+'1'] = np.nan  # np.nan considering invalids as errors
         df.loc[(df.R_response == 1) & (df.hit == i_o), 'L'+outc+'1'] = 1
         df.loc[(df.R_response == 0) & (df.hit == i_o), 'L'+outc+'1'] = -1
-        df.loc[df.hit != i_o, 'L'+outc+'1'] = 0
+        df.loc[df.hit == np.abs(i_o-1), 'L'+outc+'1'] = 0
         df['L'+outc+'1'] = df['L'+outc+'1'].shift(1)
         df.loc[df.origidx == 1, 'L'+outc+'1'] = np.nan
         if GLM_VER[behav_neural] in ['lateral', 'full']:
@@ -596,19 +622,49 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
             df.drop(cols, axis=1, inplace=True)
             df.loc[df.origidx <= 6, 'L'+outc+'6-10'] = np.nan
 
+    for r in list(df):
+        if r.startswith('Lbis'):
+            assert np.sum(np.isnan(df[r])) == np.sum(np.isnan(df['L'+r[4:]]))
+            df.drop(r, axis=1, inplace=True)
     # pre transition module
-    df.loc[df.origidx == 1, 'rep_response'] = np.nan
-    df['rep_response_11'] = df.rep_response
-    df.loc[df.rep_response == 0, 'rep_response_11'] = -1
-    df.rep_response_11.fillna(value=0, inplace=True)
+    df.loc[df.origidx == 1, 'rep_resp'] = np.nan
+    df['rep_resp_11'] = df.rep_resp
+    df.loc[df.rep_resp == 0, 'rep_resp_11'] = -1
+    df.rep_resp_11.fillna(value=0, inplace=True)
     df.loc[df.origidx == 1, 'afterr'] = np.nan
 
     # transition module
-    df['T++1'] = np.nan  # np.nan
-    df.loc[(df.afterr == 0) & (df.hit == 1), 'T++1'] =\
-        df.loc[(df.afterr == 0) & (df.hit == 1), 'rep_response_11']
-    df.loc[(df.afterr == 1) | (df.hit == 0), 'T++1'] = 0
-    df['T++1'] = df['T++1'].shift(1)
+    limit = -krnl_len+1
+    kernel = np.exp(-np.arange(krnl_len)/tau)
+    tr_rgrss = ['alt', 'rep']
+    for i_tr, tr_r in enumerate(tr_rgrss):
+        df[tr_r] = np.nan  # np.nan
+        df.loc[(df.afterr == 0) & (df.hit == 1), tr_r] =\
+            df.loc[(df.afterr == 0) & (df.hit == 1), 'rep_resp_11']
+        df.loc[(df.afterr == 1) | (df.hit == 0), tr_r] = 0
+        df.loc[df.rep_resp == np.abs(i_tr-1), tr_r] = 0
+        df[tr_r] = df[tr_r].shift(1)
+        # zT
+        df['zt_'+tr_r] = df[tr_r].shift(1)
+        df['zt_'+tr_r] = np.convolve(df['zt_'+tr_r], kernel, mode='full')[0:limit]
+        df['trans_bias_'+tr_r] = df['zt_'+tr_r]*(df['L+1']+df['L-1'])
+
+    if GLM_VER[behav_neural] != 'split':
+        df['T++1'] = df['rep']+df['alt']
+        df['zT'] = df['zt_rep']+df['zt_alt']
+        df['trans_bias'] = df['trans_bias_rep']+df['trans_bias_alt']
+        df.drop([r for r in list(df) if r.endswith('alt') or r.endswith('rep')],
+                axis=1, inplace=True)
+
+    df['T++1bis'] = np.nan  # np.nan
+    df.loc[(df.afterr == 0) & (df.hit == 1), 'T++1bis'] =\
+        df.loc[(df.afterr == 0) & (df.hit == 1), 'rep_resp_11']
+    df.loc[(df.afterr == 1) | (df.hit == 0), 'T++1bis'] = 0
+    df['T++1bis'] = df['T++1bis'].shift(1)
+    indx = np.where(df['T++1bis'] != df['T++1'])[0]
+    assert np.isnan(np.unique(df['T++1bis'][indx])).all()
+    assert np.isnan(np.unique(df['T++1'][indx])).all()
+    df.drop('T++1bis', axis=1, inplace=True)
     if GLM_VER[behav_neural] == 'full':
         for tr in ['++', '+-', '-+', '--']:
             hit_1 = tr[0] != '+'  # this will be compared with aftererror variable
@@ -617,7 +673,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
                 df['T'+tr+'1'] = np.nan  # np.nan
                 df.loc[(df.afterr == hit_1) & (df.hit == hit_2), 'T'+tr+'1'] =\
                     df.loc[(df.afterr == hit_1) & (df.hit == hit_2),
-                           'rep_response_11']
+                           'rep_resp_11']
                 df.loc[(df.afterr != hit_1) | (df.hit != hit_2), 'T'+tr+'1'] = 0
                 df['T'+tr+'1'] = df['T'+tr+'1'].shift(1)
             # shifts now
@@ -637,12 +693,13 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         limit = -krnl_len+1
         kernel = np.exp(-np.arange(krnl_len)/tau)
         zt = np.convolve(zt_comps, kernel, mode='full')[0:limit]
-        df['trans_bias'] = zt*(df['L+1']+df['L-1'])
+        df['trans_bias_bis'] = zt*(df['L+1']+df['L-1'])
         if 'curr_ch' in model_cols:
             df['curr_ch'] = df['L+1']+df['L-1']
             df['curr_ch'] = df['curr_ch'].shift(-1)
         if GLM_VER[behav_neural] in ['lateral', 'minimal']:
-            df['zT'] = zt
+            df['zT_bis'] = zt
+            df.drop('T++1', axis=1, inplace=True)
     elif behav_neural == 'behav':
         # transforming transitions to left/right space
         for col in [x for x in df.columns if x.startswith('T')]:
@@ -652,6 +709,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
             limit = -krnl_len+1
             kernel = np.exp(-np.arange(krnl_len)/tau)
             df['zT'] = np.convolve(zt_comps, kernel, mode='full')[0:limit]
+            df.drop('T++1', axis=1, inplace=True)
 
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors

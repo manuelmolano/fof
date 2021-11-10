@@ -36,7 +36,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'split', 'behav': 'full'}
-FIGS_VER = 'link_guassian_split'  # _minimal (<=29/10/21)
+FIGS_VER = 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -371,9 +371,11 @@ def get_regressors(behav_neural):
                 'intercept']
     elif GLM_VER[behav_neural] == 'minimal':
         cols = ['evidence', 'L+1', 'L-1', 'zT', 'intercept']
-    if behav_neural == 'neural' and GLM_VER[behav_neural] != 'split':
-        cols.append('trans_bias')
+    if behav_neural == 'neural':
         cols.append('curr_ch')  # , 'curr_ch']
+        if GLM_VER[behav_neural] != 'split':
+            cols.append('trans_bias')
+
     afterc_cols = [x for x in cols if x not in ['L-1', 'T+-1', 'T--1', 'R-1']]
     aftere_cols = [x for x in cols if x not in ['L+1', 'T++1', 'T-+1', 'R+1']]
     return afterc_cols, aftere_cols, cols

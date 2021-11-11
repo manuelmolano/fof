@@ -20,6 +20,7 @@ import scipy.stats as sstats
 from scipy.ndimage.interpolation import shift
 from sklearn.linear_model import LogisticRegression
 import plotting_functions as pf
+import time
 rojo = np.array((228, 26, 28))/255
 azul = np.array((55, 126, 184))/255
 verde = np.array((77, 175, 74))/255
@@ -35,8 +36,8 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
-GLM_VER = {'neural': 'split', 'behav': 'full'}
-FIGS_VER = 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
+GLM_VER = {'neural': 'minimal', 'behav': 'full'}
+FIGS_VER = 'minimal'  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -222,7 +223,7 @@ def plt_p_VS_n(folder, lag, ax=None):
         save_fig(f=f, name=folder+'/p_VS_n_'+str(lag)+FIGS_VER+'.png')
 
 
-def plot_weights_distr(folder, lag, plot=True):
+def plot_weights_distr(folder, lag, plot=True, widths=0.15):
     """
     Plot percentage of significant neurons to each regressor.
 
@@ -245,22 +246,28 @@ def plot_weights_distr(folder, lag, plot=True):
     unq_regrs = np.unique(w_name)
     unq_regrs = filter_regressors(regrs=unq_regrs)
     if plot:
-        fig, ax = plt.subplots(nrows=4, ncols=5, figsize=(18, 12))
-        ax = ax.flatten()
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(9, 6))
     mean_ws = []
     std_ws = []
     for i_r, rgrs in enumerate(unq_regrs):
         rgrs_ac = rgrs+'_ac'
-        w_ac = np.abs(weights[np.logical_and(w_name == rgrs_ac, pvalues < 0.01)])
+        w_ac = weights[np.logical_and(w_name == rgrs_ac, pvalues < 0.01)]
         rgrs_ae = rgrs+'_ae'
-        w_ae = np.abs(weights[np.logical_and(w_name == rgrs_ae, pvalues < 0.01)])
+        w_ae = weights[np.logical_and(w_name == rgrs_ae, pvalues < 0.01)]
         if plot:
-            ax[i_r].hist([w_ac, w_ae], 20)
-            ax[i_r].set_title(rgrs)
+            pf.box_plot(data=w_ac, ax=ax, x=i_r-widths, lw=.5, fliersize=2,
+                        color=pf.naranja, widths=widths)
+            ax.plot(np.ones((len(w_ac)))*(i_r-widths), w_ac, '.', color=pf.naranja,
+                    alpha=0.5)
+            pf.box_plot(data=w_ae, ax=ax, x=i_r+widths, lw=.5, fliersize=2,
+                        color='k', widths=widths)
+            ax.plot(np.ones((len(w_ae)))*(i_r+widths), w_ae, '.', color='k',
+                    alpha=0.5)
+
         mean_ws.append([np.mean(w_ac), np.mean(w_ae)])
         std_ws.append([np.std(w_ac), np.std(w_ae)])
-
-    # ax[0].legend()
+    ax.set_xticks(np.arange(len(unq_regrs)))
+    ax.set_xticklabels(unq_regrs)
     if plot:
         save_fig(f=fig, name=folder+'/weight_hists_'+str(lag)+FIGS_VER+'.png')
         plt.close(fig)
@@ -523,7 +530,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         dataframe containg evidence, lateral and transition regressors.
 
     """
-
+    t0 = time.time()
     afterc_cols, aftere_cols, model_cols =\
         get_regressors(behav_neural=behav_neural)
     if exp_nets == 'exps':
@@ -668,7 +675,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     df['intercept'] = 1
     # curr choice
     if 'curr_ch' in model_cols:
-        df['curr_ch'] = df.resp.shift(-1)*2-1
+        df['curr_ch'] = df.resp*2-1
 
     df.loc[:, model_cols].fillna(value=0, inplace=True)
     # check correlation between regressors
@@ -680,6 +687,8 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
                                cols].fillna(value=0).corr(),
                         vmin=-1, vmax=1, cmap='coolwarm', ax=ax)
             ax.set_title(t)
+    t1 = time.time()
+    print(t1-t0)
     return df  # resulting df with lateralized T+
 
 
@@ -918,11 +927,14 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         weights_mat = []
         pvalues = []
         neuron = []
+        # f, ax = plt.subplots()
         for i_n in range(num_neurons):
             # print('Neuron ', i_n)
             # AFTER CORRECT
             resps_ac = data['states'][np.logical_and((df.afterr == 0),
                                                      not_nan_indx).values, i_n]
+            # hist, bins = np.histogram(resps_ac, 100)
+            # ax.plot(bins[:-1]+(bins[1]-bins[0])/2, hist)
             exog, endog = sm.add_constant(X_df_ac), resps_ac
             mod = sm.GLM(endog, exog)  # default is gaussian
             # family=sm.families.Poisson(link=sm.families.links.log))
@@ -934,6 +946,8 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
             # AFTER ERROR
             resps_ae = data['states'][np.logical_and((df.afterr == 1),
                                                      not_nan_indx).values, i_n]
+            # hist, _ = np.histogram(resps_ae, bins)
+            # ax.plot(bins[:-1]+(bins[1]-bins[0])/2, hist)
             exog, endog = sm.add_constant(X_df_ae), resps_ae
             mod = sm.GLM(endog, exog)  # default is gaussian
             # family=sm.families.Poisson(link=sm.families.links.log))
@@ -974,6 +988,7 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
         mean_percs.append([perc_ac, perc_ae])
         mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag, plot=plot)
         mean_weights.append(mean_ws)
+        asd
         # plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
         beahv_data = np.load(folder+'/behav.npz')
         reset_mat.append(beahv_data['reset'])
@@ -1094,7 +1109,7 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = False
+        redo = True
         plot = True
         shuffling = False
         shf_name = '_shf' if shuffling else ''
@@ -1105,7 +1120,7 @@ if __name__ == '__main__':
         std_ws_mat = []
         corr_ac_mat = []
         corr_ae_mat = []
-        lags = [0, -1, 1, 2]
+        lags = [0]  # [0, -1, 1, 2]
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'

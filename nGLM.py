@@ -36,8 +36,8 @@ rojo_2 = np.array([240, 2, 127])/255
 grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
-GLM_VER = {'neural': 'minimal', 'behav': 'full'}
-FIGS_VER = 'minimal'  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
+GLM_VER = {'neural': 'all_in', 'behav': 'full'}
+FIGS_VER = ''  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -362,7 +362,15 @@ def get_regressors(behav_neural):
                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
                 'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
-                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10',
+                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
+    if GLM_VER[behav_neural] == 'all_in':  # all regressors + zT
+        cols = ['evidence',
+                'L+1', 'L-1', 'L+3', 'L-3', 'L+4', 'L-4',
+                'L+5', 'L-5', 'L+6-10', 'L-6-10',
+                'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
+                'T--2', 'T++3', 'T+-3', 'T-+3', 'T--3', 'T++4', 'T+-4',
+                'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
+                'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'zT',
                 'intercept']
     elif GLM_VER[behav_neural] == 'lateral':  # L, zT, ev, trans-bias
         cols = ['evidence',
@@ -513,7 +521,7 @@ def behavioral_glm(df):
 
 
 def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
-                           krnl_len=10, lags=[0, 0], behav_neural='neural'):
+                           krnl_len=10, behav_neural='neural'):
     """
     Compute regressors.
 
@@ -596,7 +604,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
             df.loc[df.hit == np.abs(i_o-1), l_r+outc+'1'] = 0
             df[l_r+outc+'1'] = df[l_r+outc+'1'].shift(1)
             df.loc[df.origidx == 1, l_r+outc+'1'] = np.nan
-            if GLM_VER[behav_neural] in ['lateral', 'full', 'split']:
+            if GLM_VER[behav_neural] in ['all_in', 'lateral', 'full', 'split']:
                 # shifts
                 for i, item in enumerate([2, 3, 4, 5, 6, 7, 8, 9, 10]):
                     df[l_r+outc+str(item)] = df[l_r+outc+str(item-1)].shift(1)
@@ -646,7 +654,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
         df['zT_alt'] = -df['zT_alt']
         df['trans_bias_alt'] = -df['trans_bias_alt']
 
-    if GLM_VER[behav_neural] == 'full':
+    if GLM_VER[behav_neural] in ['full', 'all_in']:
         for tr in ['++', '+-', '-+', '--']:
             hit_1 = tr[0] != '+'  # this will be compared with aftererror variable
             hit_2 = tr[1] == '+'
@@ -883,7 +891,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         # BEHAVIORAL GLM
         df = compute_GLM_regressors(data=data, exp_nets=exp_nets,
                                     mask=indx_good_evs, chck_corr=False,
-                                    lags=lags, behav_neural='behav')
+                                    behav_neural='behav')
         Lreg_ac, Lreg_ae = behavioral_glm(df)
         weights_ac = Lreg_ac.coef_
         weights_ae = Lreg_ae.coef_
@@ -908,7 +916,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         # NEURO-GLM
         df = compute_GLM_regressors(data=data, exp_nets=exp_nets,
                                     mask=indx_good_evs, chck_corr=False,
-                                    lags=lags, behav_neural='neural')
+                                    behav_neural='neural')
         # build data set
         not_nan_indx = df['resp'].notna()
 
@@ -918,6 +926,9 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
                          ac_cols].fillna(value=0)
         X_df_ae = df.loc[(df.afterr == 1) & not_nan_indx,
                          ae_cols].fillna(value=0)
+        # if lag <= 0:
+        #     X_df_ac.drop('evidence', axis=1, inplace=True)
+        #     X_df_ae.drop('evidence', axis=1, inplace=True)
         num_neurons = num_units  # XXX: for exps this should be 1
 
         if plot:
@@ -988,7 +999,6 @@ def batch_neuroGLM(main_folder, lag=0, redo=False, n_ch=16, plot=True, shf=False
         mean_percs.append([perc_ac, perc_ae])
         mean_ws, std_ws = plot_weights_distr(folder=folder, lag=lag, plot=plot)
         mean_weights.append(mean_ws)
-        asd
         # plt_p_VS_n(folder=folder, lag=lag, ax=ax_lp_ln)
         beahv_data = np.load(folder+'/behav.npz')
         reset_mat.append(beahv_data['reset'])

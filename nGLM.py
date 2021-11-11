@@ -37,7 +37,7 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'all_in', 'behav': 'full'}
-FIGS_VER = ''  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
+FIGS_VER = '_w_ev1'  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
@@ -350,7 +350,7 @@ def plot_corrs(mat, reset_mat, labels):
 
 def filter_regressors(regrs):
     return np.unique([x[:-3] for x in regrs if ('6-10' not in x) and
-                      ('5' not in x) and ('4' not in x) and  # ('3' not in x) and
+                      ('5' not in x) and ('4' not in x) and ('3' not in x) and
                       (not x.startswith('intercept'))])
 
 
@@ -364,7 +364,7 @@ def get_regressors(behav_neural):
                 'T-+4', 'T--4', 'T++5', 'T+-5', 'T-+5', 'T--5',
                 'T++6-10', 'T+-6-10', 'T-+6-10', 'T--6-10', 'intercept']
     if GLM_VER[behav_neural] == 'all_in':  # all regressors + zT
-        cols = ['evidence',
+        cols = ['evidence', 'evidence1',
                 'L+1', 'L-1', 'L+3', 'L-3', 'L+4', 'L-4',
                 'L+5', 'L-5', 'L+6-10', 'L-6-10',
                 'T++1', 'T+-1', 'T-+1', 'T--1', 'T++2', 'T+-2', 'T-+2',
@@ -591,7 +591,8 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
           'evidence': ev, 'afterr': 1*(prev_perf == 0),
           'rep_resp': rep_ch_}
     df = pd.DataFrame(df)
-
+    # previous evidence (only for all-in model)
+    df['evidence1'] = df['evidence'].shift(1)
     # Lateral module
     # build left and right regressors separately and sum them later if requested
     lat_rgrss = ['R', 'L']
@@ -1130,7 +1131,7 @@ if __name__ == '__main__':
         std_ws_mat = []
         corr_ac_mat = []
         corr_ae_mat = []
-        lags = [0]  # [0, -1, 1, 2]
+        lags = [0, -1, 1, 2]
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'

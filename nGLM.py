@@ -42,29 +42,30 @@ for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
 
-def get_data(folder, lag=0, num_units=1024, lags=None):
+def get_data(folder, lag=0, num_units=1024, lags=None, num_files=100):
     if lags is None:
         lags = [lag, lag+1]
     datasets = glob.glob(folder+'data_*')
-    data = {'choice': [], 'performance': [], 'prev_perf': [],
+    datasets = datasets[:num_files]
+    data = {'choice': [], 'performance': [], 'prev_perf': [], 'gt': [],
             'states': np.empty((0, num_units)), 'signed_evidence': []}
     print('Experiment '+folder)
     print('Loading '+str(len(datasets))+' datasets')
     for f in datasets:
         data_tmp = np.load(f, allow_pickle=1)
         fix_tms = get_fixation_times(data=data_tmp, lags=lags)
-        ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
+        ch, perf, prev_perf, ev, gt = get_vars(data=data_tmp, fix_tms=fix_tms)
         data['choice'] += ch.tolist()
         data['performance'] += perf.tolist()
         data['prev_perf'] += prev_perf.tolist()
         data['signed_evidence'] += ev.tolist()
+        data['gt'] += gt.tolist()
         states = data_tmp['states']
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         states = states[fix_tms+lag, :]
         data['states'] = np.concatenate((data['states'],
                                          states[:, :num_units]), axis=0)
-
     for k in data.keys():
         data[k] = np.array(data[k])
     return data
@@ -435,7 +436,7 @@ def get_vars(data, fix_tms):
     gt = shift(data['gt'][fix_tms-1], shift=-1, cval=0).astype(float)
     ev = np.array(data['info_vals'].item()['coh'])[fix_tms]
     putative_ev = ev*(-1)**(gt == 2)
-    return ch, perf, prev_perf, putative_ev
+    return ch, perf, prev_perf, putative_ev, gt
 
 
 def get_fixation_times(data, lags):
@@ -743,7 +744,7 @@ def cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[3, 4], lag=0,
         for f in datasets:
             data_tmp = np.load(f, allow_pickle=1)
             fix_tms = get_fixation_times(data=data_tmp, lags=lags)
-            ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
+            ch, perf, prev_perf, ev, gt = get_vars(data=data_tmp, fix_tms=fix_tms)
             data['choice'] += ch.tolist()
             data['performance'] += perf.tolist()
             data['prev_perf'] += prev_perf.tolist()

@@ -37,9 +37,36 @@ grad_colors = sns.diverging_palette(145, 300, n=7)
 
 
 GLM_VER = {'neural': 'all_in', 'behav': 'full'}
-FIGS_VER = '_w_ev1'  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
+FIGS_VER = 'test'  # 'link_guassian_split_w_cch'  # _minimal (<=29/10/21)
 for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
+
+
+def get_data(folder, lag=0, num_units=1024):
+    lags = [lag, lag+1]
+    datasets = glob.glob(folder+'data_*')
+    data = {'choice': [], 'performance': [], 'prev_perf': [],
+            'states': np.empty((0, num_units)), 'signed_evidence': []}
+    print('Experiment '+folder)
+    print('Loading '+str(len(datasets))+' datasets')
+    for f in datasets:
+        data_tmp = np.load(f, allow_pickle=1)
+        fix_tms = get_fixation_times(data=data_tmp, lags=lags)
+        ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
+        data['choice'] += ch.tolist()
+        data['performance'] += perf.tolist()
+        data['prev_perf'] += prev_perf.tolist()
+        data['signed_evidence'] += ev.tolist()
+        states = data_tmp['states']
+        states = states[:, int(states.shape[1]/2):]
+        states = sstats.zscore(states, axis=0)
+        states = states[fix_tms+lag, :]
+        data['states'] = np.concatenate((data['states'],
+                                         states[:, :num_units]), axis=0)
+
+    for k in data.keys():
+        data[k] = np.array(data[k])
+    return data
 
 
 def save_fig(f, name):
@@ -702,7 +729,7 @@ def compute_GLM_regressors(data, exp_nets, mask=None, chck_corr=False, tau=2,
     return df  # resulting df with lateralized T+
 
 
-def cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[3, 4],
+def cond_psths(folder, exp_nets='nets', pvalue=0.0001, lags=[3, 4], lag=0,
                num_units=1024):
     lags_mat = np.arange(np.sum(lags))-lags[0]
     if exp_nets == 'exps':
@@ -843,7 +870,6 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
     n_file_name = folder+'/pvalues_'+str(lag)+'_'+FIGS_VER+'.npz'
     b_file_name = folder+'/behav_'+FIGS_VER+'.npz'
     if not os.path.exists(b_file_name) or not os.path.exists(n_file_name) or redo:
-        lags = [lag, lag+1]
         if exp_nets == 'exps':
             raise Exception('Code for experimental data is not up to date')
             assert 'cl' in exp_data.keys(), 'Please provide cluster to analyze'
@@ -867,28 +893,7 @@ def GLMs(folder='', exp_nets='nets', lag=0, num_units=1024, plot=True,
         else:
             indx_good_evs = None
             # get and put together files
-            datasets = glob.glob(folder+'data_*')
-            data = {'choice': [], 'performance': [], 'prev_perf': [],
-                    'states': np.empty((0, num_units)), 'signed_evidence': []}
-            print('Experiment '+folder)
-            print('Loading '+str(len(datasets))+' datasets')
-            for f in datasets:
-                data_tmp = np.load(f, allow_pickle=1)
-                fix_tms = get_fixation_times(data=data_tmp, lags=lags)
-                ch, perf, prev_perf, ev = get_vars(data=data_tmp, fix_tms=fix_tms)
-                data['choice'] += ch.tolist()
-                data['performance'] += perf.tolist()
-                data['prev_perf'] += prev_perf.tolist()
-                data['signed_evidence'] += ev.tolist()
-                states = data_tmp['states']
-                states = states[:, int(states.shape[1]/2):]
-                states = sstats.zscore(states, axis=0)
-                states = states[fix_tms+lag, :]
-                data['states'] = np.concatenate((data['states'],
-                                                 states[:, :num_units]), axis=0)
-
-            for k in data.keys():
-                data[k] = np.array(data[k])
+            data = get_data(folder=folder, lag=lag, num_units=num_units)
     if not os.path.exists(b_file_name) or redo:
         # BEHAVIORAL GLM
         df = compute_GLM_regressors(data=data, exp_nets=exp_nets,

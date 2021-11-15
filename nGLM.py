@@ -42,8 +42,9 @@ for k in GLM_VER.keys():
     FIGS_VER += '_'+k[0]+GLM_VER[k]
 
 
-def get_data(folder, lag=0, num_units=1024):
-    lags = [lag, lag+1]
+def get_data(folder, lag=0, num_units=1024, lags=None):
+    if lags is None:
+        lags = [lag, lag+1]
     datasets = glob.glob(folder+'data_*')
     data = {'choice': [], 'performance': [], 'prev_perf': [],
             'states': np.empty((0, num_units)), 'signed_evidence': []}

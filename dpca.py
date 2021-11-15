@@ -17,6 +17,7 @@ import plot_pshts as pp
 from numpy import logical_and as and_
 import scipy.stats as sstats
 from mpl_toolkits.mplot3d import Axes3D
+from scipy.ndimage.interpolation import shift
 # this is for PCA plots
 # XXX: the order of this is important
 LBLS = [['L', 'R', ''], ['Prev. L', 'Prev. R', ''],
@@ -41,6 +42,39 @@ COND_TO_NUM_FEATS = {'ch': 2, 'prev_ch': 2, 'outc': 2, 'prev_outc': 2,
 def rm_top_right_lines(ax):
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
+
+
+def get_data(folder, num_units=1024, num_files=5):
+    discarded_keys = ['info_vals', 'env']
+    datasets = glob.glob(folder+'data_*')
+    datasets = datasets[:num_files]
+    print('Experiment '+folder)
+    print('Loading '+str(len(datasets))+' datasets')
+    for f in datasets:
+        data_tmp = np.load(f, allow_pickle=1)
+        if "data" not in locals():
+            data = {k: v for k, v in data_tmp.items() if k not in discarded_keys}
+        else:
+            for k in data:
+                if k not in discarded_keys:
+                    data[k] = np.concatenate((data[k], data_tmp[k]))
+
+    for k in data.keys():
+        data[k] = np.array(data[k])
+    return data
+
+
+def get_vars(data, fix_tms):
+    # XXX: when doing fix_tms-1 for each trial, we are actually taking the
+    # choice/performance in the previous trial. Therefore, we have to shift
+    # backwards to realign.
+    ch = shift(data['choice'][fix_tms-1], shift=-1, cval=0).astype(float)
+    perf = shift(data['perf'][fix_tms-1], shift=-1, cval=0).astype(float)
+    prev_perf = data['perf'][fix_tms-1].astype(float)
+    gt = shift(data['gt'][fix_tms-1], shift=-1, cval=0).astype(float)
+    ev = np.array(data['info_vals'].item()['coh'])[fix_tms]
+    putative_ev = ev*(-1)**(gt == 2)
+    return ch, perf, prev_perf, putative_ev
 
 
 def get_feature(dim):
@@ -231,10 +265,11 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         evidence = np.diff(data['ob_cum'][fix_sgnl == 1, 1:3], axis=1) > 0
         # XXX: You could used signed_evidence from data['info_vals']
         evidence = evidence.flatten()
-        choices = np.roll(data['choice'][fix_tms]-1, shift=-1)
+        choices = data['choice'][fix_tms]-1
         # XXX: rolling might not be necessary anymore see this:
         # //github.com/man.../fof/commit/60ebdb830bf41bdd96e2b745aabfe810c6718f63
-        gt = np.roll(data['gt'][fix_tms]-1, shift=-1)
+        gt = data['gt'][fix_tms]-1
+        shift(data['choice'][fix_tms-1], shift=-1, cval=0)
         prev_choices = np.roll(choices, shift=1)
         outcomes = np.roll(data['perf'][fix_tms], shift=-1)
         assert ((choices == gt) == outcomes).all()
@@ -443,9 +478,9 @@ if __name__ == '__main__':
     exp_nets = 'nets'
     if exp_nets == 'nets':
         # Simulations
-        main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
-            'alg_ACER_seed_0_n_ch_2_BiasCorr/test_2AFC_activity/'
-        data = np.load(main_folder+'data.npz', allow_pickle=1)
+        main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
+            'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
+        data = get_data(main_folder, num_units=1024)
         # CONDITIONS:
         # ch: current choice (values=[0, 1] for left/right)
         # prev_ch: previous choice (values=[0, 1] for left/right)

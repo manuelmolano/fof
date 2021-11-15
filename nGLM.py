@@ -350,8 +350,9 @@ def plot_corrs(mat, reset_mat, labels):
 
 def filter_regressors(regrs):
     return np.unique([x[:-3] for x in regrs if ('6-10' not in x) and
-                      ('5' not in x) and ('4' not in x) and ('3' not in x) and
-                      (not x.startswith('intercept'))])
+                      ('5' not in x) and ('4' not in x) and ('3' not in x)
+                      and ('2' not in x) and (not x.startswith('intercept'))
+                      and x != 'evidence1'])
 
 
 def get_regressors(behav_neural):
@@ -1120,7 +1121,7 @@ if __name__ == '__main__':
             lag = 0
         else:
             lag = int(sys.argv[1])
-        redo = True
+        redo = False
         plot = True
         shuffling = False
         shf_name = '_shf' if shuffling else ''
@@ -1131,7 +1132,7 @@ if __name__ == '__main__':
         std_ws_mat = []
         corr_ac_mat = []
         corr_ae_mat = []
-        lags = [0, -1, 1, 2]
+        lags = [-1, 0, 1]
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
@@ -1152,32 +1153,37 @@ if __name__ == '__main__':
         corr_ac_mat = np.array(corr_ac_mat)
         corr_ae_mat = np.array(corr_ae_mat)
 
-        f, ax = plt.subplots(nrows=3)
+        f, ax = plt.subplots(nrows=2)
         clrs = sns.color_palette()
+        selected_regressors = ['L+1', 'L-1', 'T++1', 'zT', 'trans_bias']
+        counter = -1
         for i_r in range(mean_perc_mat.shape[2]):
-            if np.sum(std_perc_mat[:, 0, i_r]) != 0:
-                ax[0].errorbar(lags, mean_perc_mat[:, 0, i_r],
-                               std_perc_mat[:, 0, i_r],
-                               color=clrs[i_r], label=labels[i_r])
-                ax[1].errorbar(lags, mean_ws_mat[:, 0, i_r],
-                               std_ws_mat[:, 0, i_r],
-                               color=clrs[i_r], label=labels[i_r])
-                ax[2].plot(lags, corr_ac_mat[:, i_r], color=clrs[i_r],
-                           label=labels[i_r])
-            if np.sum(std_perc_mat[:, 1, i_r]) != 0:
-                ax[0].errorbar(lags, mean_perc_mat[:, 1, i_r],
-                               std_perc_mat[:, 1, i_r],
-                               color=clrs[i_r], linestyle='--')
-                ax[1].errorbar(lags, mean_ws_mat[:, 1, i_r],
-                               std_ws_mat[:, 1, i_r],
-                               color=clrs[i_r], linestyle='--')
-                ax[2].plot(lags, corr_ae_mat[:, i_r], color=clrs[i_r],
-                           label=labels[i_r],  linestyle='--')
+            if labels[i_r] in ['T++1']:
+                counter += 1
+                if np.sum(std_perc_mat[:, 0, i_r]) != 0:
+                    ax[0].errorbar(lags, mean_perc_mat[:, 0, i_r],
+                                   std_perc_mat[:, 0, i_r],
+                                   color=clrs[counter], label=labels[i_r])
+                    ax[1].errorbar(lags, mean_ws_mat[:, 0, i_r],
+                                   std_ws_mat[:, 0, i_r],
+                                   color=clrs[counter], label=labels[i_r])
+                    # ax[2].plot(lags, corr_ac_mat[:, i_r], color=clrs[counter],
+                    #            label=labels[i_r])
+                if np.sum(std_perc_mat[:, 1, i_r]) != 0:
+                    ax[0].errorbar(lags, mean_perc_mat[:, 1, i_r],
+                                   std_perc_mat[:, 1, i_r],
+                                   color=clrs[counter], linestyle='--')
+                    ax[1].errorbar(lags, mean_ws_mat[:, 1, i_r],
+                                   std_ws_mat[:, 1, i_r],
+                                   color=clrs[counter], linestyle='--')
+                    # ax[2].plot(lags, corr_ae_mat[:, i_r], color=clrs[counter],
+                    #            label=labels[i_r],  linestyle='--')
 
         ax[1].set_ylabel('Weights')
         ax[1].set_xlabel('Lag')
         ax[0].set_ylabel('Percentage sign. neurons')
-        ax[2].set_ylabel('Correlation with Reset Index')
+        # ax[2].set_ylabel('Correlation with Reset Index')
         for a in ax:
             a.legend()
             a.set_xticks(lags)
+            a.set_xticklabels(['Fixation-1', 'Fixation', 'Fixation+1'])

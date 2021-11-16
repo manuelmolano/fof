@@ -225,18 +225,18 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         outc_2_tr_bck = b_data['hithistory'].shift(periods=2).values
         num_tr = len(b_data)
     elif exp_nets == 'nets':
-        states = data['states']
+        states = b_data['states']
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
-        evidence = data['signed_evidence']
+        evidence = b_data['signed_evidence']
         # XXX: You could used signed_evidence from data['info_vals']
         evidence = evidence.flatten()
         # XXX: rolling might not be necessary anymore see this:
         # //github.com/man.../fof/commit/60ebdb830bf41bdd96e2b745aabfe810c6718f63
-        gt = data['gt']
-        choices = data['choice']
-        prev_choices = shift(choices, shift=1, cval=0)
-        perf = data['performance']
+        gt = b_data['gt']
+        choices = b_data['choice']-1
+        prev_choices = np.round(shift(choices, shift=-1, cval=0).astype(float))
+        perf = b_data['performance']
         # assert ((choices == gt) == perf).all()
         prev_perf = np.roll(perf, shift=1)
         outc_2_tr_bck = np.roll(perf, shift=2)
@@ -278,7 +278,9 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         p_hist = np.convolve(outc_2_tr_bck, np.ones((conv_w+1,)),
                              mode='full')[0:-conv_w]
         p_hist /= (conv_w+1)
-        trans_mask = np.logical_or(and_(trans != 0, trans != 1), p_hist != 1)
+        trans_mask = np.logical_or.reduce((and_(trans != 0, trans != 1),
+                                           p_hist != 1, and_(prev_choices != 0,
+                                                             prev_choices != 1)))
         trans_prev_ch = trans + 2*prev_choices
         trans_prev_ch[trans_mask] = -1
     else:
@@ -293,7 +295,7 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
     if exp_nets == 'exps':
         shape = [500]+feats_shape+[2*margin]
     elif exp_nets == 'nets':
-        n_unts = states.shape[1]
+        n_unts = states.shape[2]
         shape = [n_unts, max_n_evs]+feats_shape+[n_stps_tr]
     trialR = np.empty(shape)
     trialR[:] = np.nan
@@ -329,22 +331,21 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
 
         elif exp_nets == 'nets':
             # XXX: there might be a better way to do this. The difference with the
-            # experimental data is that here we storethe activity of all neurons
+            # experimental data is that here we store the activity of all neurons
             # at the same time.This didn't work:
             # [np.arnge(n_unts),np.arnge(len(peri_ev))]+[case[i] for i in act_idx]
-            n_evs = np.sum(mask)
+            indx = np.where(mask)[0]
+            n_evs = len(indx)
             if n_evs == 0:
                 print(1)
             if n_evs > max_n_evs:
-                sel_tms = fix_tms[mask][np.random.randint(0, n_evs, (max_n_evs))]
+                sel_tms = indx[np.random.randint(0, n_evs, (max_n_evs))]
                 n_evs = max_n_evs
             else:
-                sel_tms = fix_tms[mask]
-            sel_tms = sel_tms[and_(sel_tms > margin[0],
-                                   sel_tms < n_stps-margin[1]-1)]
+                sel_tms = indx
             for i_tr, tr in enumerate(sel_tms):
                 idx = [np.arange(n_unts), i_tr]+[case[i] for i in active_idx]
-                trialR[idx] = states[tr-margin[0]:tr+margin[1]+1, :].T
+                trialR[idx] = states[tr].T
                 if i_c == 0:
                     stim_trial.append(fix_sgnl[tr-margin[0]:tr+margin[1]+1])
         min_num_tr = min(min_num_tr, n_evs)
@@ -445,7 +446,9 @@ if __name__ == '__main__':
         # Simulations
         main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
             'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
-        data = get_data(main_folder, num_units=1024, lag=0, num_files=5)
+        margin = [1, 2]
+        data_ = get_data(main_folder, num_units=1024, lag=0, num_files=5,
+                        lags=margin)
         # CONDITIONS:
         # ch: current choice (values=[0, 1] for left/right)
         # prev_ch: previous choice (values=[0, 1] for left/right)
@@ -459,8 +462,7 @@ if __name__ == '__main__':
                       'prev_tr': 0, 'ctxt': 1, 'ev': 0}
         cond_list = get_conds(conditioning=feats_cond)
         # TIMESTEPS BEFORE/AFTER FIXATION POINT
-        margin = [1, 1]
-        trialR, min_num_tr = get_cond_trials(b_data=data, cond=feats_cond,
+        trialR, min_num_tr = get_cond_trials(b_data=data_, cond=feats_cond,
                                              cond_list=cond_list, exp_nets='nets',
                                              margin=margin)
         lbls_cps = ''.join([COND_TO_LETTER[k] for k, v in feats_cond.items() if v])

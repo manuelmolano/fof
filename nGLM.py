@@ -48,7 +48,7 @@ def get_data(folder, lag=0, num_units=1024, lags=None, num_files=100):
         state_sh = np.empty((0, num_units))
         slice_flag = False
     else:
-        state_sh = np.empty((0, np.sum(lags), num_units))
+        state_sh = np.empty((0, np.sum(lags)+1, num_units))
         slice_flag = True
     datasets = glob.glob(folder+'data_*')
     datasets = datasets[:num_files]
@@ -69,7 +69,7 @@ def get_data(folder, lag=0, num_units=1024, lags=None, num_files=100):
         states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         states = states[fix_tms+lag, :] if not slice_flag else\
-            np.array([states[fxt-lags[0]:fxt+lags[1], :] for fxt in fix_tms])
+            np.array([states[fxt-lags[0]:fxt+lags[1]+1, :] for fxt in fix_tms])
         data['states'] = np.concatenate((data['states'],
                                          states[:, :num_units]), axis=0)
     for k in data.keys():

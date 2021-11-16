@@ -226,7 +226,6 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
         num_tr = len(b_data)
     elif exp_nets == 'nets':
         states = b_data['states']
-        states = states[:, int(states.shape[1]/2):]
         states = sstats.zscore(states, axis=0)
         evidence = b_data['signed_evidence']
         # XXX: You could used signed_evidence from data['info_vals']
@@ -301,7 +300,6 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
     trialR[:] = np.nan
     min_num_tr = 1e6
     max_num_tr = -1e6
-    stim_trial = []
     for i_c, case in enumerate(cond_list):
         choice = case[0]
         prev_choice = case[1]
@@ -346,11 +344,8 @@ def get_cond_trials(b_data, cond, cond_list, margin=1000, exp_data={},
             for i_tr, tr in enumerate(sel_tms):
                 idx = [np.arange(n_unts), i_tr]+[case[i] for i in active_idx]
                 trialR[idx] = states[tr].T
-                if i_c == 0:
-                    stim_trial.append(fix_sgnl[tr-margin[0]:tr+margin[1]+1])
         min_num_tr = min(min_num_tr, n_evs)
         max_num_tr = max(max_num_tr, n_evs)
-        print(np.mean(np.array(stim_trial), axis=0))
     return trialR, min_num_tr
 
 
@@ -444,7 +439,9 @@ if __name__ == '__main__':
     exp_nets = 'nets'
     if exp_nets == 'nets':
         # Simulations
-        main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
+        # main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
+        #     'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
+        main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
             'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
         margin = [1, 2]
         data_ = get_data(main_folder, num_units=1024, lag=0, num_files=5,

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 MAIN_FOLDER = '/home/molano/DMS_electro/DataEphys/pre_processed/'
 
 
-def get_data_file(file, ev_algmt='S', pre_post=[-2, 2], w=0.1):
+def psth(file, ev_algmt='S', pre_post=[-2, 2], w=0.1):
     """
 
     Parameters
@@ -71,6 +71,75 @@ def get_data_file(file, ev_algmt='S', pre_post=[-2, 2], w=0.1):
         print(1)
     # evs = bhv_ss[7]
     print(bhv_ss)
+
+
+
+def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
+    """
+
+    Parameters
+    ----------
+    file : str
+        where to get the data.
+
+    Returns
+    -------
+    None.
+    bhv_ss:
+     HitHistoryList: [348×1 double]
+     CoherenceList: [348×1 double]
+      CoherenceVec: [-1 -0.4816 -0.2282 0 0.2282 0.4816 1]
+    RewardSideList: [348×1 double]
+      StimulusList: [348×1 double]
+       EnviroOrder: {348×1 cell}
+      ParsedEvents: {348×1 cell}
+     Cube_FrameCoh: [7×200×40 double]
+     
+     EventsTimesLabel
+     {'CenterLedOn','PreStimDelay','Stimulus','MovementTime','OutcomeBegin' ,
+      'OutcomeEnd','TimeOutBegin','EarlyWithdrawalBegin','EarlyWithdrawalEnd'};
+     EventsTimesLabel =  {'LOn','P_S','S','MT','O_B' ,'O_E', 'TO','E_B','E_E'};
+     
+     Output:
+             ctx = data['contexts']
+             gt  = data['gt']
+             dyns =data['states']
+             choice=data['choice']
+             eff_choice=data['prev_choice']
+             rw  = data['reward']
+             obsc = data['obscategory']
+
+
+    """
+    mat = loadmat(file)
+    bhv_ss = mat['bhv_ss'][0][0]
+    rw = bhv_ss[0]
+    stim_vals = bhv_ss[2][0, :]
+    obsc = np.abs(stim_vals[bhv_ss[1]-1])
+    gt = bhv_ss[3]
+    eff_choice = gt
+    eff_choice[rw == 0] = np.abs(gt[rw == 0]-3)
+    # stim = bhv_ss[4]
+    blk = bhv_ss[5][:, 0]
+    ctx = np.array(['']*len(blk))
+    ctx[blk == 'Switching'] = '2'
+    ctx[blk == 'Repetitive'] = '1'
+    ev_times_lbl = mat['EventsTimesLabel'][0, :]
+    all_evs_times = mat['ev_times_ss']
+    spk_times = mat['spk_times_ss']
+    ev_times = all_evs_times[:, ev_times_lbl == ev_algmt]
+    units = np.unique(spk_times[:, 1])
+    window = []
+    for i_un, un in enumerate(units):
+        spk_un = spk_times[spk_times[:, 1] == un, 0]
+        algn_spks = np.array([spk_un - et for et in ev_times])
+        algn_spks[np.logical_or(algn_spks < pre_post[0],
+                                algn_spks > pre_post[1])] = np.nan
+        resp = np.sum(~np.isnan(algn_spks), axis= 1)
+        print(1)
+    # evs = bhv_ss[7]
+    print(bhv_ss)
+
 
 
 if __name__ == '__main__':

@@ -370,15 +370,15 @@ def get_dec_axes(data_tr, wc, bc, we, be, mode='decoding', DOREVERSE=0):
                                                 n_percent=IEACHTRAIN)
 
     lst = [coefs_correct, intercepts_correct,
-           Xtest_set_correct, ytest_set_correct,
+           ytest_set_correct,  # Xtest_set_correct,
            yevi_set_correct, test_set_correct,
-           coefs_error, intercepts_error, Xtest_set_error,
+           coefs_error, intercepts_error,  # Xtest_set_error,
            ytest_set_error,  yevi_set_error, test_set_error,
            test_poolc, test_poole]
     stg = ["coefs_correct, intercepts_correct,"
-           "Xtest_set_correct, ytest_set_correct, "
+           "ytest_set_correct, "  # " Xtest_set_correct, "
            "yevi_set_correct, test_set_correct,"
-           "coefs_error, intercepts_error, Xtest_set_error,"
+           "coefs_error, intercepts_error,"  # " Xtest_set_error,"
            "ytest_set_error, yevi_set_error, test_set_error,"
            "test_poolc, test_poole"]
     d = list_to_dict(lst=lst, string=stg)
@@ -1201,6 +1201,8 @@ if __name__ == '__main__':
         METHOD = sys.argv[1]
     main_folder = "/home/molano/Dropbox/project_Barna/reset_paper/" +\
         "pop_analysis/models"
+    sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/DMS/' +\
+        'pop_analysis/RNNs'
     plt.close('all')
     FIGSIZE = (8, 7.5)
     fig_stats = plt.figure(figsize=(2, 3))
@@ -1224,9 +1226,8 @@ if __name__ == '__main__':
     AX_PREV_CH_OUTC = {'c': [2, 3], 'e': [0, 1]}
     IPOOLS = 500  # 100  # number of iterations in SVM (500)
     IEACHTRAIN = 500  # 100  # number of trials in each iteration (200)
-    SAVELOC = ''
     RUN_ALL = True
-    RERUN = False
+    RERUN = True
     DOREVERSE = 0
     NAME = METHOD+'_rev_'+str(DOREVERSE)+'_ctxt_blk_'+str(BLOCK_CTXT)+'_' +\
         str(IPOOLS)+'_'+str(IEACHTRAIN)
@@ -1292,7 +1293,7 @@ if __name__ == '__main__':
             seeds.append(seed)
             print(seed)
             data = np.load(f + "/test_2AFC_activity/data.npz")
-            SAVELOC = main_folder + '/figures/n_ch_' + net + '_seed_' + seed + '/'
+            SAVELOC = sv_folder + '/figures/n_ch_' + net + '_seed_' + seed + '/'
             if not os.path.exists(SAVELOC):
                 os.mkdir(SAVELOC)
             # GET QUANTITIES
@@ -1428,7 +1429,7 @@ if __name__ == '__main__':
 
             if seed == sel_seeds[i_net]:
                 gs.tight_layout(fig_main)
-                image_name = main_folder + '/figures/main_fig_' + NAME+'_seed_' +\
+                image_name = sv_folder + '/figures/main_fig_' + NAME+'_seed_' +\
                     seed+'_'+net+'.svg'
                 fig_main.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
                 image_name = os.path.split(SAVELOC[:-1])[0]+'/all_figs_png/n_' +\
@@ -1455,10 +1456,10 @@ if __name__ == '__main__':
                      'ctx_tb_trcs_AE': ctx_tb_trcs_AE,
                      'prop_cl_ctxt_tr_mat': prop_cl_ctxt_tr_mat,
                      'seeds': seeds}
-            np.savez(main_folder+'/figures/stats_'+NAME+'_'+net+'.npz',
+            np.savez(sv_folder+'/figures/stats_'+NAME+'_'+net+'.npz',
                      **stats)
 
-        stats = np.load(main_folder+'/figures/stats_'+NAME+'_'+net+'.npz')
+        stats = np.load(sv_folder+'/figures/stats_'+NAME+'_'+net+'.npz')
         print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
         print(net)
         print('AUC after correct')
@@ -1508,28 +1509,7 @@ if __name__ == '__main__':
     rm_top_right_lines(ax=ax_summ_slopes)
     rm_top_right_lines(ax=ax_summ_acc_VS_ctx)
     gs_stats.tight_layout(fig_stats)
-    image_name = main_folder + '/figures/stats_fig_' + NAME + '.svg'
+    image_name = sv_folder + '/figures/stats_fig_' + NAME + '.svg'
     fig_stats.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
-    image_name = main_folder + '/figures/trb_ctx_corrs_' + NAME + '.svg'
+    image_name = sv_folder + '/figures/trb_ctx_corrs_' + NAME + '.svg'
     fig_corrs.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
-
-# import os
-# import shutil
-# import glob
-# tag = '16'  # 2
-# appx = ''  # '_BiasCorr'
-# main_folder = '/home/molano/Dropbox/project_Barna/reset_paper/pop_analysis/' +\
-#     'models/n_ch_'+tag+appx
-
-# folders = glob.glob(main_folder+'/seed_*_model_*')
-# for f in folders:
-#     seed = f[f.find('seed')+5:f.find('model_')-1]
-#     model = f[f.find('model_'):]
-#     shutil.copy2(f, main_folder+'/seed_'+seed+'/'+model)
-#     shutil.copy2(main_folder+'/seed_'+seed+'_params.npz',
-#                  main_folder+'/seed_'+seed+'/'+'params.npz')
-#     print(f)
-#     print(main_folder+'/seed_'+seed+'/'+model)
-#     print(main_folder+'/seed_'+seed+'_params.npz')
-#     print(main_folder+'/seed_'+seed+'/'+'params.npz')
-#     print('---------------------')

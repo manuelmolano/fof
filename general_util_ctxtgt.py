@@ -51,9 +51,8 @@ def transform_stim_trials_ctxtgt(tt, stm, dyns, ctx, gt, choice, eff_choice,
     stim_trials = {}
     ctxt_trials = []
     for idx, igt in enumerate(ngt_tot[:len(ngt_tot)-2]):
-        stim_trials[idx] = {'stim': stm[ngt_tot[idx]+1:ngt_tot[idx+1]-1, 1:3],
-                            'stim_coh': obsc[ngt_tot[idx]+1:ngt_tot[idx+1]+1],
-                            'ctx': ctxseq[ngt_tot[idx+1]],
+        stim_trials[idx] = {'stim_coh': obsc[ngt_tot[idx]+1:ngt_tot[idx]+2],
+                            'ctx': ctxseq[ngt_tot[idx]+1],
                             'gt': gt[ngt_tot[idx+1]],
                             'resp': dyns[ngt_tot[idx]+1:ngt_tot[idx]+2, :],
                             'choice': eff_choice[ngt_tot[idx+1]+1],

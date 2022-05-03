@@ -2995,8 +2995,9 @@ def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx, Xdata_resp, Xconds_2,
     # Xdata resp for stimulus
     Xdata_stim_correct = Xdata[Xdata_idx[correct_trial].astype(np.int32)+1, :]
     Xdata_dc_correct = Xdata[Xdc_idx_0[correct_trial].astype(np.int32), :]
-    ych_stim_correct = stm[Xdata_idx[correct_trial].astype(np.int32)+1, 0] -\
-        stm[Xdata_idx[correct_trial].astype(np.int32)+1, 1]
+    # ych_stim_correct = stm[Xdata_idx[correct_trial].astype(np.int32)+1, 0] -\
+    #     stm[Xdata_idx[correct_trial].astype(np.int32)+1, 1]
+    ych_stim_correct = []
     ydata_bias_correct = ydata_bias[correct_trial]
     ydata_xor_correct = ydata_xor[correct_trial]
     ydata_conds_correct = ydata_conds[correct_trial]
@@ -3030,9 +3031,9 @@ def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx, Xdata_resp, Xconds_2,
     # Xdata resp for stimulus
     Xdata_stim_error = Xdata[Xdata_idx[error_trial].astype(np.int32)+1, :]
     Xdata_dc_error = Xdata[Xdc_idx_0[error_trial].astype(np.int32), :]
-    ych_stim_error = stm[Xdata_idx[error_trial].astype(np.int32)+1, 0] -\
-        stm[Xdata_idx[error_trial].astype(np.int32)+1, 1]
-
+    # ych_stim_error = stm[Xdata_idx[error_trial].astype(np.int32)+1, 0] -\
+    #     stm[Xdata_idx[error_trial].astype(np.int32)+1, 1]
+    ych_stim_error = []
     # @YX 0110 add --- RSE ---------
     rses_error = rses[error_trial]
     Xrse_6_error = Xrse_6[error_trial]

@@ -313,7 +313,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
     if behav_folder is None:
         behav_folder = '/archive/rat/behavioral_data/'
     if sv_folder is None:
-        sv_folder = '/home/molano/fof_data/'
+        sv_folder = '/home/molano/fof_data_22/'
     # get rats from spike sorted files folder
     rats = glob.glob(spks_sort_folder+'LE*')
     if sel_rats is None:

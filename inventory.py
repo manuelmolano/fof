@@ -307,7 +307,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 
     # folders
     if spks_sort_folder is None:
-        spks_sort_folder = '/archive/lbektic/AfterClustering/'
+        spks_sort_folder = '/archive/lbektic/data/ephys_data/AfterClustering/'
     if electro_folder is None:
         electro_folder = '/archive/rat/electrophysiology_recordings/'
     if behav_folder is None:
@@ -453,6 +453,5 @@ if __name__ == '__main__':
         inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:
         inventory(redo=redo,
-                  spks_sort_folder='/home/molano/fof_data/AfterClustering/',
-                  behav_folder='/home/molano/fof_data/behavioral_data/',
-                  sv_folder='/home/molano/fof_data/', sel_rats=['LE113'])
+                  spks_sort_folder=None, behav_folder=None, sv_folder=None,
+                  sel_rats=['LE113'])

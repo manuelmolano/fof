@@ -447,7 +447,8 @@ def get_vars(data, fix_tms):
 
 def get_fixation_times(data, lags):
     fix_sgnl = data['stimulus'][:, 0]
-    fix_tms = np.where(fix_sgnl == 1)[0][1:]  # drop first trial
+    new_trial = data['info_vals'].item()['new_trial']
+    fix_tms = np.where(new_trial)[0][1:]+1  # drop first trial
     fix_tms = fix_tms[fix_tms > lags[0]]
     fix_tms = fix_tms[fix_tms < data['perf'].shape[0]-lags[1]]
     return fix_tms
@@ -1149,6 +1150,7 @@ if __name__ == '__main__':
         for lag in lags:
             print('Using lag: ', lag)
             main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/'
+            main_folder = '/home/molano/Dropbox/project_Barna/reset_paper/pop_analysis/models/longer_trials/'
             m_p, m_w, std_p, std_w, labels, corr_perc_ac, corr_perc_ae =\
                 batch_neuroGLM(main_folder=main_folder, lag=lag, redo=redo,
                                plot=plot, shf=shuffling)

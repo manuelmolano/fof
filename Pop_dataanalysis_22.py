@@ -1201,8 +1201,9 @@ if __name__ == '__main__':
         METHOD = sys.argv[1]
     main_folder = "/home/molano/Dropbox/project_Barna/reset_paper/" +\
         "pop_analysis/models"
-    sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/DMS/' +\
-        'pop_analysis/RNNs'
+    # sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/DMS/' +\
+    #     'pop_analysis/RNNs'
+    sv_folder = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     plt.close('all')
     FIGSIZE = (8, 7.5)
     fig_stats = plt.figure(figsize=(2, 3))
@@ -1292,10 +1293,12 @@ if __name__ == '__main__':
             seed = f[f.find('seed') + 5:]
             seeds.append(seed)
             print(seed)
-            data = np.load(f + "/test_2AFC_activity/data.npz")
-            SAVELOC = sv_folder + '/figures/n_ch_' + net + '_seed_' + seed + '/'
-            if not os.path.exists(SAVELOC):
-                os.mkdir(SAVELOC)
+            data = np.load(f + "/test_2AFC_activity/data.npz", allow_pickle=1)
+            data = np.load('/home/molano/DMS_electro/DataEphys/' +
+                           'pre_processed/Rat32_ss_26.npz', allow_pickle=1)
+            SAVELOC = sv_folder  #  + '/figures/n_ch_' + net + '_seed_' + seed +'/'
+            # if not os.path.exists(SAVELOC):
+            #     os.mkdir(SAVELOC)
             # GET QUANTITIES
             print('Get quantities')
             # label -- bias, label -- conditions

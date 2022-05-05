@@ -16,6 +16,7 @@ from copy import deepcopy as dpcp
 import plot_pshts as pp
 from numpy import logical_and as and_
 import scipy.stats as sstats
+import helper_functions as hf
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.ndimage.interpolation import shift
 from nGLM import get_data
@@ -441,11 +442,34 @@ if __name__ == '__main__':
         # Simulations
         # main_folder = '/home/molano/priors/AnnaKarenina_experiments/sims_21/' +\
         #     'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
-        main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
-            'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
-        margin = [1, 2]
+        # main_folder = '/home/manuel/priors_analysis/annaK/sims_21/' +\
+        #     'alg_ACER_seed_0_n_ch_16/test_2AFC_activity/'
+        main_folder = '/home/molano/Dropbox/project_Barna/reset_paper/' +\
+            'pop_analysis/models/longer_trials/alg_ACER_seed_0_n_ch_16/' +\
+            'test_2AFC_activity/'
+        margin = [5, 10]
         data_ = get_data(main_folder, num_units=1024, lag=0, num_files=5,
-                        lags=margin)
+                         lags=margin)
+        for i_b, blk in enumerate([1, 2]):
+            for ip, p in enumerate([0, 1]):
+                alpha = 1 if p == 0 else 1
+                lnstyl = '-' if p == 0 else '-'
+                plt_opts = {'color': colors[i_b], 'alpha': alpha,
+                            'linestyle': lnstyl}
+                # rep/alt
+                popt, pcov, ev_mask, repeat_mask =\
+                    hf.bias_psychometric(choice=data_['choice'],
+                                         ev=data_['signed_evidence'],
+                                         mask=hf.and_(data_['prev_perf'] == p,
+                                                      blocks == blk),
+                                         maxfev=100000)
+                ev_mask = np.round(ev_mask, 2)  # this is to avoid rounding differences
+                means, _, xs, _, _ =\
+                    hf.plot_psycho_curve(ev=ev_mask, choice=repeat_mask,
+                                         popt=popt, ax=rep_alt_panel[ip],
+                                         label=lbs[ip], plot_errbars=True,
+                                         **plt_opts)
+
         # CONDITIONS:
         # ch: current choice (values=[0, 1] for left/right)
         # prev_ch: previous choice (values=[0, 1] for left/right)

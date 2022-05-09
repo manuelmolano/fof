@@ -306,6 +306,7 @@ def build_figure(samples, e_data, offset, session, inv, inv_sbsmpld, margin_psth
     # PLOT TTL PSTHs
     plot_psths(samples=samples, e_data=e_data, offset=offset,
                margin_psth=margin_psth)
+    print('Saving figure here'+sv_folder+'/'+session+'.png')
     f.savefig(sv_folder+'/'+session+'.png')
     return f, ax_traces, idx_max
 
@@ -377,7 +378,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             dates_eq.append([days, date])
             print('----')
             print(session)
-            print(counter)
+            print('Counter: ', counter)
             if session not in sel_sess and rat not in sel_rats and\
                (len(sel_sess) != 0 or len(sel_rats) != 0):
                 continue
@@ -397,7 +398,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
-            plt_f = (fldr == 'n.c.' and plot_fig) or (ignore_input and plot_fig)
+            # plt_f = (fldr == 'n.c.' and plot_fig) or (ignore_input and plot_fig)
+            plt_f = plot_fig
             if plt_f:
                 # GET DATA
                 offset = inv['offset'][idx_ss]
@@ -424,8 +426,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     defs['issue'] = 'noise 1'
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
             else:
-                defs['issue'] == prob
-                defs['obs'] == obs
+                defs['issue'] = prob
+                defs['obs'] = obs
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
             fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
             if plt_f:
@@ -473,8 +475,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 # --- MAIN
 if __name__ == '__main__':
     plt.close('all')
-    redo = False  # whether to rewrite comments
-    ignore_input = False  # whether to input comments (or just save the figures)
+    redo = True  # whether to rewrite comments
+    ignore_input = True  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot
@@ -490,7 +492,7 @@ if __name__ == '__main__':
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
     # specify rats/sessions to analyze
-    sel_rats = []  # ['LE79']  ['LE113']
+    sel_rats = ['LE79']  # ['LE79']  ['LE113']
     sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
 
     batch_sessions(main_folder=main_folder, sv_folder=sv_folder, inv=inv,

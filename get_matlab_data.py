@@ -162,37 +162,39 @@ def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
     all_evs_times = mat['ev_times_ss']
     spk_times = mat['spk_times_ss']
     ev_times = all_evs_times[:, ev_times_lbl == ev_algmt]
-    units = np.unique(spk_times[:, 1])
-    states = []
-    for i_un, un in enumerate(units):
-        spk_un = spk_times[spk_times[:, 1] == un, 0]
-        algn_spks = np.array([spk_un - et for et in ev_times])
-        algn_spks[np.logical_or(algn_spks < pre_post[0],
-                                algn_spks > pre_post[1])] = np.nan
-        resp = np.sum(~np.isnan(algn_spks), axis=1)
-        states.append(resp)
-    states = np.array(states).T
-    # evs = bhv_ss[7]
-    data = {}
-    data['choice'] = insert_nans(mat=choice, odd=False)
-    data['stimulus'] = None
-    indxs = np.floor(np.arange(2*len(contexts))/2).astype(int)
-    contexts = contexts[indxs]
-    # because of the way this info is retrieved in transform_stim_trials_ctxtgt
-    contexts = [[c] for c in contexts]
-    data['contexts'] = contexts
-    gt[np.logical_or.reduce((inv_gt, inv_rw, inv_ch))] = np.nan
-    data['gt'] = insert_nans(mat=gt, odd=False, filling=-1)
-    data['prev_choice'] = insert_nans(mat=prev_choice, odd=True)
-    data['reward'] = insert_nans(mat=reward, odd=False)
-    data['obscategory'] = insert_nans(mat=obscategory, odd=True)
-    data['states'] = insert_nans(mat=states, odd=True)
-    np.savez(file[:file.find('data_for_python.mat')-1], **data)
-    # for k in data.keys():
-    #     if data[k] is not None and k != 'states':
-    #         print(k)
-    #         print(data[k][:10])
-    #         print(data[k][-10:])
+    if len(spk_times) > 0:
+        units = np.unique(spk_times[:, 1])
+        states = []
+        for i_un, un in enumerate(units):
+            spk_un = spk_times[spk_times[:, 1] == un, 0]
+            algn_spks = np.array([spk_un - et for et in ev_times])
+            algn_spks[np.logical_or(algn_spks < pre_post[0],
+                                    algn_spks > pre_post[1])] = np.nan
+            resp = np.sum(~np.isnan(algn_spks), axis=1)
+            states.append(resp)
+        states = np.array(states).T
+        # evs = bhv_ss[7]
+        data = {}
+        data['choice'] = insert_nans(mat=choice, odd=False)
+        data['stimulus'] = None
+        indxs = np.floor(np.arange(2*len(contexts))/2).astype(int)
+        contexts = contexts[indxs]
+        # this is because of the way this info is retrieved in 
+        # transform_stim_trials_ctxtgt
+        contexts = [[c] for c in contexts]
+        data['contexts'] = contexts
+        gt[np.logical_or.reduce((inv_gt, inv_rw, inv_ch))] = np.nan
+        data['gt'] = insert_nans(mat=gt, odd=False, filling=-1)
+        data['prev_choice'] = insert_nans(mat=prev_choice, odd=True)
+        data['reward'] = insert_nans(mat=reward, odd=False)
+        data['obscategory'] = insert_nans(mat=obscategory, odd=True)
+        data['states'] = insert_nans(mat=states, odd=True)
+        np.savez(file[:file.find('data_for_python.mat')-1], **data)
+        # for k in data.keys():
+        #     if data[k] is not None and k != 'states':
+        #         print(k)
+        #         print(data[k][:10])
+        #         print(data[k][-10:])
     return data, units
 
 

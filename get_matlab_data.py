@@ -68,9 +68,9 @@ def psth(file, ev_algmt='S', pre_post=[-2, 2], w=0.1):
         # indx = np.searchsorted(bins, algn_spks)
         psth = np.histogram(algn_spks, bins)
         ax[i_un].plot(bins[:-1]+w/2, psth[0])
-        print(1)
+        # print(1)
     # evs = bhv_ss[7]
-    print(bhv_ss)
+    # print(bhv_ss)
 
 
 def insert_nans(mat, odd, filling=np.nan):
@@ -176,7 +176,7 @@ def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
     data = {}
     data['choice'] = insert_nans(mat=choice, odd=False)
     data['stimulus'] = None
-    indxs = np.round(np.arange(2*len(contexts))/2).astype(int)
+    indxs = np.floor(np.arange(2*len(contexts))/2).astype(int)
     contexts = contexts[indxs]
     # because of the way this info is retrieved in transform_stim_trials_ctxtgt
     contexts = [[c] for c in contexts]
@@ -188,16 +188,23 @@ def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
     data['obscategory'] = insert_nans(mat=obscategory, odd=True)
     data['states'] = insert_nans(mat=states, odd=True)
     np.savez(file[:file.find('data_for_python.mat')-1], **data)
-    for k in data.keys():
-        if data[k] is not None and k != 'states':
-            print(k)
-            print(data[k][:10])
-            print(data[k][-10:])
-    return data
+    # for k in data.keys():
+    #     if data[k] is not None and k != 'states':
+    #         print(k)
+    #         print(data[k][:10])
+    #         print(data[k][-10:])
+    return data, units
 
 
 if __name__ == '__main__':
-    get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
+    files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/*mat')
+    num_unts = []
+    for f in files:
+        print('--------------------------')
+        print(f)
+        data, units = get_data_file(file=f)
+        num_unts.append(len(units))
+        # get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
     # files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/' +
     #                   '*data_for_py*')
 

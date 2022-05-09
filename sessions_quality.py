@@ -22,7 +22,7 @@ ISSS_CLR = np.array(['k', 'k', 'r', 'm', 'm', 'b', 'c', 'g'])
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
     """
-    Set title and check inv and subsampled inv are equivalent.
+    Set title and check inventory and subsampled inventory are equivalent.
 
     Parameters
     ----------
@@ -170,7 +170,7 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
     return idx_max
 
 
-def get_input(ignore=False, defaults={'class':'', 'issue': '', 'obs': ''}):
+def get_input(ignore=False, defaults={'class': '', 'issue': '', 'obs': ''}):
     """
     Get feedback from user about: classification of session, issue, observations.
 
@@ -389,7 +389,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 continue
             assert idx_ss not in used_indx, str(idx_ss)
             used_indx.append(idx_ss)
-            if not redo:
+            if not redo and len(sess_classif) > idx_ss:
                 fldr = sess_classif[idx_ss]
                 prob = issue[idx_ss]
                 obs = observations[idx_ss]
@@ -414,8 +414,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 if ignore_input:
                     plt.show(block=False)
             # INPUT INFO
+            defs = {'class': '', 'issue': '', 'obs': ''}
             if fldr == 'n.c.':
-                defs = {'class': '', 'issue': '', 'obs': ''}
                 if inv['sil_per'][idx_ss] > 0.01:
                     defs['issue'] = 'sil per'
                 elif inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
@@ -423,7 +423,11 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 elif np.max(samples) > 1000:
                     defs['issue'] = 'noise 1'
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
-                fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
+            else:
+                defs['issue'] == prob
+                defs['obs'] == obs
+                defs['class'] = 'y' if defs['issue'] == '' else 'n'
+            fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
             if plt_f:
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
                 ax_traces.text(idx_max, 4.25, prob+': '+obs)
@@ -436,20 +440,26 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 pdf_selected.savefig(f.number)
             if plt_f:
                 plt.close(f)
-            print(observations[idx_ss])
-            print(issue[idx_ss])
-            color = ISSS_CLR[np.where(ISSUES == issue[idx_ss])[0]][0]
+            print(obs)
+            print(prob)
+            color = ISSS_CLR[np.where(ISSUES == prob)[0]][0]
             ax_tmln.plot(days, i_r, '.', color=color)
             f_tmln.savefig(sv_folder+'/sessions_timeline.png')
             # SAVE DATA
-            issue[idx_ss] = prob
-            sess_classif[idx_ss] = fldr
-            observations[idx_ss] = obs
+            if len(sess_classif) >= idx_ss:
+                issue[idx_ss] = prob
+                sess_classif[idx_ss] = fldr
+                observations[idx_ss] = obs
+            else:
+                issue = np.append(issue, prob)
+                sess_classif = np.append(sess_classif, fldr)
+                observations = np.append(observations, obs)
+
             print(fldr)
             assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
-            print(list(extended_inv))
+            # print(list(extended_inv))
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
@@ -460,25 +470,27 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     pdf_selected.close()
 
 
+# --- MAIN
 if __name__ == '__main__':
     plt.close('all')
     redo = False  # whether to rewrite comments
-    ignore_input = True  # whether to input comments (or just save the figures)
+    ignore_input = False  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot
     home = 'molano'  # 'manuel'
-    main_folder = '/home/'+home+'/fof_data/'
+    main_folder = '/home/'+home+'/fof_data/2022/'
+    drpbx_folder = '/home/molano/Dropbox/project_Barna/FOF_project/2022/'
     if home == 'manuel':
         sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths_bis/'
+        sv_folder = drpbx_folder+'/ttl_psths/'
 
     inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
     # specify rats/sessions to analyze
-    sel_rats = []  # ['LE113']  # 'LE101'
+    sel_rats = []  # ['LE79']  ['LE113']
     sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
 
     batch_sessions(main_folder=main_folder, sv_folder=sv_folder, inv=inv,

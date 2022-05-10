@@ -383,6 +383,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                (len(sel_sess) != 0 or len(sel_rats) != 0):
                 continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
+            assert len(idx) == 1
             idx_ss = idx[0]
             if len(idx) != 1:
                 print('Could not find associated session in inventory')
@@ -400,11 +401,11 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 fldr, prob, obs = 'n.c.', '', ''
             # plt_f = (fldr == 'n.c.' and plot_fig) or (ignore_input and plot_fig)
             plt_f = plot_fig
+            e_file = sess+'/e_data.npz'
+            e_data = np.load(e_file, allow_pickle=1)
             if plt_f:
                 # GET DATA
                 offset = inv['offset'][idx_ss]
-                e_file = sess+'/e_data.npz'
-                e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
                 samples = samples['samples']
                 # BUILD FIGURE
@@ -424,6 +425,9 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     defs['issue'] = 'no ttl'
                 elif np.max(samples) > 1000:
                     defs['issue'] = 'noise 1'
+                elif inv['num_clstrs'][idx_ss] == 0:
+                    defs['issue'] = 'no units'
+                    assert (e_data['clstrs_qlt'] == 'noise').all()
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
             else:
                 defs['issue'] = prob
@@ -476,7 +480,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 if __name__ == '__main__':
     plt.close('all')
     redo = True  # whether to rewrite comments
-    ignore_input = True  # whether to input comments (or just save the figures)
+    ignore_input = False  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot
@@ -492,7 +496,7 @@ if __name__ == '__main__':
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
     # specify rats/sessions to analyze
-    sel_rats = ['LE79']  # ['LE79']  ['LE113']
+    sel_rats = []  # ['LE79']  ['LE113']
     sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
 
     batch_sessions(main_folder=main_folder, sv_folder=sv_folder, inv=inv,

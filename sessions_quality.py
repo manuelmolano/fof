@@ -121,6 +121,10 @@ def plot_psths(samples, e_data, offset, margin_psth):
                              label='ch '+lbls[0])
                 ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                              label='ch '+lbls[1])
+                if i_e in [0, 1]:
+                    ax_psth.set_xlabel('Time (s)')
+                if i_e in [0, 2]:
+                    ax_psth.set_ylabel('Values (a.u.)')
                 ax_psth.legend()
             except (ValueError, IndexError) as e:
                 print(e)
@@ -157,6 +161,11 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
         ax_hist.hist(sample, 100)
         ax_hist.set_title('TTL: '+str(ttl+36))
         ax_hist.set_yscale('log')
+        if ttl in [0, 1]:
+            ax_hist.set_xlabel('Values')
+        if ttl in [0, 2]:
+            ax_hist.set_ylabel('Counts (log scale)')
+
         sample = sample/np.max(sample)
         # plot around a max event
         ax_traces.plot(np.arange(num_ps)+idx_max,
@@ -166,6 +175,9 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
         ax_traces.plot(np.arange(num_ps)+idx_max+num_ps+1e3,
                        sample[idx_midd:idx_midd+num_ps]+ttl,
                        color=colors[ttl])
+        ax_traces.set_xlabel('Samples')
+        ax_traces.set_ylabel('Values (a.u.)')
+
     ax_traces.legend(loc='lower right')
     return idx_max
 

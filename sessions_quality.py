@@ -17,7 +17,10 @@ AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
 ISSUES = np.array(['', ' ', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
                    'sil per', 'no units'])
-ISSS_CLR = np.array(['k', 'k', 'm', 'm', 'm', 'b', 'c', 'g', 'r'])
+ISSS_CLR = np.array([[0, 0, 0], [27, 158, 119], [217, 95, 2], [117, 112, 179],
+                     [231, 41, 138], [230, 171, 2], [102, 166, 30],
+                     [166, 118, 29], [102, 102, 102]])/255
+INDX_CLRS = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
@@ -380,6 +383,9 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     dates_eq = []
     f_tmln, ax_tmln = plt.subplots()
     counter = 0
+    lbls_used = []
+    ax_tmln.set_yticks(np.arange(len(rats)))
+    ax_tmln.set_yticklabels([os.path.basename(r) for r in rats])
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
@@ -432,15 +438,19 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             # INPUT INFO
             defs = {'class': '', 'issue': '', 'obs': ''}
             if fldr == 'n.c.':
+                connection = ''
                 if inv['sil_per'][idx_ss] > 0.01:
                     defs['issue'] = 'sil per'
-                elif inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
-                    defs['issue'] = 'no ttl'
-                elif np.max(samples) > 1000:
-                    defs['issue'] = 'noise 1'
-                elif inv['num_clstrs'][idx_ss] == 0:
-                    defs['issue'] = 'no units'
-                    assert (e_data['clstrs_qlt'] == 'noise').all()
+                    connection = ' / '
+                if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
+                    defs['issue'] += connection+'no ttl'
+                    connection = ' / '
+                if np.max(samples) > 1000:
+                    defs['issue'] += connection+'noise 1'
+                    connection = ' / '
+                if inv['num_clstrs'][idx_ss] == 0:
+                    defs['issue'] += connection+'no units'
+                    # assert (e_data['clstrs_qlt'] == 'noise').all()
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
             else:
                 defs['issue'] = prob
@@ -459,10 +469,32 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 pdf_selected.savefig(f.number)
             if plt_f:
                 plt.close(f)
+            indxs_issue = [i_i for i_i, iss in enumerate(ISSUES) if iss == prob]
+            if len(indxs_issue) == 1:  # if there is only one issue
+                indx = INDX_CLRS[indxs_issue[0]]
+                lbl = ISSUES[indxs_issue[0]]
+            elif 'no units' in prob:  # preference to no units issue
+                indx = INDX_CLRS[ISSUES == 'no units'][0]
+                lbl = 'no units'
+            elif 'no signal' in prob:  # preference to no signal issue
+                indx = INDX_CLRS[ISSUES == 'no signal'][0]
+                lbl = 'no signal'
+            else:
+                indx = np.max(INDX_CLRS)+1
+                lbl = 'multiple issues'
+            lbl = 'Good' if lbl == '' else lbl
+            color = ISSS_CLR[indx]
+            print(indxs_issue)
             print(obs)
             print(prob)
-            color = ISSS_CLR[np.where(ISSUES == prob)[0]][0]
-            ax_tmln.plot(days, i_r, '.', color=color)
+            print(indx)
+            print(lbl)
+            if lbl in lbls_used:
+                lbl = ''
+            else:
+                lbls_used.append(lbl)
+            ax_tmln.plot(days, i_r, '.', color=color, label=lbl)
+            ax_tmln.legend()
             f_tmln.savefig(sv_folder+'/sessions_timeline.png')
             # SAVE DATA
             if len(sess_classif) >= idx_ss:
@@ -493,7 +525,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
 if __name__ == '__main__':
     plt.close('all')
     redo = True  # whether to rewrite comments
-    ignore_input = False  # whether to input comments (or just save the figures)
+    ignore_input = True  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot

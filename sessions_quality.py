@@ -16,8 +16,8 @@ colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
 ISSUES = np.array(['', ' ', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
-                   'sil per'])
-ISSS_CLR = np.array(['k', 'k', 'r', 'm', 'm', 'b', 'c', 'g'])
+                   'sil per', 'no units'])
+ISSS_CLR = np.array(['k', 'k', 'm', 'm', 'm', 'b', 'c', 'g', 'r'])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
@@ -218,7 +218,8 @@ def get_input(ignore=False, defaults={'class': '', 'issue': '', 'obs': ''}):
         prob = defaults['issue']
         obs = defaults['obs']
     else:
-        sess_class = input("Is this session good? (def: "+defaults['class']+') ')
+        sess_class = input("Is this session good? [def: " +
+                           defaults['class']+' ('+defaults['issue']+')]')
         if sess_class == '':
             sess_class = defaults['class']
         if sess_class == 'y':
@@ -447,9 +448,9 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
             fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
             if plt_f:
-                f.savefig(sv_folder+fldr+'/'+session+'.png')
                 ax_traces.text(idx_max, 4.25, prob+': '+obs)
                 ax_traces.set_ylim([-.1, 4.5])
+                f.savefig(sv_folder+fldr+'/'+session+'.png')
             if plt_f and fldr == 'bad':
                 print('Saving into issues pdf')
                 pdf_issues.savefig(f.number)

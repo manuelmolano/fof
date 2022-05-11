@@ -381,7 +381,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     rats = [x for x in rats if x[-4] != '.']
     used_indx = []
     dates_eq = []
-    f_tmln, ax_tmln = plt.subplots()
+    f_tmln, ax_tmln = plt.subplots(figsize=(16, 10))
     counter = 0
     lbls_used = []
     ax_tmln.set_yticks(np.arange(len(rats)))
@@ -445,7 +445,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
                     defs['issue'] += connection+'no ttl'
                     connection = ' / '
-                if np.max(samples) > 1000:
+                if inv['num_stim_ttl'][idx_ss] > 2000:
                     defs['issue'] += connection+'noise 1'
                     connection = ' / '
                 if inv['num_clstrs'][idx_ss] == 0:
@@ -462,10 +462,10 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 ax_traces.set_ylim([-.1, 4.5])
                 f.savefig(sv_folder+fldr+'/'+session+'.png')
             if plt_f and fldr == 'bad':
-                print('Saving into issues pdf')
+                # print('Saving into issues pdf')
                 pdf_issues.savefig(f.number)
             elif plt_f and fldr == 'good':
-                print('Saving into selected pdf')
+                # print('Saving into selected pdf')
                 pdf_selected.savefig(f.number)
             if plt_f:
                 plt.close(f)
@@ -479,16 +479,22 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             elif 'no signal' in prob:  # preference to no signal issue
                 indx = INDX_CLRS[ISSUES == 'no signal'][0]
                 lbl = 'no signal'
+            elif 'noise' in prob:
+                indx = INDX_CLRS[ISSUES == 'noise 1'][0]
+                lbl = 'noise 1'
+            elif 'sil per' in prob:  # preference to no signal issue
+                indx = INDX_CLRS[ISSUES == 'sil per'][0]
+                lbl = 'sil per'
             else:
                 indx = np.max(INDX_CLRS)+1
                 lbl = 'multiple issues'
             lbl = 'Good' if lbl == '' else lbl
             color = ISSS_CLR[indx]
-            print(indxs_issue)
-            print(obs)
-            print(prob)
-            print(indx)
-            print(lbl)
+            # print(indxs_issue)
+            # print(obs)
+            # print(prob)
+            # print(indx)
+            # print(lbl)
             if lbl in lbls_used:
                 lbl = ''
             else:
@@ -506,7 +512,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 sess_classif = np.append(sess_classif, fldr)
                 observations = np.append(observations, obs)
 
-            print(fldr)
+            # print(fldr)
             assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)

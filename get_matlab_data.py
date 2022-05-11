@@ -162,6 +162,7 @@ def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
     all_evs_times = mat['ev_times_ss']
     spk_times = mat['spk_times_ss']
     ev_times = all_evs_times[:, ev_times_lbl == ev_algmt]
+    data = {}
     if len(spk_times) > 0:
         units = np.unique(spk_times[:, 1])
         states = []
@@ -174,7 +175,6 @@ def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
             states.append(resp)
         states = np.array(states).T
         # evs = bhv_ss[7]
-        data = {}
         data['choice'] = insert_nans(mat=choice, odd=False)
         data['stimulus'] = None
         indxs = np.floor(np.arange(2*len(contexts))/2).astype(int)
@@ -195,18 +195,33 @@ def get_data_file(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
         #         print(k)
         #         print(data[k][:10])
         #         print(data[k][-10:])
+    else:
+        units = []
     return data, units
 
 
+# --- MAIN
 if __name__ == '__main__':
-    files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/*mat')
-    num_unts = []
-    for f in files:
-        print('--------------------------')
-        print(f)
-        data, units = get_data_file(file=f)
-        num_unts.append(len(units))
-        # get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
+    rats = ['Patxi', 'Rat15', 'Rat31', 'Rat32', 'Rat7']
+    for r in rats:
+        print('xxxxxxxxxxxxxxxx')
+        print(r)
+        files = glob.glob(MAIN_FOLDER+'/'+r+'*mat')
+        num_unts = []
+        for f in files:
+            # print('--------------------------')
+            # print(f)
+            data, units = get_data_file(file=f)
+            num_unts.append(len(units))
+        num_unts = np.array(num_unts)
+        print('-------------')
+        print('Number of sessions')
+        print(len(num_unts))
+        print('Proportion of sessions with units')
+        print(np.sum(num_unts != 0)/len(num_unts))
+        print('Median number of units in sessions with units')
+        print(np.median(num_unts[num_unts != 0]))
+        print('-------------')        # get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
     # files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/' +
     #                   '*data_for_py*')
 

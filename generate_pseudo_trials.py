@@ -210,3 +210,41 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                     ymerge_labels_error[state,coh] = temp_beh[idxsample]#[np.sum(temp_beh[idxsample])/len(idxsample)]
                     Xmerge_trials_error[state,coh] = temp_trials[idxsample,:]
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error
+
+
+def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
+                                     ymerge_labels, unique_states,unique_cohs,unique_choices, EACHSTATES=20):
+
+    MAXV = 100
+    NDEC = int(np.shape(coeffs_pool)[1]/5)
+    NN   = np.shape(Xmerge_trials[unique_states[0],unique_cohs[0]])[1]
+    NS, NC, NCH = len(unique_states),len(unique_cohs),len(unique_choices)
+    
+    fig, ax =plt.subplots(figsize=(4,4))
+    for coh in unique_cohs:
+        maxtrbias,mintrbias=-MAXV,MAXV
+        evidences   = []#np.zeros(NS*NCH*EACHSTATES)
+        rightchoice = []#np.zeros(NS*NCH*EACHSTATES)
+        for idxs, state in enumerate(unique_states):
+            for idx in range(EACHSTATES):
+                Xdata_test = Xmerge_trials[state,coh][idx,:]
+                idxdecoder = np.random.choice(np.arange(0, NDEC, 1),
+                                size=1, replace=True)
+                linw_bias, linb_bias = coeffs_pool[:, idxdecoder*5+3], intercepts_pool[0, 5*idxdecoder+3]
+                evidences   = np.append(evidences,np.squeeze(
+                Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
+                temp_perc   = np.sum(ymerge_labels[state,coh][:,idx])/np.shape(ymerge_labels[state,coh])[0]
+                rightchoice = np.append(rightchoice,temp_perc)
+        
+        ### 
+        maxtrbias ,mintrbias = max(evidences),min(evidences)
+        binss = np.linspace(mintrbias,maxtrbias,5)
+        perc_right = np.zeros(4)
+        ax_trbias  = (binss[1:]+binss[:-1])/2.0
+        for i in range(1,5):
+            idxbinh = np.where(evidences<binss[i])[0]
+            idxbinl = np.where(evidences>binss[i-1])[0]
+            idxbin  = np.intersect1d(idxbinh,idxbinl)
+            perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)
+        ax.plot(ax_trbias,perc_right)
+    return perc_right

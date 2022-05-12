@@ -11,7 +11,7 @@ import os
 import numpy as np
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
-MAIN_FOLDER = '/home/molano/DMS_electro/DataEphys/pre_processed/'
+MAIN_FOLDER = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'# '/home/molano/DMS_electro/DataEphys/pre_processed/'
 
 
 def psth(file, ev_algmt='S', pre_post=[-2, 2], w=0.1):

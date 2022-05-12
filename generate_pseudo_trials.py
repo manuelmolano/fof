@@ -92,7 +92,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
 
 
 
-def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,idx_delete,EACHSTATES=20):
+def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,idx_delete,EACHSTATES=20):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     Xmerge_trials_error,ymerge_labels_error = {},{}

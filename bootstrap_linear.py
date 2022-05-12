@@ -3,7 +3,9 @@ import numpy as np
 from sklearn import svm
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LinearRegression
-import generate_pseudo_trials as pseudo
+import generate_pseudo_trials as gpt
+from collections import Counter
+
 PRINT_PER = 1000
 
 
@@ -175,6 +177,13 @@ def bootstrap_linsvm_proj_withtrials(coeffs_pool, intercepts_pool, Xtest_pool,
             predictions[np.where(evidences[:, j] > 0)[0], j] = 1
             predictions[np.where(evidences[:, j] <= 0)[0], j] = 0
 
+        ### modifying ylabels_testc[:,3], upcoming stimulus category 
+        ytr_test_bias = np.zeros(np.shape(ydata_test)[0])
+        for iset in range(np.shape(ydata_test)[0]):
+            bias_labels=Counter(ydata_test[iset,3::6])
+            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
+        ydata_test[:,3] = ytr_test_bias[:]
+
         Xtest_set[i, :, :], ytest_set[i, :, :], ypred_set[i, :, :] =\
             Xdata_test[:, :].copy(), ydata_test[:, :].copy(),\
             predictions[:, :].copy()
@@ -247,7 +256,7 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
 
         ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
         # N_pseudo_dec, N_pseudo_beh = 100,25
-        Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error=pseudo.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,N_pseudo_dec)
+        Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,N_pseudo_dec)
 
         Xdata_trainc,Xdata_testc=Xmerge_hist_trials_correct[4][:ntrain,:],Xmerge_hist_trials_correct[4][ntrain:,:]
         ylabels_trainc,ylabels_testc = ymerge_hist_labels_correct[4][:ntrain,:],ymerge_hist_labels_correct[4][ntrain:,:]
@@ -351,8 +360,14 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         evidences_c[:, 4] = np.squeeze(
             Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
 
+        ### modifying ylabels_testc[:,3], upcoming stimulus category 
+        ytr_test_bias = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            bias_labels=Counter(ylabels_testc[iset,3::6])
+            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
+        ylabels_testc[:,3] = ytr_test_bias[:]
         Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
-
+        
         if i == 0:
             yevi_set_correct[i, :, :] = evidences_c.copy()
         else:
@@ -371,6 +386,13 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
             Xdata_teste @ linw_bias.reshape(-1, 1) + linb_bias)
         evidences_e[:, 4] = np.squeeze(
             Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
+
+        ### modifying ylabels_testc[:,3], upcoming stimulus category 
+        ytr_test_bias = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            bias_labels=Counter(ylabels_teste[iset,3::6])
+            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
+        ylabels_teste[:,3] = ytr_test_bias[:]
 
         Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
 

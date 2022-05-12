@@ -612,7 +612,7 @@ def req_quantities_3all(stim_trials, stm, dyns, gt, choice,
 
 def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx,  Xconds_2,
                       Xacts_1, Xrws_1, Xlfs_1, Xrse_6, rses, Xacts_0,
-                      Xgts_0, Xcohs_0, Xdata_trialidx,
+                      Xgts_0, Xcohs_0, Xdata_trialidx, Xstates,
                       margin=[1, 2], idd=1):
     ydata_bias    = Xrws_1*2+Xgts_0  # Xacts_0#  ### this 3
     ydata_xor     = Xrws_1*2+Xacts_1  # Xgts_0#Xacts_0#### this 2

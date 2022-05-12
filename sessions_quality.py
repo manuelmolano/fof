@@ -16,13 +16,16 @@ colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
 ISSUES = np.array(['', ' ', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
-                   'sil per'])
-ISSS_CLR = np.array(['k', 'k', 'r', 'm', 'm', 'b', 'c', 'g'])
+                   'sil per', 'no units'])
+ISSS_CLR = np.array([[0, 0, 0], [27, 158, 119], [217, 95, 2], [117, 112, 179],
+                     [231, 41, 138], [230, 171, 2], [102, 166, 30],
+                     [166, 118, 29], [102, 102, 102]])/255
+INDX_CLRS = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
     """
-    Set title and check inv and subsampled inv are equivalent.
+    Set title and check inventory and subsampled inventory are equivalent.
 
     Parameters
     ----------
@@ -121,6 +124,10 @@ def plot_psths(samples, e_data, offset, margin_psth):
                              label='ch '+lbls[0])
                 ax_psth.plot(xs, psth_2, color=colors[1], lw=1,
                              label='ch '+lbls[1])
+                if i_e in [0, 1]:
+                    ax_psth.set_xlabel('Time (s)')
+                if i_e in [0, 2]:
+                    ax_psth.set_ylabel('Values (a.u.)')
                 ax_psth.legend()
             except (ValueError, IndexError) as e:
                 print(e)
@@ -157,6 +164,11 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
         ax_hist.hist(sample, 100)
         ax_hist.set_title('TTL: '+str(ttl+36))
         ax_hist.set_yscale('log')
+        if ttl in [0, 1]:
+            ax_hist.set_xlabel('Values')
+        if ttl in [0, 2]:
+            ax_hist.set_ylabel('Counts (log scale)')
+
         sample = sample/np.max(sample)
         # plot around a max event
         ax_traces.plot(np.arange(num_ps)+idx_max,
@@ -166,11 +178,14 @@ def plot_traces_and_hists(samples, ax_traces, num_ps=int(1e5)):
         ax_traces.plot(np.arange(num_ps)+idx_max+num_ps+1e3,
                        sample[idx_midd:idx_midd+num_ps]+ttl,
                        color=colors[ttl])
+        ax_traces.set_xlabel('Samples')
+        ax_traces.set_ylabel('Values (a.u.)')
+
     ax_traces.legend(loc='lower right')
     return idx_max
 
 
-def get_input(ignore=False, defaults={'class':'', 'issue': '', 'obs': ''}):
+def get_input(ignore=False, defaults={'class': '', 'issue': '', 'obs': ''}):
     """
     Get feedback from user about: classification of session, issue, observations.
 
@@ -206,7 +221,8 @@ def get_input(ignore=False, defaults={'class':'', 'issue': '', 'obs': ''}):
         prob = defaults['issue']
         obs = defaults['obs']
     else:
-        sess_class = input("Is this session good? (def: "+defaults['class']+') ')
+        sess_class = input("Is this session good? [def: " +
+                           defaults['class']+' ('+defaults['issue']+')]')
         if sess_class == '':
             sess_class = defaults['class']
         if sess_class == 'y':
@@ -306,6 +322,7 @@ def build_figure(samples, e_data, offset, session, inv, inv_sbsmpld, margin_psth
     # PLOT TTL PSTHs
     plot_psths(samples=samples, e_data=e_data, offset=offset,
                margin_psth=margin_psth)
+    print('Saving figure here'+sv_folder+'/'+session+'.png')
     f.savefig(sv_folder+'/'+session+'.png')
     return f, ax_traces, idx_max
 
@@ -364,8 +381,11 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     rats = [x for x in rats if x[-4] != '.']
     used_indx = []
     dates_eq = []
-    f_tmln, ax_tmln = plt.subplots()
+    f_tmln, ax_tmln = plt.subplots(figsize=(16, 10))
     counter = 0
+    lbls_used = []
+    ax_tmln.set_yticks(np.arange(len(rats)))
+    ax_tmln.set_yticklabels([os.path.basename(r) for r in rats])
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
@@ -377,11 +397,12 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             dates_eq.append([days, date])
             print('----')
             print(session)
-            print(counter)
+            print('Counter: ', counter)
             if session not in sel_sess and rat not in sel_rats and\
                (len(sel_sess) != 0 or len(sel_rats) != 0):
                 continue
             idx = [i for i, x in enumerate(inv['session']) if x.endswith(session)]
+            assert len(idx) == 1
             idx_ss = idx[0]
             if len(idx) != 1:
                 print('Could not find associated session in inventory')
@@ -389,7 +410,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 continue
             assert idx_ss not in used_indx, str(idx_ss)
             used_indx.append(idx_ss)
-            if not redo:
+            if not redo and len(sess_classif) > idx_ss:
                 fldr = sess_classif[idx_ss]
                 prob = issue[idx_ss]
                 obs = observations[idx_ss]
@@ -397,12 +418,13 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                     obs = obs[:-4]
             else:
                 fldr, prob, obs = 'n.c.', '', ''
-            plt_f = (fldr == 'n.c.' and plot_fig) or (ignore_input and plot_fig)
+            # plt_f = (fldr == 'n.c.' and plot_fig) or (ignore_input and plot_fig)
+            plt_f = plot_fig
+            e_file = sess+'/e_data.npz'
+            e_data = np.load(e_file, allow_pickle=1)
             if plt_f:
                 # GET DATA
                 offset = inv['offset'][idx_ss]
-                e_file = sess+'/e_data.npz'
-                e_data = np.load(e_file, allow_pickle=1)
                 samples = np.load(sess+'/ttls_sbsmpl.npz', allow_pickle=1)
                 samples = samples['samples']
                 # BUILD FIGURE
@@ -414,42 +436,87 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 if ignore_input:
                     plt.show(block=False)
             # INPUT INFO
+            defs = {'class': '', 'issue': '', 'obs': ''}
             if fldr == 'n.c.':
-                defs = {'class': '', 'issue': '', 'obs': ''}
+                connection = ''
                 if inv['sil_per'][idx_ss] > 0.01:
                     defs['issue'] = 'sil per'
-                elif inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
-                    defs['issue'] = 'no ttl'
-                elif np.max(samples) > 1000:
-                    defs['issue'] = 'noise 1'
+                    connection = ' / '
+                if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
+                    defs['issue'] += connection+'no ttl'
+                    connection = ' / '
+                if inv['num_stim_ttl'][idx_ss] > 2000:
+                    defs['issue'] += connection+'noise 1'
+                    connection = ' / '
+                if inv['num_clstrs'][idx_ss] == 0:
+                    defs['issue'] += connection+'no units'
+                    # assert (e_data['clstrs_qlt'] == 'noise').all()
                 defs['class'] = 'y' if defs['issue'] == '' else 'n'
-                fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
+            else:
+                defs['issue'] = prob
+                defs['obs'] = obs
+                defs['class'] = 'y' if defs['issue'] == '' else 'n'
+            fldr, prob, obs = get_input(ignore=ignore_input, defaults=defs)
             if plt_f:
-                f.savefig(sv_folder+fldr+'/'+session+'.png')
                 ax_traces.text(idx_max, 4.25, prob+': '+obs)
                 ax_traces.set_ylim([-.1, 4.5])
+                f.savefig(sv_folder+fldr+'/'+session+'.png')
             if plt_f and fldr == 'bad':
-                print('Saving into issues pdf')
+                # print('Saving into issues pdf')
                 pdf_issues.savefig(f.number)
             elif plt_f and fldr == 'good':
-                print('Saving into selected pdf')
+                # print('Saving into selected pdf')
                 pdf_selected.savefig(f.number)
             if plt_f:
                 plt.close(f)
-            print(observations[idx_ss])
-            print(issue[idx_ss])
-            color = ISSS_CLR[np.where(ISSUES == issue[idx_ss])[0]][0]
-            ax_tmln.plot(days, i_r, '.', color=color)
+            indxs_issue = [i_i for i_i, iss in enumerate(ISSUES) if iss == prob]
+            if len(indxs_issue) == 1:  # if there is only one issue
+                indx = INDX_CLRS[indxs_issue[0]]
+                lbl = ISSUES[indxs_issue[0]]
+            elif 'no units' in prob:  # preference to no units issue
+                indx = INDX_CLRS[ISSUES == 'no units'][0]
+                lbl = 'no units'
+            elif 'no signal' in prob:  # preference to no signal issue
+                indx = INDX_CLRS[ISSUES == 'no signal'][0]
+                lbl = 'no signal'
+            elif 'noise' in prob:
+                indx = INDX_CLRS[ISSUES == 'noise 1'][0]
+                lbl = 'noise 1'
+            elif 'sil per' in prob:  # preference to no signal issue
+                indx = INDX_CLRS[ISSUES == 'sil per'][0]
+                lbl = 'sil per'
+            else:
+                indx = np.max(INDX_CLRS)+1
+                lbl = 'multiple issues'
+            lbl = 'Good' if lbl == '' else lbl
+            color = ISSS_CLR[indx]
+            # print(indxs_issue)
+            # print(obs)
+            # print(prob)
+            # print(indx)
+            # print(lbl)
+            if lbl in lbls_used:
+                lbl = ''
+            else:
+                lbls_used.append(lbl)
+            ax_tmln.plot(days, i_r, '.', color=color, label=lbl)
+            ax_tmln.legend()
             f_tmln.savefig(sv_folder+'/sessions_timeline.png')
             # SAVE DATA
-            issue[idx_ss] = prob
-            sess_classif[idx_ss] = fldr
-            observations[idx_ss] = obs
-            print(fldr)
+            if len(sess_classif) >= idx_ss:
+                issue[idx_ss] = prob
+                sess_classif[idx_ss] = fldr
+                observations[idx_ss] = obs
+            else:
+                issue = np.append(issue, prob)
+                sess_classif = np.append(sess_classif, fldr)
+                observations = np.append(observations, obs)
+
+            # print(fldr)
             assert fldr != 'n.c.'
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
-            print(list(extended_inv))
+            # print(list(extended_inv))
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
@@ -460,25 +527,27 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     pdf_selected.close()
 
 
+# --- MAIN
 if __name__ == '__main__':
     plt.close('all')
-    redo = False  # whether to rewrite comments
+    redo = True  # whether to rewrite comments
     ignore_input = True  # whether to input comments (or just save the figures)
     plot_fig = True  # whether to plot the figures
     margin_psth = 2000
     num_ps = int(1e5)  # for traces plot
     home = 'molano'  # 'manuel'
-    main_folder = '/home/'+home+'/fof_data/'
+    main_folder = '/home/'+home+'/fof_data/2022/'
+    drpbx_folder = '/home/molano/Dropbox/project_Barna/FOF_project/2022/'
     if home == 'manuel':
         sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/ttl_psths_bis/'
+        sv_folder = drpbx_folder+'/ttl_psths/'
 
     inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
     # specify rats/sessions to analyze
-    sel_rats = []  # ['LE113']  # 'LE101'
+    sel_rats = []  # ['LE79']  ['LE113']
     sel_sess = []  # ['LE101_2021-05-31_12-34-48'] ['LE104_2021-03-31_14-14-20']
 
     batch_sessions(main_folder=main_folder, sv_folder=sv_folder, inv=inv,

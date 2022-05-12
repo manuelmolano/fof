@@ -455,3 +455,40 @@ if __name__ == '__main__':
         inventory(redo=redo,
                   spks_sort_folder=None, behav_folder=None, sv_folder=None,
                   sel_rats=['LE113'])
+
+    # import glob
+    # import pandas as pd
+    # import numpy as np
+    # rats = glob.glob('/archive/lbektic/data/ephys_data/AfterClustering/LE*')
+    # mat_num_spks = []
+    # for r in rats:
+    #     print('xxxxxxxxxxxxxxxxxxxxxxxxxx')
+    #     print('xxxxxxxxxxxxxxxxxxxxxxxxxx')
+    #     print(r)
+    #     n_spks = []
+    #     fldrs = glob.glob(r+'/LE*')
+    #     for f in fldrs:
+    #         # print(f)
+    #         try:
+    #             df_labels = pd.read_csv(f+'/cluster_group.tsv', sep='\t')
+    #             # print(df_labels)
+    #             try:
+    #                 indx = df_labels['group'] != 'noise'
+    #             except KeyError:
+    #                 indx = df_labels['KSLabel'] != 'noise'
+    #             # print(len(df_labels[indx]))
+    #             n_spks.append(len(df_labels[indx]))
+    #         except FileNotFoundError as m:
+    #             print(m)
+    #     mat_num_spks.append(n_spks)
+    #     n_spks = np.array(n_spks)
+    # print('-------------')
+    # print('Number of sessions')
+    # print(len(n_spks))
+    # print('Proportion of sessions with units')
+    # print(np.sum(n_spks != 0)/len(n_spks))
+    # print('Mean number of units in sessions with units')
+    # print(np.mean(n_spks[n_spks != 0]))
+    # # print(n_spks[n_spks != 0])
+    # # print(n_spks)
+    # print('-------------')

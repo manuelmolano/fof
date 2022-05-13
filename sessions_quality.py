@@ -449,7 +449,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
                     defs['issue'] += connection+'no ttl'
                     connection = ' / '
-                if inv['num_stim_ttl'][idx_ss] > 1000:
+                if np.min(samples) < -10000:
                     defs['issue'] += connection+'noise 1'
                     connection = ' / '
                 if inv['num_clstrs'][idx_ss] == 0:

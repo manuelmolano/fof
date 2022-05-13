@@ -16,11 +16,11 @@ colors = sns.color_palette()
 AX_SIZE = 0.17  # for hist and psth axes
 MARGIN = .06  # for hist and psth axes
 ISSUES = np.array(['', ' ', 'noise 1', 'noise 2', 'noise 3', 'no ttl', 'no signal',
-                   'sil per', 'no units'])
+                   'sil per', 'no units', 'few csv ttl'])
 ISSS_CLR = np.array([[0, 0, 0], [27, 158, 119], [217, 95, 2], [117, 112, 179],
                      [231, 41, 138], [230, 171, 2], [102, 166, 30],
                      [166, 118, 29], [102, 102, 102]])/255
-INDX_CLRS = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5])
+INDX_CLRS = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5, 6])
 
 
 def set_title(ax, session, inv, inv_sbsmpld, i):
@@ -442,10 +442,14 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 if inv['sil_per'][idx_ss] > 0.01:
                     defs['issue'] = 'sil per'
                     connection = ' / '
+                if inv['num_stms_csv'][idx_ss] <\
+                   inv['num_stim_ttl'][idx_ss]-inv['num_stim_ttl'][idx_ss]/5:
+                    defs['issue'] += connection+'few csv ttl'
+                    connection = ' / '
                 if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
                     defs['issue'] += connection+'no ttl'
                     connection = ' / '
-                if inv['num_stim_ttl'][idx_ss] > 2000:
+                if inv['num_stim_ttl'][idx_ss] > 1000:
                     defs['issue'] += connection+'noise 1'
                     connection = ' / '
                 if inv['num_clstrs'][idx_ss] == 0:

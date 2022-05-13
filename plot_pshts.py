@@ -27,7 +27,7 @@ rojo_2 = np.array([240, 2, 127])/255
 
 grad_colors = sns.diverging_palette(145, 300, n=7)
 grad_colors = [[0.8*g for g in gc] for gc in grad_colors]
-PLOT = False
+PLOT = True
 
 
 def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
@@ -365,22 +365,24 @@ def batch_plot(inv, main_folder, sv_folder, cond, std_conv=20, margin_psth=1000,
     return features
 
 
+# --- MAIN
 if __name__ == '__main__':
     plt.close('all')
     analysis_type = 'psth'
     std_conv = 50
     margin_psth = 1000
     home = 'molano'
-    main_folder = '/home/'+home+'/fof_data/'
+    main_folder = '/home/'+home+'/fof_data/2022/'
     if home == 'manuel':
         sv_folder = main_folder+'/psths/'
     elif home == 'molano':
-        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/'
+        sv_folder = '/home/molano/Dropbox/project_Barna/FOF_project/psths/2022/'
     inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz', allow_pickle=1)
     sel_rats = []  # ['LE113']  # 'LE101'
-    sel_sess = ['LE113_2021-06-04_14-07-43', 'LE81_2020-12-16_10-51-17',
-                'LE81_2020-12-22_10-41-16', 'LE81_2021-01-12_10-05-36',
-                'LE104_2021-06-19_12-54-47', 'LE113_2021-07-13_11-03-58']
+    # sel_sess = ['LE113_2021-06-04_14-07-43', 'LE81_2020-12-16_10-51-17',
+    #             'LE81_2020-12-22_10-41-16', 'LE81_2021-01-12_10-05-36',
+    #             'LE104_2021-06-19_12-54-47', 'LE113_2021-07-13_11-03-58']
+    sel_sess = ['LE104_2021-05-01_11-25-18']  # ['LE104_2021-04-12_11-38-47']  #
     # ['LE113_2021-06-19_14-03-06', 'LE104_2021-06-19_12-54-47',
     # 'LE113_2021-06-18_11-40-52']
     # ['LE77_2020-12-04_08-27-33']  # ['LE113_2021-06-05_12-38-09']
@@ -388,9 +390,9 @@ if __name__ == '__main__':
     # ['no_cond', 'prev_ch_and_context', 'context' 'prev_outc',
     # 'prev_outc_and_ch', 'coh', 'prev_ch', 'ch', 'outc']
     # ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr']
-    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'prev_tr',
-                  'block']
-    for cond in ['ch_prev_ch']:
+    conditions = ['ch', 'prev_ch', 'outc', 'prev_outc', 'prev_tr', 'block',
+                  'ch_prev_ch']
+    for cond in conditions:  # ['ch_prev_ch']:
         sv_f = sv_folder+'/'+cond+'/'
         if not os.path.exists(sv_f):
             os.makedirs(sv_f)

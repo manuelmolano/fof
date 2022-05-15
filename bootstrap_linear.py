@@ -218,7 +218,7 @@ def bootstrap_linsvm_proj_withtrials(coeffs_pool, intercepts_pool, Xtest_pool,
             yevi_set[i, :, :] = evidences.copy()
     return stats, Xtest_set, ytest_set, ypred_set, yevi_set, test_set
 
-def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, n_iterations=10, N_pseudo_dec=25, train_percent=0.6):
+def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, n_iterations=10, N_pseudo_dec=25, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
     # NN      = np.shape(Xdata_hist_set[unique_states[0],'correct'])[1] 
     nlabels = 6*(len(files)-len(false_files))
     ntrain  = int(train_percent*N_pseudo_dec)
@@ -256,7 +256,7 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
 
         ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
         # N_pseudo_dec, N_pseudo_beh = 100,25
-        Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,N_pseudo_dec)
+        Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error,merge_trials_hist=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,N_pseudo_dec,RECORD_TRIALS, RECORDED_TRIALS_SET[i])
 
         Xdata_trainc,Xdata_testc=Xmerge_hist_trials_correct[4][:ntrain,:],Xmerge_hist_trials_correct[4][ntrain:,:]
         ylabels_trainc,ylabels_testc = ymerge_hist_labels_correct[4][:ntrain,:],ymerge_hist_labels_correct[4][ntrain:,:]
@@ -403,4 +403,4 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
     return coeffs, intercepts,\
         Xsup_vec_act, Xsup_vec_ctxt, Xsup_vec_bias, Xsup_vec_cc,\
         Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-        Xtest_set_error, ytest_set_error, yevi_set_error
+        Xtest_set_error, ytest_set_error, yevi_set_error, merge_trials_hist

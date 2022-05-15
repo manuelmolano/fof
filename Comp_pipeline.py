@@ -13,6 +13,7 @@ from sklearn.decomposition import PCA
 import seaborn as sns
 import pandas as pd
 import os
+from sklearn import metrics
 
 from sklearn.utils import resample # for Bootstrap sampling
 from sklearn.metrics import accuracy_score
@@ -189,27 +190,31 @@ def filter_sessions(data_tr,unique_states,unique_cohs):
 	false_files = np.union1d(false_files,_correct_false)
 	return false_files
 
-def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding', DOREVERSE=0): 
+def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding', DOREVERSE=0, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]): 
     Xdata_set,Xdata_hist_set,ylabels_set,ylabels_hist_set,files = data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'], data_tr['ylabels_hist_set'], data_tr['files'] 
     Xcohs_0 = data_tr['Xcohs_0']
     unique_states = np.arange(8) 
     unique_cohs   = np.sort(Xcohs_0)
-    Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,10)
+    Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error, _=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,10,  RECORD_TRIALS=1, RECORDED_TRIALS=[])
 
 	## finding decoding axis 
     NN=np.shape(Xmerge_hist_trials_correct[4])[1] 
+    # if(RECORD_TRIALS==1):
+    #     RECORD_TRIALS_SET = []*NITERATIONS
     coeffs, intercepts,sup_vec_act, Xsup_vec_ctxt, Xsup_vec_bias, Xsup_vec_cc,Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-	        Xtest_set_error, ytest_set_error, yevi_set_error=bl.bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, n_iterations=NITERATIONS, N_pseudo_dec=NPSEUDODEC, train_percent=PERCENTTRAIN) 
+	        Xtest_set_error, ytest_set_error, yevi_set_error, merge_trials_hist=bl.bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, n_iterations=NITERATIONS, N_pseudo_dec=NPSEUDODEC, train_percent=PERCENTTRAIN,  RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET) 
     lst = [coeffs, intercepts,
            ytest_set_correct,  
            yevi_set_correct,
            coeffs, intercepts,  # Xtest_set_error,
-           ytest_set_error,  yevi_set_error]
+           ytest_set_error,  yevi_set_error,
+           merge_trials_hist]
     stg = ["coefs_correct, intercepts_correct,"
            "ytest_set_correct, "
            "yevi_set_correct, "
            "coefs_error, intercepts_error,"  # " Xtest_set_error,"
-           "ytest_set_error, yevi_set_error"]
+           "ytest_set_error, yevi_set_error,"
+           "merge_trials_hist"]
     d = list_to_dict(lst=lst, string=stg)
     return d
 
@@ -375,7 +380,64 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
             fig.ax_joint.plot([np.min(ctxt), np.max(ctxt)], new_y, color='k',
                               lw=0.5)
 
+    # # plot histograms
+    # binsset = np.linspace(-8, 8, 40)
+    # fig, axs = plt.subplots(figsize=(4, 3))
+    # # We can also normalize our inputs by the total number of counts
+    # axs.hist(yevi[SVMAXIS, idxbiasl], bins=binsset,
+    #          density=True, facecolor=GREEN, alpha=0.25)
+    # axs.hist(yevi[SVMAXIS, idxbiasr], bins=binsset,
+    #          density=True, facecolor='tab:purple', alpha=0.25)
+    # axs.set_ylim([0, 0.5])
+    # y = np.zeros((yevi.shape[1],))
+    # y[idxbiasl] = 1
+    # y[idxbiasr] = 2
+    # assert (y != 0).all()
+    # fpr, tpr, thresholds = metrics.roc_curve(y, yevi[SVMAXIS, :], pos_label=2)
+    # AUC = metrics.auc(fpr, tpr)
+    # axs.set_title('AUC: '+str(np.round(AUC, 3)))
+    # image_name = SAVELOC + '/'+prev_outc+'bias_hist_' + NAME + name + '.svg'
+    # fig.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
+    # plt.close(fig)
+    # if PREV_CH == 'L':
+    #     plt.close(figs[1].fig)
+    #     return figs[0]
+    # else:
+    #     plt.close(figs[0].fig)
+    #     return figs[1]
 
+def bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax):
+    Xdata_set, ylabels_set = data_tr['Xdata_set'], data_tr['ylabels_set']
+    metadata = data_tr['metadata']
+    coeffs,intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
+    unique_states = np.arange(0,8,1) 
+    Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES) 
+
+    unique_cohs = [-1,0,1]
+    unique_states = np.arange(4,8,1) 
+    psychometric_trbias_correct,trbias_range_correct=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,ymerge_labels_correct, [4,5,6,7],unique_cohs,[0,1], EACHSTATES=EACHSTATES) 
+    unique_states = np.arange(4) 
+    psychometric_trbias_error,trbias_range_error=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,ymerge_labels_error, [0,1,2,3],unique_cohs,[0,1], EACHSTATES=EACHSTATES)
+
+    ### compute the slope for zero-coherence
+    coh0_correct = np.polyfit(trbias_range_correct[1,1:-1],psychometric_trbias_correct[1,1:-1],1)
+    coh0_error   = np.polyfit(trbias_range_error[1,1:-1],psychometric_trbias_error[1,1:-1],1)
+    curveslopes_correct, curveintercept_correct = coh0_correct[0],coh0_correct[1]
+    curveslopes_error,   curveintercept_error   = coh0_error[0],  coh0_error[1]
+    return curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error
+
+    # unique_cohs   = [-1,0,1] 
+    # EACHSTATES    = 60 
+    # Xdata_set,ylabels_set = data_tr['Xdata_set'],data_tr['ylabels_set']
+    # metadata = data_tr['metadata']
+    # coeffs,intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
+    # Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES) 
+    # unique_states = np.arange(4,8,1) 
+    # _=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,
+    #                                          ymerge_labels_correct, [4,5,6,7],[-1,0,1],[0,1], EACHSTATES=EACHSTATES) 
+    # unique_states = np.arange(4) 
+    # _=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,
+    #                                          ymerge_labels_error, [0,1,2,3],[-1,0,1],[0,1], EACHSTATES=EACHSTATES)
 
 '''
 merging and generating pseudo trials for how tr. bias affects behaviour (stage 2)
@@ -397,6 +459,8 @@ if __name__ == '__main__':
     RERUN = True
     DOREVERSE = 0
 
+    RECORD_TRIALS = 1
+
     BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
     XLIMS_2D = [-3, 3]
     YLIMS_2D = [-7, 7]
@@ -406,8 +470,10 @@ if __name__ == '__main__':
     XLIM_CTXT = [12000, 13000]
     YTICKS_CTXT = [-2, 0, 2]
     YLIM_CTXT = [-2.2, 2.2] 
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/' 
-    files = glob.glob(dir+'Rat32_ss_*.npz')#Rat7_ss_45_data_for_python.mat 
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/' 
+    # files = glob.glob(dir+'Rat32_ss_*.npz')#Rat7_ss_45_data_for_python.mat 
+    dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
+    files = glob.glob(dir+'Rat7_ss_*.npz')
     data_tr = get_all_quantities(files,numtrans=0) 
     
     unique_states = np.arange(8) 
@@ -416,23 +482,18 @@ if __name__ == '__main__':
     
     NITERATIONS, NPSEUDODEC, PERCENTTRAIN = 100, 50 , 0.6 
     
-    data_dec = get_dec_axes(data_tr,[],[],[],[],false_files,mode='decoding',DOREVERSE=0) 
+    data_dec = get_dec_axes(data_tr,[],[],[],[],false_files,mode='decoding',DOREVERSE=0, RECORD_TRIALS=1, RECORDED_TRIALS_SET=np.zeros(NITERATIONS)) 
+    dataname = 'testtrials.npz'
+    np.savez(dataname,**data_dec)
     
-    data_flt = flatten_data(data_tr,data_dec) 
+    # data_flt = flatten_data(data_tr,data_dec) 
     
-    projection_3D(data_flt, data_flt) 
+    # projection_3D(data_flt, data_flt) 
     
-    projections_2D(data_flt, prev_outc='c', fit=False, name='') 
-    projections_2D(data_flt, prev_outc='e', fit=False, name='') 
-    unique_cohs   = [-1,0,1] 
-    EACHSTATES    = 60 
-    Xdata_set,ylabels_set = data_tr['Xdata_set'],data_tr['ylabels_set']
-    metadata = data_tr['metadata']
-    coeffs,intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES) 
-    unique_states = np.arange(4,8,1) 
-    _=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,
-    	                                     ymerge_labels_correct, [4,5,6,7],[-1,0,1],[0,1], EACHSTATES=EACHSTATES) 
-    unique_states = np.arange(4) 
-    _=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,
-    	                                     ymerge_labels_error, [0,1,2,3],[-1,0,1],[0,1], EACHSTATES=EACHSTATES)
+    # projections_2D(data_flt, prev_outc='c', fit=False, name='') 
+    # projections_2D(data_flt, prev_outc='e', fit=False, name='') 
+
+    # ### transition bias to behaviour 
+    # unique_cohs   = [-1,0,1] 
+    # EACHSTATES    = 60 
+    # curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error=bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax)

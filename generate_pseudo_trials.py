@@ -92,10 +92,12 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
 
 
 
-def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,idx_delete,EACHSTATES=20):
+def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,idx_delete,EACHSTATES=20,RECORD_TRIALS=0, RECORDED_TRIALS=[]):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     Xmerge_trials_error,ymerge_labels_error = {},{}
+
+    merge_trials_hist = {}
     
     for state in unique_states:
         if state>=4:
@@ -113,6 +115,10 @@ def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,fil
             if totaltrials<1:
                 continue                  
             idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+            if(RECORD_TRIALS):
+                merge_trials_hist[state,idxf] = idxsample
+            else:
+                idxsample = RECORDED_TRIALS[state,idxf]
             if (idxf == 0):
                 ymerge_labels_error[state] = label_temp[state][idxsample,:]
                 Xmerge_trials_error[state] = data_temp[state][idxsample,:]
@@ -141,6 +147,10 @@ def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,fil
             if totaltrials<1:
                 continue                  
             idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+            if(RECORD_TRIALS):
+                merge_trials_hist[state,idxf] = idxsample
+            else:
+                idxsample = RECORDED_TRIALS[state,idxf]
             if (idxf == 0):
                 ymerge_labels_correct[state] = label_temp[state][idxsample,:]
                 Xmerge_trials_correct[state] = data_temp[state][idxsample,:]
@@ -151,14 +161,15 @@ def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,fil
                 except:
                     ymerge_labels_correct[state] = label_temp[state][idxsample,:]
                     Xmerge_trials_correct[state] = data_temp[state][idxsample,:]
-    return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error
+    return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
-def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60):
+def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS=[]):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     yright_ratio_correct = {}
     Xmerge_trials_error,ymerge_labels_error = {},{}
     yright_ratio_error = {}
+    merge_trials = {}
     for state in unique_states:
         if state<4:
             continue
@@ -178,6 +189,10 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                         temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
                 totaltrials = np.shape(temp_trials)[0]              
                 idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+                if(RECORD_TRIALS):
+                    merge_trials[state,coh,idxf] = idxsample
+                else:
+                    idxsample = RECORDED_TRIALS[state,coh,idxf]
                 try:
                     ymerge_labels_correct[state,coh] = np.vstack((ymerge_labels_correct[state,coh],temp_beh[idxsample])) 
                     Xmerge_trials_correct[state,coh] = np.hstack((Xmerge_trials_correct[state,coh],temp_trials[idxsample,:]))
@@ -203,13 +218,17 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                         temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
                 totaltrials = np.shape(temp_trials)[0]              
                 idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+                if(RECORD_TRIALS):
+                    merge_trials[state,coh,idxf] = idxsample
+                else:
+                    idxsample = RECORDED_TRIALS[state,coh,idxf]
                 try:
                     ymerge_labels_error[state,coh] = np.vstack((ymerge_labels_error[state,coh],temp_beh[idxsample])) 
                     Xmerge_trials_error[state,coh] = np.hstack((Xmerge_trials_error[state,coh],temp_trials[idxsample,:]))
                 except:
                     ymerge_labels_error[state,coh] = temp_beh[idxsample]#[np.sum(temp_beh[idxsample])/len(idxsample)]
                     Xmerge_trials_error[state,coh] = temp_trials[idxsample,:]
-    return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error
+    return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials
 
 
 def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
@@ -219,9 +238,12 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
     NDEC = int(np.shape(coeffs_pool)[1]/5)
     NN   = np.shape(Xmerge_trials[unique_states[0],unique_cohs[0]])[1]
     NS, NC, NCH = len(unique_states),len(unique_cohs),len(unique_choices)
+    nbins_trbias = 5
+    psychometric_trbias = np.zeros((len(unique_cohs), nbins_trbias))
+    trbias_range        = np.zeros((len(unique_cohs), nbins_trbias))
     
-    fig, ax =plt.subplots(figsize=(4,4))
-    for coh in unique_cohs:
+    # fig, ax =plt.subplots(figsize=(4,4))
+    for idxcoh, coh in enumerate(unique_cohs):
         maxtrbias,mintrbias=-MAXV,MAXV
         evidences   = []#np.zeros(NS*NCH*EACHSTATES)
         rightchoice = []#np.zeros(NS*NCH*EACHSTATES)
@@ -238,13 +260,15 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
         
         ### 
         maxtrbias ,mintrbias = max(evidences),min(evidences)
-        binss = np.linspace(mintrbias,maxtrbias,5)
-        perc_right = np.zeros(4)
+        binss = np.linspace(mintrbias,maxtrbias,nbins_trbias+1)
+        perc_right = np.zeros(nbins_trbias)
         ax_trbias  = (binss[1:]+binss[:-1])/2.0
-        for i in range(1,5):
+        for i in range(1,nbins_trbias+1):
             idxbinh = np.where(evidences<binss[i])[0]
             idxbinl = np.where(evidences>binss[i-1])[0]
             idxbin  = np.intersect1d(idxbinh,idxbinl)
             perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)
-        ax.plot(ax_trbias,perc_right)
-    return perc_right
+        # ax.plot(ax_trbias,perc_right)
+        psychometric_trbias[idxcoh,:] = perc_right.copy()
+        trbias_range[idxcoh,:] = trbias_range.copy()
+    return psychometric_trbias,trbias_range

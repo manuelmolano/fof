@@ -163,7 +163,7 @@ def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,fil
                     Xmerge_trials_correct[state] = data_temp[state][idxsample,:]
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
-def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS=[]):
+def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     yright_ratio_correct = {}
@@ -188,11 +188,12 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                         temp_trials=np.vstack((temp_trials,data_temp[state,coh,choice]))
                         temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
                 totaltrials = np.shape(temp_trials)[0]              
-                idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+                
                 if(RECORD_TRIALS):
+                    idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
                     merge_trials[state,coh,idxf] = idxsample
                 else:
-                    idxsample = RECORDED_TRIALS[state,coh,idxf]
+                    idxsample = RECORDED_TRIALS_SET[state,coh,idxf]
                 try:
                     ymerge_labels_correct[state,coh] = np.vstack((ymerge_labels_correct[state,coh],temp_beh[idxsample])) 
                     Xmerge_trials_correct[state,coh] = np.hstack((Xmerge_trials_correct[state,coh],temp_trials[idxsample,:]))
@@ -217,11 +218,12 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                         temp_trials=np.vstack((temp_trials,data_temp[state,coh,choice]))
                         temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
                 totaltrials = np.shape(temp_trials)[0]              
-                idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+                
                 if(RECORD_TRIALS):
+                    idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
                     merge_trials[state,coh,idxf] = idxsample
                 else:
-                    idxsample = RECORDED_TRIALS[state,coh,idxf]
+                    idxsample = RECORDED_TRIALS_SET[state,coh,idxf]
                 try:
                     ymerge_labels_error[state,coh] = np.vstack((ymerge_labels_error[state,coh],temp_beh[idxsample])) 
                     Xmerge_trials_error[state,coh] = np.hstack((Xmerge_trials_error[state,coh],temp_trials[idxsample,:]))
@@ -250,8 +252,8 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
         for idxs, state in enumerate(unique_states):
             for idx in range(EACHSTATES):
                 Xdata_test = Xmerge_trials[state,coh][idx,:]
-                idxdecoder = np.random.choice(np.arange(0, NDEC, 1),
-                                size=1, replace=True)
+                idxdecoder = idx+idxs*EACHSTATES+idxcoh*(len(unique_states)*EACHSTATES)#np.random.choice(np.arange(0, NDEC, 1),size=1, replace=True)
+                idxdecoder = np.mod(idxdecoder, NDEC)
                 linw_bias, linb_bias = coeffs_pool[:, idxdecoder*5+3], intercepts_pool[0, 5*idxdecoder+3]
                 evidences   = np.append(evidences,np.squeeze(
                 Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
@@ -270,5 +272,5 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
             perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)
         # ax.plot(ax_trbias,perc_right)
         psychometric_trbias[idxcoh,:] = perc_right.copy()
-        trbias_range[idxcoh,:] = trbias_range.copy()
+        trbias_range[idxcoh,:] = ax_trbias.copy()
     return psychometric_trbias,trbias_range

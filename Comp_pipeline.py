@@ -406,16 +406,16 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     #     plt.close(figs[0].fig)
     #     return figs[1]
 
-def bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax):
+def bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
     Xdata_set, ylabels_set = data_tr['Xdata_set'], data_tr['ylabels_set']
     metadata = data_tr['metadata']
     coeffs,intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
     unique_states = np.arange(0,8,1) 
-    Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES) 
+    Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES, RECORD_TRIALS=RECORD_TRIALS,RECORDED_TRIALS_SET=RECORDED_TRIALS_SET) 
 
     unique_cohs = [-1,0,1]
     unique_states = np.arange(4,8,1) 
-    psychometric_trbias_correct,trbias_range_correct=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,ymerge_labels_correct, [4,5,6,7],unique_cohs,[0,1], EACHSTATES=EACHSTATES) 
+    psychometric_trbias_correct,trbias_range_correct, merge=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,ymerge_labels_correct, [4,5,6,7],unique_cohs,[0,1], EACHSTATES=EACHSTATES) 
     unique_states = np.arange(4) 
     psychometric_trbias_error,trbias_range_error=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,ymerge_labels_error, [0,1,2,3],unique_cohs,[0,1], EACHSTATES=EACHSTATES)
 
@@ -424,7 +424,13 @@ def bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax):
     coh0_error   = np.polyfit(trbias_range_error[1,1:-1],psychometric_trbias_error[1,1:-1],1)
     curveslopes_correct, curveintercept_correct = coh0_correct[0],coh0_correct[1]
     curveslopes_error,   curveintercept_error   = coh0_error[0],  coh0_error[1]
-    return curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error
+    colors = plt.cm.PRGn_r(np.linspace(0, 1, 3))
+    for i in range(3):
+        ax[0].plot(trbias_range_correct[i,:], psychometric_trbias_correct[i,:],color=colors[i],lw=1.5)
+        ax[1].plot(trbias_range_error[i,:], psychometric_trbias_error[i,:],color=colors[i],lw=1.5)
+    ax[0].plot(trbias_range_correct[1,:], psychometric_trbias_correct[1,:],color='k',lw=1.5)
+    ax[1].plot(trbias_range_error[1,:], psychometric_trbias_error[1,:],color=colors[i],lw=1.5)
+    return curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error, merge_trials
 
     # unique_cohs   = [-1,0,1] 
     # EACHSTATES    = 60 
@@ -453,8 +459,8 @@ if __name__ == '__main__':
     BOX_WDTH = 0.25
     SVMAXIS = 3
     AX_PREV_CH_OUTC = {'c': [2, 3], 'e': [0, 1]}
-    IPOOLS = 500  # 100  # number of iterations in SVM (500)
-    IEACHTRAIN = 500  # 100  # number of trials in each iteration (200)
+    IPOOLS = 100  # 100  # number of iterations in SVM (500)
+    IEACHTRAIN = 100  # 100  # number of trials in each iteration (200)
     RUN_ALL = True
     RERUN = True
     DOREVERSE = 0
@@ -486,14 +492,15 @@ if __name__ == '__main__':
     dataname = 'testtrials.npz'
     np.savez(dataname,**data_dec)
     
-    # data_flt = flatten_data(data_tr,data_dec) 
+    data_flt = flatten_data(data_tr,data_dec) 
     
-    # projection_3D(data_flt, data_flt) 
+    projection_3D(data_flt, data_flt) 
     
-    # projections_2D(data_flt, prev_outc='c', fit=False, name='') 
-    # projections_2D(data_flt, prev_outc='e', fit=False, name='') 
+    projections_2D(data_flt, prev_outc='c', fit=False, name='') 
+    projections_2D(data_flt, prev_outc='e', fit=False, name='') 
 
-    # ### transition bias to behaviour 
-    # unique_cohs   = [-1,0,1] 
-    # EACHSTATES    = 60 
-    # curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error=bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax)
+    ### transition bias to behaviour 
+    unique_cohs   = [-1,0,1] 
+    EACHSTATES    = 60 
+    fig, ax = plt.subplots(1,2,figsize=(10,5),tight_layout=True)
+    curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error, merge_beh_trials=bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=np.zeros(EACHSTATES))

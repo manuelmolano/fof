@@ -218,10 +218,10 @@ def bootstrap_linsvm_proj_withtrials(coeffs_pool, intercepts_pool, Xtest_pool,
             yevi_set[i, :, :] = evidences.copy()
     return stats, Xtest_set, ytest_set, ypred_set, yevi_set, test_set
 
-def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, n_iterations=10, N_pseudo_dec=25, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
+def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, n_iterations=10, N_pseudo_dec=25, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
     # NN      = np.shape(Xdata_hist_set[unique_states[0],'correct'])[1] 
     nlabels = 6*(len(files)-len(false_files))
-    ntrain  = int(train_percent*N_pseudo_dec)
+    ntrain  = int(train_percent*N_pseudo_dec) # *4
     ntest   = (N_pseudo_dec-ntrain)*4 # state
 
     Xtest_set_correct, ytest_set_correct, =\
@@ -261,6 +261,8 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         if RECORD_TRIALS == 1:
             RECORDED_TRIALS_SET[i]=merge_trials_hist
 
+
+        #### --------- state 0 -----------------------
         Xdata_trainc,Xdata_testc=Xmerge_hist_trials_correct[4][:ntrain,:],Xmerge_hist_trials_correct[4][ntrain:,:]
         ylabels_trainc,ylabels_testc = ymerge_hist_labels_correct[4][:ntrain,:],ymerge_hist_labels_correct[4][ntrain:,:]
 
@@ -286,8 +288,12 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         if DOREVERSE:
             ylabels_traine[:, 3] = 1-ylabels_traine[:, 3]
 
-        Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
-        ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
+        if(CONTROL):
+            Xdata_train   = Xdata_traine.copy()
+            ylabels_train = ylabels_traine.copy() 
+        else:          
+            Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
+            ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
         # fit model
         # model.fit(X_train,y_train) i.e model.fit(train set, train label as it
         # is a classifier)

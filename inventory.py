@@ -444,13 +444,14 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 ttls_sbsmpl = {'samples': smpls}
                 np.savez(sv_f_sess+'/ttls_sbsmpl.npz', **ttls_sbsmpl)
 
-def summary()
+
+def summary():
     inv_ext = np.load('/home/molano/fof_data/2022/sess_inv_extended.npz',
                       allow_pickle=1)
     rats = np.unique(inv_ext['rat'])
-    
+
     for r in rats:
-        print('---------')
+        print('xxxxxxxxxxxxxxxxxxxxxxx')
         print(r)
         indx_rat = inv_ext['rat'] == r
         num_sess = np.sum(indx_rat)
@@ -458,21 +459,27 @@ def summary()
         indx_good = sess_qlt == 'good'
         num_clstrs = inv_ext['num_clstrs'][indx_rat][indx_good]
         assert (num_clstrs != 0).all()
-        print('-------------')
+        print('-----')
         print('Number of sessions')
         print(num_sess)
-        print('Proportion of valid sessions')
-        print(np.sum(indx_good)/num_sess)
-        print('Median number of units in sessions with units')
-        print(np.median(num_clstrs))
+        print('Number of valid sessions')
+        perc = np.round(100*np.sum(indx_good)/num_sess, 1)
+        print(str(np.sum(indx_good))+' ('+str(perc)+' %)')
+        if len(num_clstrs) > 0:
+            print('Median (min/max) number of units in sessions with units')
+            print(str(np.median(num_clstrs)) +
+                  ' ('+str(np.min(num_clstrs))+' / '+str(np.max(num_clstrs))+')')
 
 
 # --- MAIN
 if __name__ == '__main__':
+    summ = True
     default = True
     redo = True
     use_subsampled_electro = False
-    if default:
+    if summ:
+        summary()
+    elif default:
         inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:
         inventory(redo=redo,

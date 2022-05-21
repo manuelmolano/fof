@@ -47,73 +47,6 @@ def plt_psths(spk_tms, evs, ax=None, margin_psth=1000, std_conv=20, lbl='',
     return features
 
 
-def find_repeated_evs(evs_dists, indx_evs):
-    """
-    Find repeated events in indx_evs and only keeps the ones with the minimum
-    distance to the associated TTL ev.
-
-    Both vectors have the length equal to the number of csv events.
-
-    Parameters
-    ----------
-    evs_dists : array
-        vector containing, for each csv fixation event, the min distance to TTL ev.
-    indx_evs : array
-        vector containing, for each csv fix event, the index of the closest TTL ev.
-
-    Returns
-    -------
-    idx_assoc_tr : array
-        mask indicating which indexes of the csv vector that should be discarded
-        because there is not associated TTL event.
-
-    """
-    # remove repeated events (when 2 csv evs have the same ttl event associated)
-    evs_unq, indx, counts = np.unique(indx_evs, return_index=1, return_counts=1)
-    idx_assoc_tr = np.ones((len(evs_dists),)) == 1
-    indx_rep = np.where(counts > 1)[0]
-    if len(indx_rep) > 0:  # if true, there are 2 csv evs w/ the same ttl ev assoc
-        for i_r in indx_rep:
-            # get indx with the same associated ttl ev
-            idx_i_rep = np.where(indx_evs == evs_unq[i_r])[0]
-            assert len(idx_i_rep) > 1
-            # find the csv ev that is closer to the ttl ev
-            min_dist_idx = np.argmin(evs_dists[idx_i_rep])
-            # remove from mask the rest of indxes
-            idx_assoc_tr[np.delete(idx_i_rep, min_dist_idx)] = False
-    return idx_assoc_tr
-
-
-def preprocess_events(b_data, e_data, ev, evs_mrgn, fixtn_time):
-    # pass times to seconds
-    trial_times = ut.date_2_secs(b_data.fix_onset_dt)
-    # get events
-    events = e_data[ev]
-    # remove special trials and trials when sound failed
-    idx_good_trs = np.logical_and(b_data['special_trial'].values == 0,
-                                  b_data['soundrfail'].values == 0)
-    # look for ttl event associated to each csv fixation event
-    aux = np.array([(np.min(np.abs(events-tr)), np.argmin(np.abs(events-tr)))
-                    for tr in trial_times])
-    evs_dists = aux[:, 0]
-    indx_evs = aux[:, 1].astype(int)
-    # this selects for each csv ev the closest ttl ev. It isn't exactly filtering..
-    filt_evs = events[indx_evs]
-    # find repeated evs
-    idx_assoc_tr = find_repeated_evs(evs_dists, indx_evs)
-    # get indexes of ttl events that are close to csv fixation events
-    if ev == 'fix_strt':
-        synchr_cond = evs_dists < evs_mrgn
-    elif ev == 'stim_ttl_strt' or ev == 'stim_anlg_strt':
-        synchr_cond = np.abs(evs_dists-fixtn_time) < evs_mrgn
-    elif ev == 'outc_strt':
-        synchr_cond = np.ones((len(evs_dists),)) == 1
-    # indx of regular trials
-    indx_good_evs = np.logical_and.reduce((synchr_cond, idx_good_trs,
-                                           idx_assoc_tr))
-    return filt_evs, indx_good_evs
-
-
 def get_label(cs):
     ch_lbl = ['Right', 'Left', '-']
     prev_ch_lbl = ['Prev. right', 'Prev left', '-']
@@ -177,9 +110,9 @@ def psth_binary_cond(mat, cl, e_data, b_data, ax, ev, lbls, clrs, spk_offset=0,
     # get spikes
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
     # select trials
-    filt_evs, indx_good_evs = preprocess_events(b_data=b_data, e_data=e_data,
-                                                ev=ev, evs_mrgn=evs_mrgn,
-                                                fixtn_time=fixtn_time)
+    filt_evs, indx_good_evs = ut.preprocess_events(b_data=b_data, e_data=e_data,
+                                                   ev=ev, evs_mrgn=evs_mrgn,
+                                                   fixtn_time=fixtn_time)
     # further filtering
     if mask is not None:
         indx_good_evs = np.logical_and(indx_good_evs, mask)

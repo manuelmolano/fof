@@ -12,8 +12,10 @@ import scipy.stats as sstats
 def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
     unique_choices = [0,1]
     
-    error_false   = []
-    correct_false = []
+    error_false     = []
+    correct_false   = []
+    num_hist_trials = np.zeros((8,len(files))) 
+    min_hist_trials = 1e5
     for state in unique_states:
         if state>=4:
             break
@@ -28,6 +30,9 @@ def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
             if totaltrials<1:
                 error_false = np.append(error_false,idxf)
                 continue
+            if totaltrials<min_hist_trials:
+                min_hist_trials = totaltrials
+            num_hist_trials[state,idxf] = totaltrials
 
     for state in unique_states:
         if state<4:
@@ -46,7 +51,12 @@ def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
                     if totaltrials<1:
                         correct_false = np.append(correct_false,idxf)
                         continue
-    return np.unique(correct_false), np.unique(error_false)
+
+                    if totaltrials<min_hist_trials:
+                        min_hist_trials=totaltrials
+                    num_hist_trials[state,idxf] = totaltrials
+
+    return np.unique(correct_false), np.unique(error_false), min_hist_trials, num_hist_trials
 
 ##### validate behaviour state
 def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
@@ -54,9 +64,13 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
     error_false  = []
     correct_false = []
 
+    min_beh_trials = 1e5
+    num_beh_trials = np.zeros((3,8,len(files)))
+    min_beh_trials = 1e5
+
     for idxf in range(len(files)):
         data_temp  = Xdata_set[idxf,'error'].copy()
-        for coh in unique_cohs:
+        for idxc, coh in enumerate(unique_cohs):
             for state in unique_states:
                 if state>=4:
                     break
@@ -70,11 +84,15 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
                 if (totaltrials<1):
                     # print('error',state,'--',coh,'--',choice,'--',idxf) 
                     error_false=np.append(error_false,idxf)
+                    continue
+                if totaltrials<min_beh_trials:
+                    min_beh_trials=totaltrials 
+                num_beh_trials[idxc,state,idxf] = totaltrials
             
 
     for idxf in range(len(files)):
         data_temp  = Xdata_set[idxf,'correct'].copy()
-        for coh in unique_cohs:
+        for idxc, coh in enumerate(unique_cohs):
             for state in unique_states:
                 if state<4:
                     continue
@@ -88,7 +106,11 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
                 if (totaltrials<1):
                     # print('correct',state,'--',coh,'--',choice,'--',idxf) 
                     correct_false=np.append(correct_false,idxf)
-    return np.unique(correct_false), np.unique(error_false)
+                    continue
+                if totaltrials<min_beh_trials:
+                    min_beh_trials = totaltrials 
+                num_beh_trials[idxc,state,idxf]= totaltrials
+    return np.unique(correct_false), np.unique(error_false), min_beh_trials, num_beh_trials
 
 
 
@@ -234,13 +256,13 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
 
 
 def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
-                                     ymerge_labels, unique_states,unique_cohs,unique_choices, EACHSTATES=20):
+                                     ymerge_labels, unique_states,unique_cohs,unique_choices, num_beh_trials, EACHSTATES=20,FIX_TRBIAS_BINS=[],NBINS=5):
 
     MAXV = 100
     NDEC = int(np.shape(coeffs_pool)[1]/5)
     NN   = np.shape(Xmerge_trials[unique_states[0],unique_cohs[0]])[1]
     NS, NC, NCH = len(unique_states),len(unique_cohs),len(unique_choices)
-    nbins_trbias = 5
+    nbins_trbias = NBINS
     psychometric_trbias = np.zeros((len(unique_cohs), nbins_trbias))
     trbias_range        = np.zeros((len(unique_cohs), nbins_trbias))
     
@@ -249,7 +271,11 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
         maxtrbias,mintrbias=-MAXV,MAXV
         evidences   = []#np.zeros(NS*NCH*EACHSTATES)
         rightchoice = []#np.zeros(NS*NCH*EACHSTATES)
+        trbias_w    = []
         for idxs, state in enumerate(unique_states):
+            ### cal weight for averaging
+            num_true = np.mean(num_beh_trials[idxcoh,state,:]) 
+            weight_per = num_true/EACHSTATES 
             for idx in range(EACHSTATES):
                 Xdata_test = Xmerge_trials[state,coh][idx,:]
                 idxdecoder = idx+idxs*EACHSTATES+idxcoh*(len(unique_states)*EACHSTATES)#np.random.choice(np.arange(0, NDEC, 1),size=1, replace=True)
@@ -259,6 +285,7 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
                 Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
                 temp_perc   = np.sum(ymerge_labels[state,coh][:,idx])/np.shape(ymerge_labels[state,coh])[0]
                 rightchoice = np.append(rightchoice,temp_perc)
+                trbias_w    = np.append(trbias_w, weight_per)
         
         ### 
         maxtrbias ,mintrbias = max(evidences),min(evidences)
@@ -269,7 +296,10 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
             idxbinh = np.where(evidences<binss[i])[0]
             idxbinl = np.where(evidences>binss[i-1])[0]
             idxbin  = np.intersect1d(idxbinh,idxbinl)
-            perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)
+            
+            ### cal normalization coefficient
+            normalization = trbias_w[idxbin]/np.sum(trbias_w[idxbin])
+            perc_right[i-1] = np.sum(rightchoice[idxbin]*normalization)#np.sum(rightchoice[idxbin])/len(idxbin)
         # ax.plot(ax_trbias,perc_right)
         psychometric_trbias[idxcoh,:] = perc_right.copy()
         trbias_range[idxcoh,:] = ax_trbias.copy()

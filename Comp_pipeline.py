@@ -227,22 +227,42 @@ def flatten_data(data_tr, data_dec):
     ytruthlabels_c = np.zeros((nlabels, 1)) 
     yevi_c    = np.zeros((3 + 1 + 1, 1)) 
     dprimes_c = np.zeros(IPOOLS) 
+    AUCs_c    = np.zeros(IPOOLS)
     for i in range(IPOOLS):  # bootstrapping
 	    hist_evi = yevi_set_correct[i, :, :]
 	    test_labels = ytest_set_correct[i, :, :]
 	    idx = np.arange(np.shape(hist_evi)[0])
 
 	    ytruthlabels_c = np.append(ytruthlabels_c, test_labels[idx, :].T, axis=1)
-	    yevi_c = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)  
+	    yevi_c         = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)  
+        dprimes_c[i]   = guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),np.squeeze(ytest_set_correct[i, :, SVMAXIS])) 
+    
+        ### calculate AUC ----
+        yauc_c_org = np.squeeze(ytest_set_correct[i,:,SVMAXIS])
+        yauc_c = np.zeros_like(yauc_c_org)
+
+        yauc_c[np.where(yauc_c_org==0+2)[0]]=1
+        yauc_c[np.where(yauc_c_org==1+2)[0]]=2
+        assert (yauc_c !=0).all()
+        fpr, tpr, thresholds = metrics.roc_curve(yauc_c,np.squeeze(yevi_set_correct[i,:,SVMAXIS]), pos_label=2)
+        auc_ac = metrics.auc(fpr,tpr)
+        AUCs_c[i] = auc_ac
+
     ytruthlabels_c, yevi_c =ytruthlabels_c[:, 1:], yevi_c[:, 1:] 
-    dprimes_c[i] =guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),np.squeeze(ytest_set_correct[i, :, SVMAXIS])) 
-    yevi_set_error = data_dec['yevi_set_error']
+    f, ax_temp = plt.subplots(ncols=2)
+    ax_temp[0].hist(AUCs_c,bins=20,alpha=0.9,facecolor='yellow')
+
+    '''
+    After Error Trials
+    '''
+    yevi_set_error  = data_dec['yevi_set_error']
     ytest_set_error = data_dec['ytest_set_error']
     
     nlabels = np.shape(np.squeeze(ytest_set_error[0,:,:]))[1]  
     ytruthlabels_e = np.zeros((nlabels, 1)) 
     yevi_e = np.zeros((3 + 1 + 1, 1)) 
     dprimes_e = np.zeros(IPOOLS) 
+    AUCs_e    = np.zeros(IPOOLS)
     for i in range(IPOOLS):
 	    hist_evi = yevi_set_error[i, :, :]
 	    test_labels = ytest_set_error[i, :, :]  # labels: preaction, ctxt, bias
@@ -250,12 +270,24 @@ def flatten_data(data_tr, data_dec):
 	    ytruthlabels_e = np.append(ytruthlabels_e, test_labels[idx, :].T, axis=1)
 	    yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)  # np.squeeze
 	    dprimes_e[i] =guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),np.squeeze(ytest_set_error[i, :, SVMAXIS])) 
+
+        ### calculate AUC ----
+        yauc_e_org = np.squeeze(ytest_set_error[i,:,SVMAXIS])
+        yauc_e = np.zeros_like(yauc_e_org)
+
+        yauc_e[np.where(yauc_e_org==0)[0]]=1
+        yauc_e[np.where(yauc_e_org==1)[0]]=2
+        assert (yauc_c !=0).all()
+        fpr, tpr, thresholds = metrics.roc_curve(yauc_e,np.squeeze(yevi_set_error[i,:,SVMAXIS]), pos_label=2)
+        auc_ae = metrics.auc(fpr,tpr)
+        AUCs_e[i] = auc_ae
+    ax_temp[1].hist(AUCs_e,bins=20,alpha=0.9,facecolor='black')
         
     ytruthlabels_e, yevi_e =ytruthlabels_e[:, 1:],yevi_e[:, 1:] 
     lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
-           dprimes_c, dprimes_e]
+           dprimes_c, dprimes_e, AUCs_c, AUCs_e]
     stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
-           "dprimes_c, dprimes_e"]
+           "dprimes_c, dprimes_e, AUCs_c, AUCs_e"]
     d = list_to_dict(lst=lst, string=stg)
     return d
 

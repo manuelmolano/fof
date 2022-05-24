@@ -33,7 +33,7 @@ dpii=300
 
 # %%
 import scipy.io as sio
-import get_matlab_data as gd
+# import get_matlab_data as gd
 import glob
 
 # matplotlib.rcParams['font.family'] = 'Arial'
@@ -179,16 +179,17 @@ def get_all_quantities(files, numtrans=0):
 '''
 Filtering 'good' sessions
 '''
-def filter_sessions(data_tr,unique_states,unique_cohs):
-	Xdata_set,Xdata_hist_set,ylabels_set,ylabels_hist_set,files = data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'], data_tr['ylabels_hist_set'], data_tr['files']
-	correct_false,error_false = gpt.valid_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files)
-
-	_correct_false,_error_false = gpt.valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files)
-
-	false_files = np.union1d(correct_false,error_false)
-	false_files = np.union1d(false_files,_error_false)
-	false_files = np.union1d(false_files,_correct_false)
-	return false_files
+def filter_sessions(data_tr,unique_states,unique_cohs): 
+    Xdata_set,Xdata_hist_set,ylabels_set,ylabels_hist_set,files = data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'], data_tr['ylabels_hist_set'], data_tr['files'] 
+    correct_false,error_false, min_hist_trials, num_hist_trials = gpt.valid_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files)  
+    _correct_false,_error_false, min_beh_trials, num_beh_trials = gpt.valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files) 
+    false_files = np.union1d(correct_false,error_false) 
+    false_files = np.union1d(false_files,_error_false) 
+    false_files = np.union1d(false_files,_correct_false) 
+    MIN_TRIALS  = [min_hist_trials, min_beh_trials]
+    
+    
+    return false_files, MIN_TRIALS,num_hist_trials, num_beh_trials
 
 def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding', DOREVERSE=0, CONTROL=0, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]): 
     Xdata_set,Xdata_hist_set,ylabels_set,ylabels_hist_set,files = data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'], data_tr['ylabels_hist_set'], data_tr['files'] 
@@ -234,35 +235,64 @@ def flatten_data(data_tr, data_dec):
     ytruthlabels_c = np.zeros((nlabels, 1)) 
     yevi_c    = np.zeros((3 + 1 + 1, 1)) 
     dprimes_c = np.zeros(IPOOLS) 
-    for i in range(IPOOLS):  # bootstrapping
-	    hist_evi = yevi_set_correct[i, :, :]
-	    test_labels = ytest_set_correct[i, :, :]
-	    idx = np.arange(np.shape(hist_evi)[0])
+    AUCs_c    = np.zeros(IPOOLS)
+    for i in range(IPOOLS): 
+        # bootstrappin 
+        hist_evi = yevi_set_correct[i, :, :] 
+        test_labels = ytest_set_correct[i, :, :] 
+        idx = np.arange(np.shape(hist_evi)[0])    
+        ytruthlabels_c = np.append(ytruthlabels_c, test_labels[idx, :].T, axis=1)  
+        yevi_c         = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)  
+        dprimes_c[i]   = guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),np.squeeze(ytest_set_correct[i, :, SVMAXIS])) 
+        
+        yauc_c_org = np.squeeze(ytest_set_correct[i,:,SVMAXIS])
+        yauc_c = np.zeros_like(yauc_c_org)
 
-	    ytruthlabels_c = np.append(ytruthlabels_c, test_labels[idx, :].T, axis=1)
-	    yevi_c = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)  
+        yauc_c[np.where(yauc_c_org==0+2)[0]]=1
+        yauc_c[np.where(yauc_c_org==1+2)[0]]=2
+        assert (yauc_c !=0).all()
+        fpr, tpr, thresholds = metrics.roc_curve(yauc_c,np.squeeze(yevi_set_correct[i,:,SVMAXIS]), pos_label=2)
+        auc_ac = metrics.auc(fpr,tpr)
+        AUCs_c[i] = auc_ac
+
     ytruthlabels_c, yevi_c =ytruthlabels_c[:, 1:], yevi_c[:, 1:] 
-    dprimes_c[i] =guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),np.squeeze(ytest_set_correct[i, :, SVMAXIS])) 
-    yevi_set_error = data_dec['yevi_set_error']
+    f, ax_temp = plt.subplots(ncols=2)
+    ax_temp[0].hist(AUCs_c,bins=20,alpha=0.9,facecolor='yellow')
+
+    '''
+    After Error Trials
+    '''
+    yevi_set_error  = data_dec['yevi_set_error']
     ytest_set_error = data_dec['ytest_set_error']
     
     nlabels = np.shape(np.squeeze(ytest_set_error[0,:,:]))[1]  
     ytruthlabels_e = np.zeros((nlabels, 1)) 
     yevi_e = np.zeros((3 + 1 + 1, 1)) 
     dprimes_e = np.zeros(IPOOLS) 
-    for i in range(IPOOLS):
-	    hist_evi = yevi_set_error[i, :, :]
-	    test_labels = ytest_set_error[i, :, :]  # labels: preaction, ctxt, bias
-	    idx = np.arange(np.shape(hist_evi)[0])
-	    ytruthlabels_e = np.append(ytruthlabels_e, test_labels[idx, :].T, axis=1)
-	    yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)  # np.squeeze
-	    dprimes_e[i] =guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),np.squeeze(ytest_set_error[i, :, SVMAXIS])) 
+    AUCs_e    = np.zeros(IPOOLS)
+    for i in range(IPOOLS): 
+        hist_evi = yevi_set_error[i, :, :] 
+        test_labels = ytest_set_error[i, :, :]   
+        idx = np.arange(np.shape(hist_evi)[0]) 
+        ytruthlabels_e = np.append(ytruthlabels_e, test_labels[idx, :].T, axis=1) 
+        yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)   
+        dprimes_e[i] =guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),np.squeeze(ytest_set_error[i, :, SVMAXIS]))
+        yauc_e_org = np.squeeze(ytest_set_error[i,:,SVMAXIS]) 
+        yauc_e = np.zeros_like(yauc_e_org)
+
+        yauc_e[np.where(yauc_e_org==0)[0]]=1
+        yauc_e[np.where(yauc_e_org==1)[0]]=2
+        assert (yauc_c !=0).all()
+        fpr, tpr, thresholds = metrics.roc_curve(yauc_e,np.squeeze(yevi_set_error[i,:,SVMAXIS]), pos_label=2)
+        auc_ae = metrics.auc(fpr,tpr)
+        AUCs_e[i] = auc_ae
+    ax_temp[1].hist(AUCs_e,bins=20,alpha=0.9,facecolor='black')
         
     ytruthlabels_e, yevi_e =ytruthlabels_e[:, 1:],yevi_e[:, 1:] 
     lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
-           dprimes_c, dprimes_e]
+           dprimes_c, dprimes_e, AUCs_c, AUCs_e]
     stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
-           "dprimes_c, dprimes_e"]
+           "dprimes_c, dprimes_e, AUCs_c, AUCs_e"]
     d = list_to_dict(lst=lst, string=stg)
     return d
 
@@ -579,33 +609,63 @@ def ctxtbin_defect(data_flt):
     return corrl_ac, corrr_ac, corrl_ae, corrr_ae, [ACC_correct[:-1],
                                                     ACC_error[:-1]]
 
-def bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
+def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES, NITERATIONS, ax, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
     Xdata_set, ylabels_set = data_tr['Xdata_set'], data_tr['ylabels_set']
     metadata = data_tr['metadata']
     coeffs,intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    unique_states = np.arange(0,8,1) 
-    Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES, RECORD_TRIALS=RECORD_TRIALS,RECORDED_TRIALS_SET=RECORDED_TRIALS_SET) 
+    if (RECORD_TRIALS==1):
+        RECORDED_TRIALS_SET ={}
+        for i in range(NITERATIONS):
+            RECORDED_TRIALS_SET[i]={}
+    
+    FIX_TRBIAS_BINS = np.array([-1,0,1])
+    
+    NBINS = 5
+    
+    NTRBIAS = len(FIX_TRBIAS_BINS)
+    psychometric_trbias_correct = np.zeros((NITERATIONS,len(unique_cohs),NBINS))
+    psychometric_trbias_error   = np.zeros((NITERATIONS,len(unique_cohs),NBINS))
+    trbias_range_correct = np.zeros((NITERATIONS,len(unique_cohs),NBINS))
+    trbias_range_error   = np.zeros((NITERATIONS,len(unique_cohs),NBINS))
 
-    unique_cohs = [-1,0,1]
-    unique_states = np.arange(4,8,1) 
-    psychometric_trbias_correct,trbias_range_correct=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,ymerge_labels_correct, [4,5,6,7],unique_cohs,[0,1], EACHSTATES=EACHSTATES)
-    unique_states = np.arange(4) 
-    psychometric_trbias_error,trbias_range_error=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,ymerge_labels_error, [0,1,2,3],unique_cohs,[0,1], EACHSTATES=EACHSTATES)
+    curveslopes_correct, curveslopes_error = np.zeros((NITERATIONS,len(unique_cohs))), np.zeros((NITERATIONS,len(unique_cohs)))
+    curveintercept_correct, curveintercept_error = np.zeros((NITERATIONS,len(unique_cohs))), np.zeros((NITERATIONS,len(unique_cohs)))            
+    for idx in range(NITERATIONS):
+        unique_states = np.arange(0,8,1) 
+        Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, RECORDED_TRIALS_SET[idx]=gpt.merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES, RECORD_TRIALS=RECORD_TRIALS,RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[idx]) 
+    
+        unique_cohs = [-1,0,1]
+        unique_states = np.arange(4,8,1) 
+        psychometric_trbias_correct[idx,:,:],trbias_range_correct[idx,:,:]=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,ymerge_labels_correct, [4,5,6,7],unique_cohs,[0,1], num_beh_trials, EACHSTATES=EACHSTATES, FIX_TRBIAS_BINS=FIX_TRBIAS_BINS,NBINS=NBINS)
+        unique_states = np.arange(4) 
+        psychometric_trbias_error[idx,:,:],trbias_range_error[idx,:,:]=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,ymerge_labels_error, [0,1,2,3],unique_cohs,[0,1], num_beh_trials, EACHSTATES=EACHSTATES, FIX_TRBIAS_BINS=FIX_TRBIAS_BINS,NBINS=NBINS)
 
-    ### compute the slope for zero-coherence
-    coh0_correct = np.polyfit(trbias_range_correct[1,1:-1],psychometric_trbias_correct[1,1:-1],1)
-    coh0_error   = np.polyfit(trbias_range_error[1,1:-1],psychometric_trbias_error[1,1:-1],1)
-    curveslopes_correct, curveintercept_correct = coh0_correct[0],coh0_correct[1]
-    curveslopes_error,   curveintercept_error   = coh0_error[0],  coh0_error[1]
-    colors = plt.cm.PRGn_r(np.linspace(0, 1, 3))
+        ### compute the slope for zero-coherence
+        for icoh in range(len(unique_cohs)):
+            coh0_correct = np.polyfit(trbias_range_correct[idx,icoh,1:-1],psychometric_trbias_correct[idx,icoh,1:-1],1)
+            coh0_error   = np.polyfit(trbias_range_error[idx,icoh,1:-1],psychometric_trbias_error[idx,icoh,1:-1],1)
+            curveslopes_correct[idx,icoh], curveintercept_correct[idx,icoh] = coh0_correct[0],coh0_correct[1]
+            curveslopes_error[idx,icoh],   curveintercept_error[idx,icoh]   = coh0_error[0],  coh0_error[1]
+        
+        
+    colors = plt.cm.PRGn_r(np.linspace(0, 1, 3*6))
     for i in range(3):
-        ax[0].plot(trbias_range_correct[i,:], psychometric_trbias_correct[i,:],color=colors[i],lw=1.5)
-        ax[1].plot(trbias_range_error[i,:], psychometric_trbias_error[i,:],color=colors[i],lw=1.5)
-    ax[0].plot(trbias_range_correct[1,:], psychometric_trbias_correct[1,:],color='k',lw=1.5)
-    ax[1].plot(trbias_range_error[1,:], psychometric_trbias_error[1,:],color=colors[i],lw=1.5)
+        meanx = np.mean(trbias_range_correct[:,i,:],axis=0)
+        meany = np.mean(psychometric_trbias_correct[:,i,:],axis=0) 
+        errory = np.std(psychometric_trbias_correct[:,i,:],axis=0)/np.sqrt(NITERATIONS)
+        errorx = np.std(trbias_range_correct[:,i,:],axis=0)/np.sqrt(NITERATIONS)
+        ax[0].errorbar(meanx,meany,xerr=errorx,yerr=errory,color=colors[i*2],lw=1.5)
+        
+        meanx = np.mean(trbias_range_error[:,i,:],axis=0)
+        meany = np.mean(psychometric_trbias_error[:,i,:],axis=0) 
+        errory = np.std(psychometric_trbias_error[:,i,:],axis=0)/np.sqrt(NITERATIONS)
+        errorx = np.std(trbias_range_error[:,i,:],axis=0)/np.sqrt(NITERATIONS)
+        ax[1].errorbar(meanx,meany,xerr=errorx,yerr=errory,color=colors[i*2],lw=1.5)
+    # ax[0].plot(trbias_range_correct[1,:], psychometric_trbias_correct[1,:],color='k',lw=1.5)
+    # ax[1].plot(trbias_range_error[1,:], psychometric_trbias_error[1,:],color=colors[i],lw=1.5)
 
-    lst = [merge_trials]
-    stg = ["merge_trials"]
+    lst = [RECORDED_TRIALS_SET]
+    stg = ["RECORDED_TRIALS_SET"]
     d_beh = list_to_dict(lst=lst, string=stg)
     return curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error, d_beh
 
@@ -645,8 +705,8 @@ if __name__ == '__main__':
     RERUN   = True
     DOREVERSE = 0
 
-    RECORD_TRIALS = 0
-    CONTROL       = 1
+    RECORD_TRIALS = 1
+    CONTROL       = 0
 
     BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
     XLIMS_2D = [-3, 3]
@@ -663,26 +723,28 @@ if __name__ == '__main__':
     # files = glob.glob(dir+'Rat15_ss_*_data_for_python.mat')#Rat7_ss_45_data_for_python.mat
     # for f in files:
     #     matfile = os.path.basename(f)
-    #     try:
+    #     try:num
     #         data,units = gd.get_data_file(f)
     #     except:
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/' 
-    files = glob.glob(dir+'Rat15_ss_*.npz')#Rat7_ss_45_data_for_python.mat 
+    IDX_RAT = 'Rat15_'
+    files = glob.glob(dir+IDX_RAT+'ss_*.npz')#Rat7_ss_45_data_for_python.mat 
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
     data_tr       = get_all_quantities(files,numtrans=0) 
     
     unique_states = np.arange(8) 
     unique_cohs   = [-1,0,1] 
-    false_files   = filter_sessions(data_tr,unique_states,unique_cohs) 
+    false_files, MIN_TRIALS, num_hist_trials, num_beh_trials  = filter_sessions(data_tr,unique_states,unique_cohs) 
+    print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:",MIN_TRIALS)
 
     
     wc, bc=[],[]
 
     if(RECORD_TRIALS==0):
-        dataname = dir+'Rat15_data_dec.npz'
+        dataname = dir+IDX_RAT+'data_dec.npz'
         data_dec = np.load(dataname, allow_pickle=True)
         RECORDED_TRIALS_SET = data_dec['RECORDED_TRIALS_SET']
         RECORDED_TRIALS_SET = RECORDED_TRIALS_SET.item()
@@ -698,7 +760,7 @@ if __name__ == '__main__':
         data_dec = get_dec_axes(data_tr,wc,bc,[],[],false_files,mode='decoding',DOREVERSE=0, CONTROL=CONTROL, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
     
     if(RECORD_TRIALS==1):
-        dataname = dir+'Rat15_data_dec.npz'
+        dataname = dir+IDX_RAT+'data_dec.npz'
         np.savez(dataname,**data_dec)
     
     data_flt = flatten_data(data_tr,data_dec) 
@@ -707,7 +769,6 @@ if __name__ == '__main__':
     projection_3D(data_flt, data_flt,'e') 
     
     projections_2D(data_flt, prev_outc='c', fit=False, name='') 
-    projections_2D(data_flt, prev_outc='e', fit=False, name='') 
 
     # x-axis bin ctxt, y-axis transition bias
     corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(data_flt)
@@ -717,18 +778,18 @@ if __name__ == '__main__':
     unique_cohs   = [-1,0,1] 
     EACHSTATES    = 60 
     if(RECORD_TRIALS==0):
-        dataname = dir+'Rat15_data_beh.npz'
+        dataname = dir+IDX_RAT+'data_beh.npz'
         data_beh = np.load(dataname, allow_pickle=True)
         RECORDED_TRIALS_SET = data_beh['merge_trials']
         RECORDED_TRIALS_SET = RECORDED_TRIALS_SET.item()
     else:
         RECORDED_TRIALS_SET = np.zeros(EACHSTATES)
     fig, ax = plt.subplots(1,2,figsize=(10,5),tight_layout=True)
-    curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error, data_beh=bias_VS_prob(data_tr, data_dec, unique_cohs, EACHSTATES, ax, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+    curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error, data_beh=bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES, NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
     print('>>>>>>>>>>> Curve-beh, slopes AC: ',curveslopes_correct)
     print('>>>>>>>>>>> Curve-beh, slopes AE: ',curveslopes_error)
     if(RECORD_TRIALS==1):
-        dataname = dir+'Rat15_data_beh.npz'
+        dataname = dir+IDX_RAT+'data_beh.npz'
         np.savez(dataname,**data_beh)
 
 

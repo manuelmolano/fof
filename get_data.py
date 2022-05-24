@@ -362,7 +362,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
                 ax[0].set_title(title)
                 f.savefig(name+'_'+str(cl))
                 plt.close(f)
-    states = np.array(states)
+    states = np.array(states).T
     data = {}
     data['choice'] = insert_nans(mat=choice, odd=False)
     data['stimulus'] = None

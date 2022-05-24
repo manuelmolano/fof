@@ -863,8 +863,9 @@ if __name__ == '__main__':
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
-    IDX_RAT = 'Rat15_'
-    files = glob.glob(dir+IDX_RAT+'ss_*.npz')  # Rat7_ss_45_data_for_python.mat
+    # 'files_pop_analysis/'
+    IDX_RAT = 'Rat15_ss_'
+    files = glob.glob(dir+IDX_RAT+'*.npz')  # Rat7_ss_45_data_for_python.mat
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
     data_tr = get_all_quantities(files, numtrans=0)

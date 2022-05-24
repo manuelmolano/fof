@@ -706,6 +706,8 @@ def State_trials(Xdata,Xstates,Xchoices,Xcohs,ylabels,percent,):
     Xcohs_b[np.where(Xcohs<0)[0]]=-1
     Xcohs_b[np.where(Xcohs==0)[0]]=0
     Xcohs_b[np.where(Xcohs>0)[0]]=1
+
+    Xcohs=Xcohs_b.copy()
     
     if (unique_choices[0]>1):
         unique_choices = unique_choices-2

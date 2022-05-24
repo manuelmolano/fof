@@ -231,9 +231,12 @@ def filter_sessions(data_tr, unique_states, unique_cohs):
 
 def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                  DOREVERSE=0, CONTROL=0, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
-    Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
-        data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
+    # Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
+    #     data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
+    #     data_tr['ylabels_hist_set'], data_tr['files']
+    Xdata_hist_set, ylabels_hist_set, files = data_tr['Xdata_hist_set'], \
         data_tr['ylabels_hist_set'], data_tr['files']
+
     Xcohs_0 = data_tr['Xcohs_0']
     unique_states = np.arange(8)
     unique_cohs = np.sort(Xcohs_0)
@@ -263,8 +266,9 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                                        RECORD_TRIALS=RECORD_TRIALS,
                                        RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
     else:
-        coeffs, intercepts, Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-            Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET\
+        coeffs, intercepts, Xtest_set_correct, ytest_set_correct,\
+            yevi_set_correct, Xtest_set_error, ytest_set_error, yevi_set_error,\
+            RECORDED_TRIALS_SET\
             = bl.bootstrap_linsvm_proj_step(wc, bc, Xdata_hist_set, NN,
                                             ylabels_hist_set, unique_states,
                                             unique_cohs, files, false_files, type,
@@ -463,9 +467,9 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     idxpreal, idxprear =\
         np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
         np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-    idxbiasl, idxbiasr =\
-        np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
-        np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    # idxbiasl, idxbiasr =\
+    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
+    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
 
     # plot samples
     # previous left
@@ -475,7 +479,7 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
     idxright = idxprear[:NUM_SAMPLES]
     idxprear = idxright
-    figs = []
+    # figs = []
     for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
         ctxt = np.squeeze(yevi[1, idx])
         tr_bias = np.squeeze(yevi[SVMAXIS, idx])
@@ -510,9 +514,9 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     idxctxtr, idxctxta =\
         np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
         np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-    idxbiasl, idxbiasr =\
-        np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
-        np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    # idxbiasl, idxbiasr =\
+    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
+    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
 
     # plot samples
     # previous left
@@ -522,7 +526,7 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
     idxalt = idxctxta[:NUM_SAMPLES]
     idxalt = idxalt
-    figs = []
+    # figs = []
     for idx, ctxt in zip([idxrpt, idxalt], ['Rep', 'Alt']):
         prev_ch = np.squeeze(yevi[0, idx])
         tr_bias = np.squeeze(yevi[SVMAXIS, idx])
@@ -597,7 +601,7 @@ def ctxtbin_defect(data_flt):
     ACC_correct, ACC_error = np.zeros(nbins), np.zeros(nbins)
     ctxt_evi_c = np.abs(yevi_c[1, :])
     ctxt_evi_e = np.abs(yevi_e[1, :])
-    binss = np.linspace(-4.0, 4.0, 40)
+    # binss = np.linspace(-4.0, 4.0, 40)
     for i in range(0, nbins):
         if i == nbins-1:
             idx_c = np.where(ctxt_evi_c > CTXT_BIN[i])[0]
@@ -714,7 +718,7 @@ def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
 
     NBINS = 5
 
-    NTRBIAS = len(FIX_TRBIAS_BINS)
+    # NTRBIAS = len(FIX_TRBIAS_BINS)
     psychometric_trbias_correct = np.zeros(
         (NITERATIONS, len(unique_cohs), NBINS))
     psychometric_trbias_error = np.zeros(

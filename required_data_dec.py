@@ -48,6 +48,9 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
         if(np.isnan(prev1_stats['rw']) or np.isnan(prev1_stats['choice']) or np.isnan(curr_stats['choice']) or np.isnan(curr_stats['rw'])):
             print('NaN trials to escape')
             continue
+        if(prev1_stats['gt']<-1):
+            print('ground truth NaN')
+            continue
         if(prev2_stats['choice'] == -1 and prev1_stats['choice'] == -1):
             Xdata_idx      = np.append(Xdata_idx, curr_stats['start_end'][0]-1)
             Xdata_trialidx = np.append(Xdata_trialidx, i)

@@ -106,7 +106,7 @@ def multivariateGrid(col_x, col_y, col_k, df, colors=[], alpha=.5, s=2):
         counter += 1
     # plt.legend(legends)
     return g
-def get_all_quantities(files, numtrans=0):
+def get_all_quantities(files, numtrans=0,SKIPNAN=0):
     icount = 0
     Xdata_set = {}
     ylabels_set = {}
@@ -131,17 +131,22 @@ def get_all_quantities(files, numtrans=0):
         data = np.load(f,allow_pickle=True)
         # print('unique stimulus:',np.unique(data['obscategory'][::2]))
         tt, stm, dyns, ctx, gt, choice, eff_choice, rw, obsc = guc.get_RNNdata_ctxtgt(data)
-        print('responses:',np.shape(data['states']),'; gt',np.shape(data['gt']))
+        # print('responses:',np.shape(data['states']),'; gt',np.shape(data['gt']))
         if(np.shape(data['states'])[0]!=np.shape(data['gt'])[0]):
             remarkfile=remarkfile+"; "+f
             continue
-        stim_trials, idx_effect, ctxt_trials = guc.transform_stim_trials_ctxtgt(data)
+        if SKIPNAN==0:
+            stim_trials, idx_effect, ctxt_trials = guc.transform_stim_trials_notskip(data)
+        else:
+            stim_trials, idx_effect, ctxt_trials = guc.transform_stim_trials_ctxtgt(data)
+            
         icount+=1
         
         Xdata, ydata, Xdata_idx, Xconds_2, Xacts_1,\
             Xrws_1, Xlfs_1, Xrse_6, rses, Xacts_0, Xgts_0,\
             Xcohs_0, Xdata_trialidx, Xstates = rdd.req_quantities_0(stim_trials, stm, dyns, gt, choice,eff_choice, rw, obsc, BLOCK_CTXT=1)
         
+        print('file',f)
             
         Xdata_correct,Xdata_error,correct_trial, error_trial,rses_correct, rses_error, \
         Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\
@@ -151,7 +156,7 @@ def get_all_quantities(files, numtrans=0):
         ydata_cchoices_error, ydata_cgts_correct, ydata_cgts_error,\
         Xdata_idx_correct, Xdata_idx_error,\
         Xdata_trialidx_correct, Xdata_trialidx_error, ydata_states_correct,ydata_states_error= rdd.sep_correct_error(data['stimulus'], dyns, Xdata, ydata, Xdata_idx,Xconds_2, Xacts_1, Xrws_1, Xlfs_1, Xrse_6, rses,Xacts_0, Xgts_0, Xcohs_0, Xdata_trialidx, Xstates, margin=[1, 2], idd=1)
-        print('file',f,' with validate trials:',np.shape(Xdata_correct))
+        
         
         ylabels_correct = rdd.set_ylabels(Xdata_correct,ydata_choices_correct,ydata_conds_correct,ydata_xor_correct,ydata_bias_correct,ydata_cchoices_correct,Xcohs_0_correct)
         ylabels_error = rdd.set_ylabels(Xdata_error,ydata_choices_error,ydata_conds_error,ydata_xor_error,ydata_bias_error,ydata_cchoices_error,Xcohs_0_error)
@@ -729,11 +734,14 @@ if __name__ == '__main__':
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/' 
-    IDX_RAT = 'Rat15_ss_'
-    files = glob.glob(dir+IDX_RAT+'*.npz')#Rat7_ss_45_data_for_python.mat 
+    IDX_RAT = 'Rat15_'#'Rat15_ss_'
+    files = glob.glob(dir+IDX_RAT+'ss_*.npz')#Rat7_ss_45_data_for_python.mat 
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
-    data_tr       = get_all_quantities(files,numtrans=0) 
+    
+    ### Whether to skip the NaN at the beginning or not 
+    SKIPNAN = 0
+    data_tr       = get_all_quantities(files,numtrans=0,SKIPNAN=SKIPNAN) 
     
     unique_states = np.arange(8) 
     unique_cohs   = [-1,0,1] 
@@ -786,8 +794,8 @@ if __name__ == '__main__':
         RECORDED_TRIALS_SET = np.zeros(EACHSTATES)
     fig, ax = plt.subplots(1,2,figsize=(10,5),tight_layout=True)
     curveslopes_correct, curveintercept_correct, curveslopes_error, curveintercept_error, data_beh=bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES, NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
-    print('>>>>>>>>>>> Curve-beh, slopes AC: ',curveslopes_correct)
-    print('>>>>>>>>>>> Curve-beh, slopes AE: ',curveslopes_error)
+    # print('>>>>>>>>>>> Curve-beh, slopes AC: ',curveslopes_correct)
+    # print('>>>>>>>>>>> Curve-beh, slopes AE: ',curveslopes_error)
     if(RECORD_TRIALS==1):
         dataname = dir+IDX_RAT+'data_beh.npz'
         np.savez(dataname,**data_beh)

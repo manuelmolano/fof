@@ -341,7 +341,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
     # indx_valid =\
     #   np.logical_and.reduce((indx_good_evs, filt_evs > pre_post[0],
     #                          filt_evs < np.max(spk_tms)-pre_post[1]))
-    filt_evs = filt_evs[indx_good_evs]
+    # filt_evs = filt_evs[indx_good_evs]
     filt_evs = 1000*filt_evs
     indx_inv = np.logical_or.reduce((inv_gt, inv_rw, inv_ch, ~indx_good_evs))
     states = []
@@ -350,7 +350,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
         if cl_qlt in sel_qlts:
             f, ax, resp =\
                 get_responses(filt_evs=filt_evs, e_data=e_data,
-                              b_data=b_data, indx_valid=indx_good_evs,
+                              b_data=b_data,  #  indx_valid=indx_good_evs,
                               cl=cl, pre_post=pre_post, plot=plot)
             states.append(resp)
             if plot:
@@ -362,7 +362,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
                 ax[0].set_title(title)
                 f.savefig(name+'_'+str(cl))
                 plt.close(f)
-    states = np.array(states)
+    states = np.array(states).T
     data = {}
     data['choice'] = insert_nans(mat=choice, odd=False)
     data['stimulus'] = None
@@ -381,7 +381,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
     np.savez(SV_FOLDER+os.path.basename(sess)+'.npz', **data)
 
 
-def get_responses(filt_evs, e_data, b_data, cl, indx_valid, pre_post=[-1000, 0],
+def get_responses(filt_evs, e_data, b_data, cl, pre_post=[-1000, 0],
                   plot=False):
     spk_tms = e_data['spks'][e_data['clsts'] == cl][:, None]
     spk_tms = 1000*spk_tms.flatten()
@@ -390,7 +390,7 @@ def get_responses(filt_evs, e_data, b_data, cl, indx_valid, pre_post=[-1000, 0],
     algn_spks = np.array([spk_tms-x for x in filt_evs])
     if plot:
         f, ax = plot_psth(algn_spks=algn_spks.copy(), pre_post=pre_post,
-                          behav_data=b_data, indx_valid=indx_valid)
+                          behav_data=b_data)  # , indx_valid=indx_valid)
     else:
         f, ax = None, None
     algn_spks[np.logical_or(algn_spks < pre_post[0],
@@ -400,9 +400,9 @@ def get_responses(filt_evs, e_data, b_data, cl, indx_valid, pre_post=[-1000, 0],
     return f, ax, resp
 
 
-def plot_psth(algn_spks, pre_post, behav_data, indx_valid, w=5):
+def plot_psth(algn_spks, pre_post, behav_data, w=5):
     rew_side = behav_data['rewside'].values
-    rew_side = rew_side[indx_valid]
+    # rew_side = rew_side[indx_valid]
     bins = np.linspace(pre_post[0], pre_post[1], int(np.diff(pre_post)/w)+1)
     f, ax = plt.subplots(nrows=2)
     colors = [verde, morado]
@@ -443,7 +443,8 @@ if __name__ == '__main__':
         inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz',
                       allow_pickle=1)
         batch_fof_data(inv=inv, main_folder=main_folder, plot=True,
-                       pre_post=[-1000, 0])
+                       pre_post=[-1000, 0])  
+        # , sel_sess=['LE81_2020-12-10_11-44-33'])
     # get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
     # files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/' +
     #                   '*data_for_py*')

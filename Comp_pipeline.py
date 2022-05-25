@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 # from sklearn import datasets, svm, pipeline
 # from sklearn.kernel_approximation import (RBFSampler, Nystroem)
-# from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA
 import seaborn as sns
 import pandas as pd
 # import os
@@ -130,6 +130,7 @@ def get_all_quantities(files, numtrans=0):
             ylabels_hist_set[i, T] = {}
 
     # nnfiles = np.zeros(len(files))
+    files = [f for f in files if f.find('data_dec') == -1]
     for idxs, f in enumerate(files):
         if icount < 0:
             break
@@ -137,8 +138,8 @@ def get_all_quantities(files, numtrans=0):
         # print('unique stimulus:',np.unique(data['obscategory'][::2]))
         tt, stm, dyns, ctx, gt, choice, eff_choice, rw, obsc =\
             guc.get_RNNdata_ctxtgt(data)
-        print('responses:', np.shape(
-            data['states']), '; gt', np.shape(data['gt']))
+        print('file: ', f)
+        print('responses:', np.shape(data['states']), '; gt', np.shape(data['gt']))
         if(np.shape(data['states'])[0] != np.shape(data['gt'])[0]):
             remarkfile = remarkfile+"; "+f
             continue
@@ -165,7 +166,7 @@ def get_all_quantities(files, numtrans=0):
                                   Xconds_2, Xacts_1, Xrws_1, Xlfs_1, Xrse_6, rses,
                                   Xacts_0, Xgts_0, Xcohs_0, Xdata_trialidx,
                                   Xstates, margin=[1, 2], idd=1)
-        print('file', f, ' with validate trials:', np.shape(Xdata_correct))
+        print('Validate trials:', np.shape(Xdata_correct))
 
         ylabels_correct =\
             rdd.set_ylabels(Xdata_correct, ydata_choices_correct,
@@ -863,6 +864,7 @@ if __name__ == '__main__':
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
+    dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
     IDX_RAT = 'Rat15_ss_'
     files = glob.glob(dir+IDX_RAT+'*.npz')  # Rat7_ss_45_data_for_python.mat

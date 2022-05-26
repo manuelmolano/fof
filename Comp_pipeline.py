@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # Import libraries
 # from collections import Counter
-# from mpl_toolkits import mplot3d
+from mpl_toolkits import mplot3d
 
 # from sklearn import datasets, svm, pipeline
 # from sklearn.kernel_approximation import (RBFSampler, Nystroem)
@@ -130,10 +130,12 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
             ylabels_hist_set[i, T] = {}
 
     # nnfiles = np.zeros(len(files))
+    files = [f for f in files if f.find('data_dec') == -1]
     for idxs, f in enumerate(files):
         if icount < 0:
             break
         data = np.load(f, allow_pickle=True)
+        print('file', f)
         # print('unique stimulus:',np.unique(data['obscategory'][::2]))
         tt, stm, dyns, ctx, gt, choice, eff_choice, rw, obsc =\
             guc.get_RNNdata_ctxtgt(data)
@@ -155,8 +157,6 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
             Xcohs_0, Xdata_trialidx, Xstates =\
             rdd.req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
                                  rw, obsc, BLOCK_CTXT=1)
-
-        print('file', f)
 
         Xdata_correct, Xdata_error, correct_trial, error_trial, rses_correct,\
             rses_error, Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\

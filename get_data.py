@@ -357,7 +357,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
         if cl_qlt in sel_qlts:
             f, ax, resp =\
                 get_responses(filt_evs=filt_evs, e_data=e_data,
-                              b_data=b_data,  #  indx_valid=indx_good_evs,
+                              b_data=b_data,  # indx_valid=indx_good_evs,
                               cl=cl, pre_post=pre_post, plot=plot)
             states.append(resp)
             if plot:
@@ -433,7 +433,7 @@ def plot_psth(algn_spks, pre_post, behav_data, w=5):
 # --- MAIN
 if __name__ == '__main__':
     plt.close('all')
-    area = 'dms'  # 'fof'  # 'dms'
+    area = 'fof'  # 'fof'  # 'dms'
     if area == 'dms':
         # main_folder = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
         main_folder = '/home/molano/DMS_electro/DataEphys/pre_processed/'
@@ -447,7 +447,7 @@ if __name__ == '__main__':
             'files_pop_analysis/'
         if not os.path.exists(SV_FOLDER):
             os.mkdir(SV_FOLDER)
-        inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz',
+        inv = np.load(main_folder+'/sess_inv_extended.npz',
                       allow_pickle=1)
         batch_fof_data(inv=inv, main_folder=main_folder, plot=True,
                        pre_post=[-1000, 0], sel_sess=['LE113_2021-06-21_13-54-42'])

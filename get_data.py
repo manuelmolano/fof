@@ -224,6 +224,9 @@ def get_dms_data(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
         data['reward'] = insert_nans(mat=reward, odd=False)
         data['obscategory'] = insert_nans(mat=obscategory, odd=True)
         data['states'] = insert_nans(mat=states, odd=True)
+        data = ut.add_saving_info(dict_=data,
+                                  script=os.path.realpath(__file__),
+                                  folder=file)
         np.savez(file[:file.find('data_for_python.mat')-1], **data)
         # for k in data.keys():
         #     if data[k] is not None and k != 'states':

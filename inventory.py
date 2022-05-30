@@ -5,7 +5,6 @@ Created on Wed Jul 28 09:16:43 2021
 
 @author: manuel
 """
-
 import glob
 import os
 import utils_fof as ut
@@ -434,7 +433,13 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 # get e-dict
                 e_dict = create_e_dict()
+                e_dict = ut.add_saving_info(dict_=e_dict,
+                                                 script=os.path.realpath(__file__),
+                                                 folder=sv_f_sess)
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
+                inventory = ut.add_saving_info(dict_=inventory,
+                                                 script=os.path.realpath(__file__),
+                                                 folder=sv_f_sess)
                 np.savez(sv_folder+'sess_inv_sbs'+str(sbsmpld_electr)+'.npz',
                          **inventory)
                 if samples.shape[1] == 40:
@@ -442,6 +447,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 elif samples.shape[1] == 39:
                     smpls = samples[:, -4:]
                 ttls_sbsmpl = {'samples': smpls}
+                ttls_sbsmpl = ut.add_saving_info(dict_=ttls_sbsmpl,
+                                                 script=os.path.realpath(__file__),
+                                                 folder=sv_f_sess)
                 np.savez(sv_f_sess+'/ttls_sbsmpl.npz', **ttls_sbsmpl)
 
 

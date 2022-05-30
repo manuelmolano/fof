@@ -10,6 +10,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
+import utils_fof as ut
 from matplotlib.backends.backend_pdf import PdfPages
 
 colors = sns.color_palette()
@@ -389,6 +390,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
+        sessions = [s for s in sessions if not s.endswith('.npz')]
         for sess in sessions:
             counter += 1
             session = os.path.basename(sess)
@@ -521,6 +523,9 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
             # print(list(extended_inv))
+            extended_inv = ut.add_saving_info(dict_=extended_inv,
+                                        script=os.path.realpath(__file__),
+                                        folder=main_folder)
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()

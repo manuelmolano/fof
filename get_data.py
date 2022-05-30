@@ -173,13 +173,20 @@ def get_dms_data(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
     gt = bhv_ss[3].astype(float)
     gt = gt.flatten()
     inv_gt = np.logical_and(gt != 1., gt != 2.)
+    # print('gt values:')
+    # print(np.unique(gt, return_counts=1))
     # reward
     reward = bhv_ss[0].astype(float)
     reward = reward.flatten()
+    # print('reward values:')
+    # print(np.unique(reward, return_counts=1))
     inv_rw = np.logical_and(reward != 1., reward != 0.)
     # choice
     choice = gt.copy().astype(float)
     choice[reward == 0] = np.abs(gt[reward == 0]-3)
+    # print('choice values:')
+    # print(np.unique(choice, return_counts=1))
+    # print('-------------------')
     inv_ch = np.logical_and(choice != 1, choice != 2)
     prev_choice = np.insert(choice[:-1], 0, 0)
     # stim strength
@@ -426,11 +433,11 @@ def plot_psth(algn_spks, pre_post, behav_data, w=5):
 # --- MAIN
 if __name__ == '__main__':
     plt.close('all')
-    area = 'fof'  # 'dms'
+    area = 'dms'  # 'fof'  # 'dms'
     if area == 'dms':
-        main_folder = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
+        # main_folder = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
+        main_folder = '/home/molano/DMS_electro/DataEphys/pre_processed/'
         batch_dms_data(main_folder=main_folder)
-    # '/home/molano/DMS_electro/DataEphys/pre_processed/'
     elif area == 'fof':
         home = 'molano'
         main_folder = '/home/'+home+'/fof_data/2022/'
@@ -443,8 +450,7 @@ if __name__ == '__main__':
         inv = np.load('/home/'+home+'/fof_data/sess_inv_extended.npz',
                       allow_pickle=1)
         batch_fof_data(inv=inv, main_folder=main_folder, plot=True,
-                       pre_post=[-1000, 0])  
-        # , sel_sess=['LE81_2020-12-10_11-44-33'])
+                       pre_post=[-1000, 0], sel_sess=['LE113_2021-06-21_13-54-42'])
     # get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
     # files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/' +
     #                   '*data_for_py*')

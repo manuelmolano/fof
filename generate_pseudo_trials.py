@@ -9,7 +9,7 @@ from numpy.random import rand, randn, randint
 import itertools
 import scipy.stats as sstats
 
-def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
+def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,THRESH_TRIAL):
     unique_choices = [0,1]
     
     error_false     = []
@@ -27,7 +27,7 @@ def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
             except:
                 error_false = np.append(error_false,idxf)
                 continue
-            if totaltrials<1:
+            if totaltrials<THRESH_TRIAL:
                 error_false = np.append(error_false,idxf)
                 continue
             if totaltrials<min_hist_trials:
@@ -48,7 +48,7 @@ def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
                     except:
                         correct_false = np.append(correct_false,idxf)
                         continue
-                    if totaltrials<1:
+                    if totaltrials<THRESH_TRIAL:
                         correct_false = np.append(correct_false,idxf)
                         continue
 
@@ -59,7 +59,7 @@ def valid_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
     return np.unique(correct_false), np.unique(error_false), min_hist_trials, num_hist_trials
 
 ##### validate behaviour state
-def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
+def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRESH_TRIAL):
     unique_choices = [0,1]
     error_false  = []
     correct_false = []
@@ -81,7 +81,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
                     except:
                         error_false=np.append(error_false,idxf)
                         continue
-                if (totaltrials<1):
+                if (totaltrials<THRESH_TRIAL):
                     # print('error',state,'--',coh,'--',choice,'--',idxf) 
                     error_false=np.append(error_false,idxf)
                     continue
@@ -103,7 +103,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files):
                     except:
                         correct_false=np.append(correct_false,idxf)
                         continue
-                if (totaltrials<1):
+                if (totaltrials<THRESH_TRIAL):
                     # print('correct',state,'--',coh,'--',choice,'--',idxf) 
                     correct_false=np.append(correct_false,idxf)
                     continue

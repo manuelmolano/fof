@@ -288,17 +288,16 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
 Filtering 'good' sessions
 '''
 
-
 def filter_sessions(data_tr, unique_states, unique_cohs):
     Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
         data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
         data_tr['ylabels_hist_set'], data_tr['files']
     correct_false, error_false, min_hist_trials, num_hist_trials =\
         gpt.valid_hist_trials(Xdata_hist_set, ylabels_hist_set, unique_states,
-                              unique_cohs, files)
+                              unique_cohs, files, THRESH_TRIAL)
     _correct_false, _error_false, min_beh_trials, num_beh_trials =\
         gpt.valid_beh_trials(Xdata_set, ylabels_set, unique_states,
-                             unique_cohs, files)
+                             unique_cohs, files,THRESH_TRIAL)
     false_files = np.union1d(correct_false, error_false)
     false_files = np.union1d(false_files, _error_false)
     false_files = np.union1d(false_files, _correct_false)
@@ -381,8 +380,12 @@ def flatten_data(data_tr, data_dec):
     nlabels = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
     ytruthlabels_c = np.zeros((nlabels, 1))
     yevi_c = np.zeros((3 + 1 + 1, 1))
-    dprimes_c = np.zeros(IPOOLS)
-    AUCs_c = np.zeros(IPOOLS)
+    dprimes_c    = np.zeros(IPOOLS)
+    dprimes_repc = np.zeros(IPOOLS)
+    dprimes_altc = np.zeros(IPOOLS) 
+    AUCs_c    = np.zeros(IPOOLS)
+    AUCs_repc = np.zeros(IPOOLS)
+    AUCs_altc = np.zeros(IPOOLS)
     for i in range(IPOOLS):
         # bootstrappin
         hist_evi = yevi_set_correct[i, :, :]
@@ -406,6 +409,24 @@ def flatten_data(data_tr, data_dec):
         auc_ac = metrics.auc(fpr, tpr)
         AUCs_c[i] = auc_ac
 
+        ### SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_correct[i,:,1]==0+2)[0], np.where(ytest_set_correct[i,:,1]==1+2)[0]
+        yauc_c_ctxtrep,yauc_c_ctxtalt = np.squeeze(ytest_set_correct[i,ctxtrep,SVMAXIS]), np.squeeze(ytest_set_correct[i,ctxtalt,SVMAXIS]) 
+        yauc_c_evirep, yauc_c_evialt  = np.squeeze(yevi_set_correct[i,ctxtrep,SVMAXIS]), np.squeeze(yevi_set_correct[i,ctxtalt,SVMAXIS])
+        dprimes_repc[i] =guc.calculate_dprime(yauc_c_evirep,yauc_c_ctxtrep) 
+        dprimes_altc[i] =guc.calculate_dprime(yauc_c_evialt,yauc_c_ctxtalt)
+
+        yauc_c_ctxtrep, yauc_c_ctxtalt = yauc_c_ctxtrep-1, yauc_c_ctxtalt-1 
+
+        fpr_rep,tpr_rep, thresholds = metrics.roc_curve(yauc_c_ctxtrep,yauc_c_evirep, pos_label=2)
+        auc_ac_rep = metrics.auc(fpr_rep,tpr_rep)
+        AUCs_repc[i] = auc_ac_rep 
+
+        fpr_alt,tpr_alt, thresholds = metrics.roc_curve(yauc_c_ctxtalt,yauc_c_evialt, pos_label=2)
+        auc_ac_alt = metrics.auc(fpr_alt,tpr_alt)
+        AUCs_altc[i] = auc_ac_alt 
+
+    
     ytruthlabels_c, yevi_c = ytruthlabels_c[:, 1:], yevi_c[:, 1:]
     f, ax_temp = plt.subplots(ncols=2)
     ax_temp[0].hist(AUCs_c, bins=20, alpha=0.9, facecolor='yellow')
@@ -420,7 +441,11 @@ def flatten_data(data_tr, data_dec):
     ytruthlabels_e = np.zeros((nlabels, 1))
     yevi_e = np.zeros((3 + 1 + 1, 1))
     dprimes_e = np.zeros(IPOOLS)
-    AUCs_e = np.zeros(IPOOLS)
+    dprimes_repe = np.zeros(IPOOLS)
+    dprimes_alte = np.zeros(IPOOLS) 
+    AUCs_e    = np.zeros(IPOOLS)
+    AUCs_repe = np.zeros(IPOOLS)
+    AUCs_alte = np.zeros(IPOOLS)
     for i in range(IPOOLS):
         hist_evi = yevi_set_error[i, :, :]
         test_labels = ytest_set_error[i, :, :]
@@ -441,13 +466,35 @@ def flatten_data(data_tr, data_dec):
             yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]), pos_label=2)
         auc_ae = metrics.auc(fpr, tpr)
         AUCs_e[i] = auc_ae
+
+        ### SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_error[i,:,1]==0)[0], np.where(ytest_set_error[i,:,1]==1)[0]
+        yauc_e_ctxtrep,yauc_e_ctxtalt = np.squeeze(ytest_set_error[i,ctxtrep,SVMAXIS]), np.squeeze(ytest_set_error[i,ctxtalt,SVMAXIS]) 
+        yauc_e_evirep, yauc_e_evialt  = np.squeeze(yevi_set_error[i,ctxtrep,SVMAXIS]), np.squeeze(yevi_set_error[i,ctxtalt,SVMAXIS])
+        dprimes_repe[i] =guc.calculate_dprime(yauc_e_evirep,yauc_e_ctxtrep) 
+        dprimes_alte[i] =guc.calculate_dprime(yauc_e_evialt,yauc_e_ctxtalt)
+
+        yauc_e_ctxtrep, yauc_e_ctxtalt = yauc_e_ctxtrep+1, yauc_e_ctxtalt+1 
+
+        fpr_rep,tpr_rep, thresholds = metrics.roc_curve(yauc_e_ctxtrep,yauc_e_evirep, pos_label=2)
+        auc_ae_rep = metrics.auc(fpr_rep,tpr_rep)
+        AUCs_repe[i] = auc_ae_rep 
+
+        fpr_alt,tpr_alt, thresholds = metrics.roc_curve(yauc_e_ctxtalt,yauc_e_evialt, pos_label=2)
+        auc_ae_alt = metrics.auc(fpr_alt,tpr_alt)
+        AUCs_alte[i] = auc_ae_alt 
+
     ax_temp[1].hist(AUCs_e, bins=20, alpha=0.9, facecolor='black')
 
     ytruthlabels_e, yevi_e = ytruthlabels_e[:, 1:], yevi_e[:, 1:]
     lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
-           dprimes_c, dprimes_e, AUCs_c, AUCs_e]
+           dprimes_c, dprimes_e, AUCs_c, AUCs_e, 
+           dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, 
+           AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte]
     stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
-           "dprimes_c, dprimes_e, AUCs_c, AUCs_e"]
+           "dprimes_c, dprimes_e, AUCs_c, AUCs_e, "
+           "dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, " 
+           "AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte"]
     d = list_to_dict(lst=lst, string=stg)
     return d
 
@@ -540,23 +587,37 @@ def projection_3D(data_flt, data_flt_light, prev_outc):
 def projections_2D(data_flt, prev_outc, fit=False, name=''):
     ytruthlabels = data_flt['ytruthlabels_'+prev_outc]
     yevi = data_flt['yevi_'+prev_outc]
+    '''
+    Four conditions (four clouds)
+    '''
+    idxprel = np.where(ytruthlabels[0,:] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+    idxctxtr = np.where(ytruthlabels[1,:] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+
+    idxprer = np.where(ytruthlabels[0,:] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    idxctxta = np.where(ytruthlabels[1,:] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+
+    idxprelctxtr = np.intersect1d(idxprel,idxctxtr)
+    idxprelctxta = np.intersect1d(idxprel,idxctxta)
+    idxprerctxtr = np.intersect1d(idxprer,idxctxtr)
+    idxprerctxta = np.intersect1d(idxprer,idxctxta) 
+
+    idxsample    = np.zeros((4,NUM_SAMPLES), dtype=int)
+    idxsample[0,:] = idxprelctxtr[:NUM_SAMPLES] 
+    idxsample[1,:] = idxprelctxta[:NUM_SAMPLES] 
+    idxsample[2,:] = idxprerctxtr[:NUM_SAMPLES] 
+    idxsample[3,:] = idxprerctxta[:NUM_SAMPLES] 
+
+    idxpreal, idxprear = np.union1d(idxsample[0,:],idxsample[1,:]), np.union1d(idxsample[2,:],idxsample[3,:])
+
+    idxctxtr, idxctxta = np.union1d(idxsample[0,:],idxsample[2,:]), np.union1d(idxsample[1,:],idxsample[3,:])
 
     # -------- context versus tr. bias ----------------
-    idxpreal, idxprear =\
-        np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
-        np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-    # idxbiasl, idxbiasr =\
-    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
-    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-
     # plot samples
     # previous left
     # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
-    idxleft = idxpreal[:NUM_SAMPLES]
-    idxpreal = idxleft
+    idxleft = idxpreal
     # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
-    idxright = idxprear[:NUM_SAMPLES]
-    idxprear = idxright
+    idxright = idxprear
     # figs = []
     for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
         ctxt = np.squeeze(yevi[1, idx])
@@ -578,8 +639,8 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
             fig.ax_joint.set_yticks([])
             fig.ax_joint.set_ylabel('')
         fig.ax_joint.set_xticks(XTICKS_2D)
-        fig.fig.set_figwidth(4)
-        fig.fig.set_figheight(4)
+        fig.fig.set_figwidth(3)
+        fig.fig.set_figheight(3)
         # fit
         if fit:
             coefficients = np.polyfit(ctxt, tr_bias, 1)
@@ -589,21 +650,8 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
                               lw=0.5)
 
     # --------- previous ch. versus tr. bias
-    idxctxtr, idxctxta =\
-        np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
-        np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-    # idxbiasl, idxbiasr =\
-    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
-    #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-
-    # plot samples
-    # previous left
-    # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
-    idxrpt = idxctxtr[:NUM_SAMPLES]
-    idxrpt = idxrpt
-    # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
-    idxalt = idxctxta[:NUM_SAMPLES]
-    idxalt = idxalt
+    idxrpt = idxctxtr
+    idxalt = idxctxta
     # figs = []
     for idx, ctxt in zip([idxrpt, idxalt], ['Rep', 'Alt']):
         prev_ch = np.squeeze(yevi[0, idx])
@@ -625,8 +673,8 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
             fig.ax_joint.set_yticks([])
             fig.ax_joint.set_ylabel('')
         fig.ax_joint.set_xticks(XTICKS_2D)
-        fig.fig.set_figwidth(4)
-        fig.fig.set_figheight(4)
+        fig.fig.set_figwidth(3)
+        fig.fig.set_figheight(3)
         # fit
         if fit:
             coefficients = np.polyfit(prev_ch, tr_bias, 1)
@@ -635,31 +683,126 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
             fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
                               lw=0.5)
 
-    # # plot histograms
-    # binsset = np.linspace(-8, 8, 40)
-    # fig, axs = plt.subplots(figsize=(4, 3))
-    # # We can also normalize our inputs by the total number of counts
-    # axs.hist(yevi[SVMAXIS, idxbiasl], bins=binsset,
-    #          density=True, facecolor=GREEN, alpha=0.25)
-    # axs.hist(yevi[SVMAXIS, idxbiasr], bins=binsset,
-    #          density=True, facecolor='tab:purple', alpha=0.25)
-    # axs.set_ylim([0, 0.5])
-    # y = np.zeros((yevi.shape[1],))
-    # y[idxbiasl] = 1
-    # y[idxbiasr] = 2
-    # assert (y != 0).all()
-    # fpr, tpr, thresholds = metrics.roc_curve(y, yevi[SVMAXIS, :], pos_label=2)
-    # AUC = metrics.auc(fpr, tpr)
-    # axs.set_title('AUC: '+str(np.round(AUC, 3)))
-    # image_name = SAVELOC + '/'+prev_outc+'bias_hist_' + NAME + name + '.svg'
-    # fig.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
-    # plt.close(fig)
-    # if PREV_CH == 'L':
-    #     plt.close(figs[1].fig)
-    #     return figs[0]
-    # else:
-    #     plt.close(figs[0].fig)
-    #     return figs[1]
+
+    # # -------- context versus tr. bias ----------------
+    # idxpreal, idxprear =\
+    #     np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
+    #     np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    # # idxbiasl, idxbiasr =\
+    # #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
+    # #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+
+    # # plot samples
+    # # previous left
+    # # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
+    # idxleft = idxpreal[:NUM_SAMPLES]
+    # idxpreal = idxleft
+    # # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
+    # idxright = idxprear[:NUM_SAMPLES]
+    # idxprear = idxright
+    # # figs = []
+    # for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
+    #     ctxt = np.squeeze(yevi[1, idx])
+    #     tr_bias = np.squeeze(yevi[SVMAXIS, idx])
+    #     df = {'Context encoding': ctxt, 'Transition bias encoding': tr_bias,
+    #           'Upcoming Stimulus Category': ytruthlabels[SVMAXIS, idx]}
+    #     df = pd.DataFrame(df)
+    #     fig = multivariateGrid(col_x='Context encoding',
+    #                            col_y='Transition bias encoding',
+    #                            col_k='Upcoming Stimulus Category', df=df,
+    #                            colors=[GREEN, PURPLE], s=S_PLOTS, alpha=.75)
+    #     fig.ax_marg_x.set_xlim(XLIMS_2D)
+    #     fig.ax_marg_y.set_ylim(YLIMS_2D)
+    #     fig.ax_joint.axhline(y=0, color='k', linestyle='--', lw=0.5)
+    #     fig.fig.suptitle('a'+prev_outc+' / Prev. Ch. '+prev_ch)
+    #     if prev_outc == 'c':
+    #         fig.ax_joint.set_yticks(YTICKS_2D)
+    #     else:
+    #         fig.ax_joint.set_yticks([])
+    #         fig.ax_joint.set_ylabel('')
+    #     fig.ax_joint.set_xticks(XTICKS_2D)
+    #     fig.fig.set_figwidth(4)
+    #     fig.fig.set_figheight(4)
+    #     # fit
+    #     if fit:
+    #         coefficients = np.polyfit(ctxt, tr_bias, 1)
+    #         poly = np.poly1d(coefficients)
+    #         new_y = poly([np.min(ctxt), np.max(ctxt)])
+    #         fig.ax_joint.plot([np.min(ctxt), np.max(ctxt)], new_y, color='k',
+    #                           lw=0.5)
+
+    # # --------- previous ch. versus tr. bias
+    # idxctxtr, idxctxta =\
+    #     np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
+    #     np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    # # idxbiasl, idxbiasr =\
+    # #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
+    # #     np.where(ytruthlabels[3, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+
+    # # plot samples
+    # # previous left
+    # # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
+    # idxrpt = idxctxtr[:NUM_SAMPLES]
+    # idxrpt = idxrpt
+    # # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
+    # idxalt = idxctxta[:NUM_SAMPLES]
+    # idxalt = idxalt
+    # # figs = []
+    # for idx, ctxt in zip([idxrpt, idxalt], ['Rep', 'Alt']):
+    #     prev_ch = np.squeeze(yevi[0, idx])
+    #     tr_bias = np.squeeze(yevi[SVMAXIS, idx])
+    #     df = {'Prev ch. encoding': prev_ch, 'Transition bias encoding': tr_bias,
+    #           'Upcoming Stimulus Category': ytruthlabels[SVMAXIS, idx]}
+    #     df = pd.DataFrame(df)
+    #     fig = multivariateGrid(col_x='Prev ch. encoding',
+    #                            col_y='Transition bias encoding',
+    #                            col_k='Upcoming Stimulus Category', df=df,
+    #                            colors=[GREEN, PURPLE], s=S_PLOTS, alpha=.75)
+    #     fig.ax_marg_x.set_xlim(XLIMS_2D)
+    #     fig.ax_marg_y.set_ylim(YLIMS_2D)
+    #     fig.ax_joint.axhline(y=0, color='k', linestyle='--', lw=0.5)
+    #     fig.fig.suptitle('a'+prev_outc+' / Ctxt. '+ctxt)
+    #     if prev_outc == 'c':
+    #         fig.ax_joint.set_yticks(YTICKS_2D)
+    #     else:
+    #         fig.ax_joint.set_yticks([])
+    #         fig.ax_joint.set_ylabel('')
+    #     fig.ax_joint.set_xticks(XTICKS_2D)
+    #     fig.fig.set_figwidth(3)
+    #     fig.fig.set_figheight(3)
+    #     # fit
+    #     if fit:
+    #         coefficients = np.polyfit(prev_ch, tr_bias, 1)
+    #         poly = np.poly1d(coefficients)
+    #         new_y = poly([np.min(prev_ch), np.max(prev_ch)])
+    #         fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
+    #                           lw=0.5)
+
+    # # # plot histograms
+    # # binsset = np.linspace(-8, 8, 40)
+    # # fig, axs = plt.subplots(figsize=(4, 3))
+    # # # We can also normalize our inputs by the total number of counts
+    # # axs.hist(yevi[SVMAXIS, idxbiasl], bins=binsset,
+    # #          density=True, facecolor=GREEN, alpha=0.25)
+    # # axs.hist(yevi[SVMAXIS, idxbiasr], bins=binsset,
+    # #          density=True, facecolor='tab:purple', alpha=0.25)
+    # # axs.set_ylim([0, 0.5])
+    # # y = np.zeros((yevi.shape[1],))
+    # # y[idxbiasl] = 1
+    # # y[idxbiasr] = 2
+    # # assert (y != 0).all()
+    # # fpr, tpr, thresholds = metrics.roc_curve(y, yevi[SVMAXIS, :], pos_label=2)
+    # # AUC = metrics.auc(fpr, tpr)
+    # # axs.set_title('AUC: '+str(np.round(AUC, 3)))
+    # # image_name = SAVELOC + '/'+prev_outc+'bias_hist_' + NAME + name + '.svg'
+    # # fig.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
+    # # plt.close(fig)
+    # # if PREV_CH == 'L':
+    # #     plt.close(figs[1].fig)
+    # #     return figs[0]
+    # # else:
+    # #     plt.close(figs[0].fig)
+    # #     return figs[1]
 
 
 def ctxtbin_defect(data_flt):
@@ -902,6 +1045,7 @@ if __name__ == '__main__':
 
     PREV_CH = 'L'
     NUM_SAMPLES = 200  # 200
+    THRESH_TRIAL=1
     PLOT_ALL_TRIALS_3D = False
     S_PLOTS = 5
     BOX_WDTH = 0.25
@@ -919,15 +1063,25 @@ if __name__ == '__main__':
     RECORD_TRIALS = 1
     CONTROL = 0
 
-    BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
-    XLIMS_2D = [-3, 3]
-    YLIMS_2D = [-7, 7]
-    YTICKS_2D = [-6., 0., 6.]
-    XTICKS_2D = [-2., 0., 2.]
+    # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
+    # XLIMS_2D = [-3, 3]
+    # YLIMS_2D = [-7, 7]
+    # YTICKS_2D = [-6., 0., 6.]
+    # XTICKS_2D = [-2., 0., 2.]
+    # CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
+    # XLIM_CTXT = [12000, 13000]
+    # YTICKS_CTXT = [-2, 0, 2]
+    # YLIM_CTXT = [-2.2, 2.2]
+
+    BOTTOM_3D = -10  # where to plot blue/red projected dots in 3D figure
+    XLIMS_2D = [-15,15]
+    YLIMS_2D = [-15, 15 ]
+    YTICKS_2D = [-15., 0., 15.]
+    XTICKS_2D = [-15., 0., 15.]
     CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
     XLIM_CTXT = [12000, 13000]
-    YTICKS_CTXT = [-2, 0, 2]
-    YLIM_CTXT = [-2.2, 2.2]
+    YTICKS_CTXT = [-15, 0, 15]
+    YLIM_CTXT = [-15.2, 15.2]
 
     # # %%
     # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
@@ -940,11 +1094,11 @@ if __name__ == '__main__':
     #     except:
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
-    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
-    dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/'
+    # dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'Rat15_ss_'
-    files = glob.glob(dir+IDX_RAT+'*.npz')  # Rat7_ss_45_data_for_python.mat
+    IDX_RAT = 'Rat15_'#'LE100_'#
+    files = glob.glob(dir+IDX_RAT+'ss*.npz')#'202*.npz')  # Rat7_ss_45_data_for_python.mat
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
 
@@ -1001,6 +1155,7 @@ if __name__ == '__main__':
     projection_3D(data_flt, data_flt, 'e')
 
     projections_2D(data_flt, prev_outc='c', fit=False, name='')
+    projections_2D(data_flt, prev_outc='e', fit=False, name='')
 
     # x-axis bin ctxt, y-axis transition bias
     corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(
@@ -1014,11 +1169,11 @@ if __name__ == '__main__':
     if(RECORD_TRIALS == 0):
         dataname = dir+IDX_RAT+'data_beh.npz'
         data_beh = np.load(dataname, allow_pickle=True)
-        RECORDED_TRIALS_SET = data_beh['merge_trials']
+        RECORDED_TRIALS_SET = data_beh['RECORDED_TRIALS_SET']
         RECORDED_TRIALS_SET = RECORDED_TRIALS_SET.item()
     else:
         RECORDED_TRIALS_SET = np.zeros(EACHSTATES)
-    fig, ax = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
+    fig, ax = plt.subplots(1, 2, figsize=(6, 3), tight_layout=True)
     curveslopes_correct, curveintercept_correct, curveslopes_error,\
         curveintercept_error, data_beh =\
         bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
@@ -1029,3 +1184,11 @@ if __name__ == '__main__':
     if(RECORD_TRIALS == 1):
         dataname = dir+IDX_RAT+'data_beh.npz'
         np.savez(dataname, **data_beh)
+
+
+    auc_repc = np.mean(data_flt['AUCs_repc'])
+    auc_repe = np.mean(data_flt['AUCs_repe'])
+    print('rep, correct:', auc_repc,'; error:',auc_repe)
+    auc_alte = np.mean(data_flt['AUCs_alte'])
+    auc_altc = np.mean(data_flt['AUCs_altc'])
+    print('alt, correct:', auc_altc,'; error:',auc_alte)

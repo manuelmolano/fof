@@ -439,19 +439,24 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             defs = {'class': '', 'issue': '', 'obs': ''}
             if fldr == 'n.c.':
                 connection = ''
+                # silent periods
                 if inv['sil_per'][idx_ss] > 0.01:
                     defs['issue'] = 'sil per'
                     connection = ' / '
+                # too few csv events
                 if inv['num_stms_csv'][idx_ss] <\
                    inv['num_stim_ttl'][idx_ss]-inv['num_stim_ttl'][idx_ss]/5:
                     defs['issue'] += connection+'few csv ttl'
                     connection = ' / '
+                # too few ttl events
                 if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
                     defs['issue'] += connection+'no ttl'
                     connection = ' / '
+                # noise
                 if np.min(samples) < -10000:
                     defs['issue'] += connection+'noise 1'
                     connection = ' / '
+                # no units
                 if inv['num_clstrs'][idx_ss] == 0:
                     defs['issue'] += connection+'no units'
                     # assert (e_data['clstrs_qlt'] == 'noise').all()
@@ -494,11 +499,6 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 lbl = 'multiple issues'
             lbl = 'Good' if lbl == '' else lbl
             color = ISSS_CLR[indx]
-            # print(indxs_issue)
-            # print(obs)
-            # print(prob)
-            # print(indx)
-            # print(lbl)
             if lbl in lbls_used:
                 lbl = ''
             else:

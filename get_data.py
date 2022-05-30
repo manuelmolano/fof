@@ -345,6 +345,8 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
         ut.preprocess_events(b_data=b_data, e_data=e_data,
                              ev=ev, evs_mrgn=evs_mrgn,
                              fixtn_time=fixtn_time)
+    print('Number of valid trials:', np.sum(indx_good_evs))
+    print('Number of trials:', len(indx_good_evs))
     # indx_valid =\
     #   np.logical_and.reduce((indx_good_evs, filt_evs > pre_post[0],
     #                          filt_evs < np.max(spk_tms)-pre_post[1]))
@@ -354,6 +356,7 @@ def get_fof_data(sess, e_data, sel_clstrs, pre_post=[-1000, 1000], name='',
     states = []
     for i_cl, cl in enumerate(sel_clstrs):
         cl_qlt = e_data['clstrs_qlt'][i_cl]
+        print('Cluster ', cl)
         if cl_qlt in sel_qlts:
             f, ax, resp =\
                 get_responses(filt_evs=filt_evs, e_data=e_data,
@@ -450,7 +453,10 @@ if __name__ == '__main__':
         inv = np.load(main_folder+'/sess_inv_extended.npz',
                       allow_pickle=1)
         batch_fof_data(inv=inv, main_folder=main_folder, plot=True,
-                       pre_post=[-1000, 0], sel_sess=['LE113_2021-06-21_13-54-42'])
+                       pre_post=[-1000, 0], sel_sess=['LE113_2021-06-05_12-38-09'])
+    # sel_sess=['LE113_2021-06-21_13-54-42',
+    #           'LE81_2020-12-21_10-00-52',
+    #           'LE81_2020-11-30_10-41-44'])
     # get_data_file(file=MAIN_FOLDER+'/Rat32_ss_26_data_for_python.mat')
     # files = glob.glob('/home/molano/DMS_electro/DataEphys/pre_processed/' +
     #                   '*data_for_py*')

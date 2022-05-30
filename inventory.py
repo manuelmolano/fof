@@ -473,8 +473,8 @@ def summary():
 
 # --- MAIN
 if __name__ == '__main__':
-    summ = True
-    default = True
+    summ = False
+    default = False
     redo = True
     use_subsampled_electro = False
     if summ:
@@ -483,8 +483,9 @@ if __name__ == '__main__':
         inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:
         inventory(redo=redo,
-                  spks_sort_folder=None, behav_folder=None, sv_folder=None,
-                  sel_rats=['LE113'])
+                  spks_sort_folder='/home/molano/fof_data/AfterClustering/',
+                  behav_folder='/home/molano/fof_data/behavioral_data/',
+                  sv_folder='/home/molano/fof_data/2022/', sel_rats=['LE113'])
 
     # import glob
     # import pandas as pd

@@ -253,7 +253,7 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
             print(i)
-
+        print('...... iteration index:', i,'........')
         ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
         # N_pseudo_dec, N_pseudo_beh = 100,25
         Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error,merge_trials_hist=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,N_pseudo_dec,RECORD_TRIALS, RECORDED_TRIALS_SET[i])

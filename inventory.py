@@ -208,7 +208,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
               electro_folder=None, behav_folder=None, sv_folder=None,
               sel_rats=None, sbsmpld_electr=False):
     def init_inventory(inv):
-        vals = [v for v in inv.values() if v not in ['time', 'script', 'folder']]
+        vals = [v for k, v in inv.items() if k not in ['time', 'script', 'folder']]
         for v in vals:
             v.append(np.nan)
         inv['rat'][-1] = rat_name

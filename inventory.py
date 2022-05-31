@@ -482,7 +482,7 @@ def summary():
 # --- MAIN
 if __name__ == '__main__':
     summ = False
-    default = False
+    default = True
     redo = True
     use_subsampled_electro = False
     if summ:

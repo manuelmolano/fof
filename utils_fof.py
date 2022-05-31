@@ -340,10 +340,11 @@ def find_repeated_evs(evs_dists, indx_evs):
 
 
 def add_saving_info(dict_, script, folder):
-    dict_['time'] = datetime.datetime.now()
+    dict_['time'] = datetime.now()
     dict_['script'] = script
     dict_['folder'] = folder
     return dict_
+
 
 # --- MAIN
 if __name__ == '__main__':

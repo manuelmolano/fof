@@ -392,6 +392,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 # ELECTRO DATA
                 # ADD EVENT TIMES TO BEHAVIORAL DATA
                 # get stim ttl starts/ends
+                print('Get ttl stims starts')
                 stim_ttl_strt, offset, state =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=bhv_strt_stim_sec,
@@ -403,6 +404,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 # add csv-offset to stim ttl times (ttl offset already subtracted)
                 stim_ttl_strt += csv_offset
                 # get stims starts from analogue signal
+                print('Get csv stims starts')
                 stim_anlg_strt, _, _ =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=stim_ttl_strt, chnls=[37, 38],

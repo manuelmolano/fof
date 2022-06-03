@@ -524,8 +524,8 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                                             observations)
             # print(list(extended_inv))
             extended_inv = ut.add_saving_info(dict_=extended_inv,
-                                        script=os.path.realpath(__file__),
-                                        folder=main_folder)
+                                              script=os.path.realpath(__file__),
+                                              folder=main_folder)
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
@@ -564,3 +564,12 @@ if __name__ == '__main__':
                    plot_fig=plot_fig, inv_sbsmpld=inv_sbsmpld,
                    margin_psth=margin_psth, num_ps=num_ps,
                    ignore_input=ignore_input)
+
+    # for sess in data['session']:
+    #     if np.sum(data_new['session'] == sess) > 0:
+    #         print('xxxxxxxxxxxxxxxxxxxxx')
+    #         print('xxxxxxxxxxxxxxxxxxxxx')
+    #         for k in data.keys():
+    #             print('------------------')
+    #             print(data[k][data['session'] == sess])
+    #             print(data_new[k][data_new['session'] == sess])

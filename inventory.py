@@ -457,6 +457,14 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
 
 
 def summary():
+    """
+    Print a summary of the sessions and the number of units.
+
+    Returns
+    -------
+    None.
+
+    """
     inv_ext = np.load('/home/molano/fof_data/2022/sess_inv_extended.npz',
                       allow_pickle=1)
     rats = np.unique(inv_ext['rat'])

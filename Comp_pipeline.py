@@ -288,6 +288,7 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
 Filtering 'good' sessions
 '''
 
+
 def filter_sessions(data_tr, unique_states, unique_cohs):
     Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
         data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
@@ -297,7 +298,7 @@ def filter_sessions(data_tr, unique_states, unique_cohs):
                               unique_cohs, files, THRESH_TRIAL)
     _correct_false, _error_false, min_beh_trials, num_beh_trials =\
         gpt.valid_beh_trials(Xdata_set, ylabels_set, unique_states,
-                             unique_cohs, files,THRESH_TRIAL)
+                             unique_cohs, files, THRESH_TRIAL)
     false_files = np.union1d(correct_false, error_false)
     false_files = np.union1d(false_files, _error_false)
     false_files = np.union1d(false_files, _correct_false)
@@ -380,10 +381,10 @@ def flatten_data(data_tr, data_dec):
     nlabels = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
     ytruthlabels_c = np.zeros((nlabels, 1))
     yevi_c = np.zeros((3 + 1 + 1, 1))
-    dprimes_c    = np.zeros(IPOOLS)
+    dprimes_c = np.zeros(IPOOLS)
     dprimes_repc = np.zeros(IPOOLS)
-    dprimes_altc = np.zeros(IPOOLS) 
-    AUCs_c    = np.zeros(IPOOLS)
+    dprimes_altc = np.zeros(IPOOLS)
+    AUCs_c = np.zeros(IPOOLS)
     AUCs_repc = np.zeros(IPOOLS)
     AUCs_altc = np.zeros(IPOOLS)
     for i in range(IPOOLS):
@@ -409,24 +410,30 @@ def flatten_data(data_tr, data_dec):
         auc_ac = metrics.auc(fpr, tpr)
         AUCs_c[i] = auc_ac
 
-        ### SEPARATE REP AND ALT CONTEXTS
-        ctxtrep, ctxtalt = np.where(ytest_set_correct[i,:,1]==0+2)[0], np.where(ytest_set_correct[i,:,1]==1+2)[0]
-        yauc_c_ctxtrep,yauc_c_ctxtalt = np.squeeze(ytest_set_correct[i,ctxtrep,SVMAXIS]), np.squeeze(ytest_set_correct[i,ctxtalt,SVMAXIS]) 
-        yauc_c_evirep, yauc_c_evialt  = np.squeeze(yevi_set_correct[i,ctxtrep,SVMAXIS]), np.squeeze(yevi_set_correct[i,ctxtalt,SVMAXIS])
-        dprimes_repc[i] =guc.calculate_dprime(yauc_c_evirep,yauc_c_ctxtrep) 
-        dprimes_altc[i] =guc.calculate_dprime(yauc_c_evialt,yauc_c_ctxtalt)
+        # SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
+            np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
+        yauc_c_ctxtrep, yauc_c_ctxtalt =\
+            np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
+        yauc_c_evirep, yauc_c_evialt =\
+            np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS])
+        dprimes_repc[i] = guc.calculate_dprime(yauc_c_evirep, yauc_c_ctxtrep)
+        dprimes_altc[i] = guc.calculate_dprime(yauc_c_evialt, yauc_c_ctxtalt)
 
-        yauc_c_ctxtrep, yauc_c_ctxtalt = yauc_c_ctxtrep-1, yauc_c_ctxtalt-1 
+        yauc_c_ctxtrep, yauc_c_ctxtalt = yauc_c_ctxtrep-1, yauc_c_ctxtalt-1
 
-        fpr_rep,tpr_rep, thresholds = metrics.roc_curve(yauc_c_ctxtrep,yauc_c_evirep, pos_label=2)
-        auc_ac_rep = metrics.auc(fpr_rep,tpr_rep)
-        AUCs_repc[i] = auc_ac_rep 
+        fpr_rep, tpr_rep, thresholds = metrics.roc_curve(
+            yauc_c_ctxtrep, yauc_c_evirep, pos_label=2)
+        auc_ac_rep = metrics.auc(fpr_rep, tpr_rep)
+        AUCs_repc[i] = auc_ac_rep
 
-        fpr_alt,tpr_alt, thresholds = metrics.roc_curve(yauc_c_ctxtalt,yauc_c_evialt, pos_label=2)
-        auc_ac_alt = metrics.auc(fpr_alt,tpr_alt)
-        AUCs_altc[i] = auc_ac_alt 
+        fpr_alt, tpr_alt, thresholds = metrics.roc_curve(
+            yauc_c_ctxtalt, yauc_c_evialt, pos_label=2)
+        auc_ac_alt = metrics.auc(fpr_alt, tpr_alt)
+        AUCs_altc[i] = auc_ac_alt
 
-    
     ytruthlabels_c, yevi_c = ytruthlabels_c[:, 1:], yevi_c[:, 1:]
     f, ax_temp = plt.subplots(ncols=2)
     ax_temp[0].hist(AUCs_c, bins=20, alpha=0.9, facecolor='yellow')
@@ -442,8 +449,8 @@ def flatten_data(data_tr, data_dec):
     yevi_e = np.zeros((3 + 1 + 1, 1))
     dprimes_e = np.zeros(IPOOLS)
     dprimes_repe = np.zeros(IPOOLS)
-    dprimes_alte = np.zeros(IPOOLS) 
-    AUCs_e    = np.zeros(IPOOLS)
+    dprimes_alte = np.zeros(IPOOLS)
+    AUCs_e = np.zeros(IPOOLS)
     AUCs_repe = np.zeros(IPOOLS)
     AUCs_alte = np.zeros(IPOOLS)
     for i in range(IPOOLS):
@@ -467,33 +474,40 @@ def flatten_data(data_tr, data_dec):
         auc_ae = metrics.auc(fpr, tpr)
         AUCs_e[i] = auc_ae
 
-        ### SEPARATE REP AND ALT CONTEXTS
-        ctxtrep, ctxtalt = np.where(ytest_set_error[i,:,1]==0)[0], np.where(ytest_set_error[i,:,1]==1)[0]
-        yauc_e_ctxtrep,yauc_e_ctxtalt = np.squeeze(ytest_set_error[i,ctxtrep,SVMAXIS]), np.squeeze(ytest_set_error[i,ctxtalt,SVMAXIS]) 
-        yauc_e_evirep, yauc_e_evialt  = np.squeeze(yevi_set_error[i,ctxtrep,SVMAXIS]), np.squeeze(yevi_set_error[i,ctxtalt,SVMAXIS])
-        dprimes_repe[i] =guc.calculate_dprime(yauc_e_evirep,yauc_e_ctxtrep) 
-        dprimes_alte[i] =guc.calculate_dprime(yauc_e_evialt,yauc_e_ctxtalt)
+        # SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
+            0], np.where(ytest_set_error[i, :, 1] == 1)[0]
+        yauc_e_ctxtrep, yauc_e_ctxtalt =\
+            np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
+        yauc_e_evirep, yauc_e_evialt =\
+            np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
+        dprimes_repe[i] = guc.calculate_dprime(yauc_e_evirep, yauc_e_ctxtrep)
+        dprimes_alte[i] = guc.calculate_dprime(yauc_e_evialt, yauc_e_ctxtalt)
 
-        yauc_e_ctxtrep, yauc_e_ctxtalt = yauc_e_ctxtrep+1, yauc_e_ctxtalt+1 
+        yauc_e_ctxtrep, yauc_e_ctxtalt = yauc_e_ctxtrep+1, yauc_e_ctxtalt+1
 
-        fpr_rep,tpr_rep, thresholds = metrics.roc_curve(yauc_e_ctxtrep,yauc_e_evirep, pos_label=2)
-        auc_ae_rep = metrics.auc(fpr_rep,tpr_rep)
-        AUCs_repe[i] = auc_ae_rep 
+        fpr_rep, tpr_rep, thresholds = metrics.roc_curve(
+            yauc_e_ctxtrep, yauc_e_evirep, pos_label=2)
+        auc_ae_rep = metrics.auc(fpr_rep, tpr_rep)
+        AUCs_repe[i] = auc_ae_rep
 
-        fpr_alt,tpr_alt, thresholds = metrics.roc_curve(yauc_e_ctxtalt,yauc_e_evialt, pos_label=2)
-        auc_ae_alt = metrics.auc(fpr_alt,tpr_alt)
-        AUCs_alte[i] = auc_ae_alt 
+        fpr_alt, tpr_alt, thresholds = metrics.roc_curve(
+            yauc_e_ctxtalt, yauc_e_evialt, pos_label=2)
+        auc_ae_alt = metrics.auc(fpr_alt, tpr_alt)
+        AUCs_alte[i] = auc_ae_alt
 
     ax_temp[1].hist(AUCs_e, bins=20, alpha=0.9, facecolor='black')
 
     ytruthlabels_e, yevi_e = ytruthlabels_e[:, 1:], yevi_e[:, 1:]
     lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
-           dprimes_c, dprimes_e, AUCs_c, AUCs_e, 
-           dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, 
+           dprimes_c, dprimes_e, AUCs_c, AUCs_e,
+           dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte,
            AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte]
     stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
            "dprimes_c, dprimes_e, AUCs_c, AUCs_e, "
-           "dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, " 
+           "dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, "
            "AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte"]
     d = list_to_dict(lst=lst, string=stg)
     return d
@@ -590,34 +604,36 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     '''
     Four conditions (four clouds)
     '''
-    idxprel = np.where(ytruthlabels[0,:] == AX_PREV_CH_OUTC[prev_outc][0])[0]
-    idxctxtr = np.where(ytruthlabels[1,:] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+    idxprel = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+    idxctxtr = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
 
-    idxprer = np.where(ytruthlabels[0,:] == AX_PREV_CH_OUTC[prev_outc][1])[0]
-    idxctxta = np.where(ytruthlabels[1,:] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    idxprer = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    idxctxta = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
 
-    idxprelctxtr = np.intersect1d(idxprel,idxctxtr)
-    idxprelctxta = np.intersect1d(idxprel,idxctxta)
-    idxprerctxtr = np.intersect1d(idxprer,idxctxtr)
-    idxprerctxta = np.intersect1d(idxprer,idxctxta) 
+    idxprelctxtr = np.intersect1d(idxprel, idxctxtr)
+    idxprelctxta = np.intersect1d(idxprel, idxctxta)
+    idxprerctxtr = np.intersect1d(idxprer, idxctxtr)
+    idxprerctxta = np.intersect1d(idxprer, idxctxta)
 
-    idxsample    = np.zeros((4,NUM_SAMPLES), dtype=int)
-    idxsample[0,:] = idxprelctxtr[:NUM_SAMPLES] 
-    idxsample[1,:] = idxprelctxta[:NUM_SAMPLES] 
-    idxsample[2,:] = idxprerctxtr[:NUM_SAMPLES] 
-    idxsample[3,:] = idxprerctxta[:NUM_SAMPLES] 
+    idxsample = np.zeros((4, NUM_SAMPLES), dtype=int)
+    idxsample[0, :] = idxprelctxtr[:NUM_SAMPLES]
+    idxsample[1, :] = idxprelctxta[:NUM_SAMPLES]
+    idxsample[2, :] = idxprerctxtr[:NUM_SAMPLES]
+    idxsample[3, :] = idxprerctxta[:NUM_SAMPLES]
 
-    idxpreal, idxprear = np.union1d(idxsample[0,:],idxsample[1,:]), np.union1d(idxsample[2,:],idxsample[3,:])
+    idxpreal, idxprear = np.union1d(idxsample[0, :], idxsample[1, :]), np.union1d(
+        idxsample[2, :], idxsample[3, :])
 
-    idxctxtr, idxctxta = np.union1d(idxsample[0,:],idxsample[2,:]), np.union1d(idxsample[1,:],idxsample[3,:])
+    idxctxtr, idxctxta = np.union1d(idxsample[0, :], idxsample[2, :]), np.union1d(
+        idxsample[1, :], idxsample[3, :])
 
     # -------- context versus tr. bias ----------------
     # plot samples
     # previous left
     # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
-    idxleft = idxpreal
+    # idxleft = idxpreal
     # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
-    idxright = idxprear
+    # idxright = idxprear
     # figs = []
     for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
         ctxt = np.squeeze(yevi[1, idx])
@@ -682,7 +698,6 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
             new_y = poly([np.min(prev_ch), np.max(prev_ch)])
             fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
                               lw=0.5)
-
 
     # # -------- context versus tr. bias ----------------
     # idxpreal, idxprear =\
@@ -775,8 +790,8 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     #         coefficients = np.polyfit(prev_ch, tr_bias, 1)
     #         poly = np.poly1d(coefficients)
     #         new_y = poly([np.min(prev_ch), np.max(prev_ch)])
-    #         fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
-    #                           lw=0.5)
+    # fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y,
+    #                   color='k',lw=0.5)
 
     # # # plot histograms
     # # binsset = np.linspace(-8, 8, 40)
@@ -1045,7 +1060,7 @@ if __name__ == '__main__':
 
     PREV_CH = 'L'
     NUM_SAMPLES = 200  # 200
-    THRESH_TRIAL=1
+    THRESH_TRIAL = 1
     PLOT_ALL_TRIALS_3D = False
     S_PLOTS = 5
     BOX_WDTH = 0.25
@@ -1074,8 +1089,8 @@ if __name__ == '__main__':
     # YLIM_CTXT = [-2.2, 2.2]
 
     BOTTOM_3D = -10  # where to plot blue/red projected dots in 3D figure
-    XLIMS_2D = [-15,15]
-    YLIMS_2D = [-15, 15 ]
+    XLIMS_2D = [-15, 15]
+    YLIMS_2D = [-15, 15]
     YTICKS_2D = [-15., 0., 15.]
     XTICKS_2D = [-15., 0., 15.]
     CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
@@ -1094,11 +1109,13 @@ if __name__ == '__main__':
     #     except:
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/'
+    # 'files_pop_analysis/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
     # dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'Rat15_'#'LE100_'#
-    files = glob.glob(dir+IDX_RAT+'ss*.npz')#'202*.npz')  # Rat7_ss_45_data_for_python.mat
+    IDX_RAT = 'Rat15_'  # 'LE100_'#
+    # '202*.npz')  # Rat7_ss_45_data_for_python.mat
+    files = glob.glob(dir+IDX_RAT+'ss*.npz')
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
 
@@ -1185,10 +1202,9 @@ if __name__ == '__main__':
         dataname = dir+IDX_RAT+'data_beh.npz'
         np.savez(dataname, **data_beh)
 
-
     auc_repc = np.mean(data_flt['AUCs_repc'])
     auc_repe = np.mean(data_flt['AUCs_repe'])
-    print('rep, correct:', auc_repc,'; error:',auc_repe)
+    print('rep, correct:', auc_repc, '; error:', auc_repe)
     auc_alte = np.mean(data_flt['AUCs_alte'])
     auc_altc = np.mean(data_flt['AUCs_altc'])
-    print('alt, correct:', auc_altc,'; error:',auc_alte)
+    print('alt, correct:', auc_altc, '; error:', auc_alte)

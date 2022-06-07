@@ -10,6 +10,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
+import utils_fof as ut
 from matplotlib.backends.backend_pdf import PdfPages
 
 colors = sns.color_palette()
@@ -389,6 +390,7 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
     for i_r, r in enumerate(rats):
         rat = os.path.basename(r)
         sessions = glob.glob(r+'/LE*')
+        sessions = [s for s in sessions if not s.endswith('.npz')]
         for sess in sessions:
             counter += 1
             session = os.path.basename(sess)
@@ -439,19 +441,24 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             defs = {'class': '', 'issue': '', 'obs': ''}
             if fldr == 'n.c.':
                 connection = ''
+                # silent periods
                 if inv['sil_per'][idx_ss] > 0.01:
                     defs['issue'] = 'sil per'
                     connection = ' / '
+                # too few csv events
                 if inv['num_stms_csv'][idx_ss] <\
                    inv['num_stim_ttl'][idx_ss]-inv['num_stim_ttl'][idx_ss]/5:
                     defs['issue'] += connection+'few csv ttl'
                     connection = ' / '
+                # too few ttl events
                 if inv['num_stim_ttl'][idx_ss] < inv['num_stms_csv'][idx_ss]/4:
                     defs['issue'] += connection+'no ttl'
                     connection = ' / '
+                # noise
                 if np.min(samples) < -10000:
                     defs['issue'] += connection+'noise 1'
                     connection = ' / '
+                # no units
                 if inv['num_clstrs'][idx_ss] == 0:
                     defs['issue'] += connection+'no units'
                     # assert (e_data['clstrs_qlt'] == 'noise').all()
@@ -494,11 +501,6 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
                 lbl = 'multiple issues'
             lbl = 'Good' if lbl == '' else lbl
             color = ISSS_CLR[indx]
-            # print(indxs_issue)
-            # print(obs)
-            # print(prob)
-            # print(indx)
-            # print(lbl)
             if lbl in lbls_used:
                 lbl = ''
             else:
@@ -521,6 +523,9 @@ def batch_sessions(main_folder, sv_folder, inv, redo=False, sel_sess=[],
             extended_inv = get_extended_inv(inv, sess_classif, issue,
                                             observations)
             # print(list(extended_inv))
+            extended_inv = ut.add_saving_info(dict_=extended_inv,
+                                              script=os.path.realpath(__file__),
+                                              folder=main_folder)
             np.savez(main_folder+'/sess_inv_extended.npz', **extended_inv)
             if obs.endswith('EXIT'):
                 pdf_issues.close()
@@ -559,3 +564,12 @@ if __name__ == '__main__':
                    plot_fig=plot_fig, inv_sbsmpld=inv_sbsmpld,
                    margin_psth=margin_psth, num_ps=num_ps,
                    ignore_input=ignore_input)
+
+    # for sess in data['session']:
+    #     if np.sum(data_new['session'] == sess) > 0:
+    #         print('xxxxxxxxxxxxxxxxxxxxx')
+    #         print('xxxxxxxxxxxxxxxxxxxxx')
+    #         for k in data.keys():
+    #             print('------------------')
+    #             print(data[k][data['session'] == sess])
+    #             print(data_new[k][data_new['session'] == sess])

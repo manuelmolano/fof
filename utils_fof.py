@@ -12,6 +12,7 @@ import numpy as np
 # import inventory as inv
 from scipy.stats import norm
 from scipy import stats
+from datetime import datetime
 
 
 def append_features(features, new_data):
@@ -336,6 +337,13 @@ def find_repeated_evs(evs_dists, indx_evs):
             # remove from mask the rest of indxes
             idx_assoc_tr[np.delete(idx_i_rep, min_dist_idx)] = False
     return idx_assoc_tr
+
+
+def add_saving_info(dict_, script, folder):
+    dict_['time'] = datetime.now()
+    dict_['script'] = script
+    dict_['folder'] = folder
+    return dict_
 
 
 # --- MAIN

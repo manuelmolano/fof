@@ -5,7 +5,6 @@ Created on Wed Jul 28 09:16:43 2021
 
 @author: manuel
 """
-
 import glob
 import os
 import utils_fof as ut
@@ -209,7 +208,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
               electro_folder=None, behav_folder=None, sv_folder=None,
               sel_rats=None, sbsmpld_electr=False):
     def init_inventory(inv):
-        for v in inv.values():
+        vals = [v for k, v in inv.items() if k not in ['time', 'script', 'folder']]
+        for v in vals:
             v.append(np.nan)
         inv['rat'][-1] = rat_name
         inv['session'][-1] = e_f
@@ -326,6 +326,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
             inventory[k] = invtry_ref[k].tolist()
     else:
         inventory = INVENTORY
+    inventory = ut.add_saving_info(dict_=inventory,
+                                   script=os.path.realpath(__file__),
+                                   folder=sv_folder)
     for r in rats:
         rat_name = os.path.basename(r)
         if rat_name not in sel_rats:
@@ -393,6 +396,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 # ELECTRO DATA
                 # ADD EVENT TIMES TO BEHAVIORAL DATA
                 # get stim ttl starts/ends
+                print('Get ttl stims starts')
                 stim_ttl_strt, offset, state =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=bhv_strt_stim_sec,
@@ -404,6 +408,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 # add csv-offset to stim ttl times (ttl offset already subtracted)
                 stim_ttl_strt += csv_offset
                 # get stims starts from analogue signal
+                print('Get csv stims starts')
                 stim_anlg_strt, _, _ =\
                     check_evs_alignment(samples=samples, s_rate=s_rate_eff,
                                         evs_comp=stim_ttl_strt, chnls=[37, 38],
@@ -434,6 +439,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 df_trials.to_pickle(sv_f_sess+'/df_trials')
                 # get e-dict
                 e_dict = create_e_dict()
+                e_dict = ut.add_saving_info(dict_=e_dict,
+                                            script=os.path.realpath(__file__),
+                                            folder=sv_f_sess)
                 np.savez(sv_f_sess+'/e_data.npz', **e_dict)
                 np.savez(sv_folder+'sess_inv_sbs'+str(sbsmpld_electr)+'.npz',
                          **inventory)
@@ -442,6 +450,9 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 elif samples.shape[1] == 39:
                     smpls = samples[:, -4:]
                 ttls_sbsmpl = {'samples': smpls}
+                ttls_sbsmpl = ut.add_saving_info(dict_=ttls_sbsmpl,
+                                                 script=os.path.realpath(__file__),
+                                                 folder=sv_f_sess)
                 np.savez(sv_f_sess+'/ttls_sbsmpl.npz', **ttls_sbsmpl)
 
 
@@ -473,7 +484,7 @@ def summary():
 
 # --- MAIN
 if __name__ == '__main__':
-    summ = True
+    summ = False
     default = True
     redo = True
     use_subsampled_electro = False
@@ -483,8 +494,9 @@ if __name__ == '__main__':
         inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:
         inventory(redo=redo,
-                  spks_sort_folder=None, behav_folder=None, sv_folder=None,
-                  sel_rats=['LE113'])
+                  spks_sort_folder='/home/molano/fof_data/AfterClustering/',
+                  behav_folder='/home/molano/fof_data/behavioral_data/',
+                  sv_folder='/home/molano/fof_data/2022/', sel_rats=['LE113'])
 
     # import glob
     # import pandas as pd

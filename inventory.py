@@ -269,6 +269,7 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
             if sbsmpld_electr:
                 samples = np.load(sv_f_sess+'/ttls_sbsmpl.npz')
                 samples = samples['samples']
+                # fake electro data
                 dummy_data = np.ones((samples.shape[0], 35))
                 samples = np.concatenate((dummy_data, samples), axis=1)
             else:
@@ -389,7 +390,8 @@ def inventory(s_rate=3e4, s_rate_eff=2e3, redo=False, spks_sort_folder=None,
                 if samples is None:
                     continue
                 # compute proportion of silent (i.e. wo signal) periods
-                sil_per = np.sum(np.std(samples, axis=1) == 0)/samples.shape[0]
+                sil_per =\
+                    np.sum(np.std(samples[:, -4:], axis=1) == 0)/samples.shape[0]
                 inventory['sil_per'][-1] = sil_per
                 # compute signal stats
                 compute_signal_stats(samples=samples, inventory=inventory)
@@ -495,13 +497,13 @@ if __name__ == '__main__':
     summ = False
     default = True
     redo = True
-    use_subsampled_electro = False
+    use_subsampled_electro = True
     if summ:
         summary()
     elif default:
         inventory(redo=redo, sbsmpld_electr=use_subsampled_electro)
     else:
-        inventory(redo=redo,
+        inventory(redo=redo, sbsmpld_electr=use_subsampled_electro,
                   spks_sort_folder='/home/molano/fof_data/AfterClustering/',
                   behav_folder='/home/molano/fof_data/behavioral_data/',
                   sv_folder='/home/molano/fof_data/2022/', sel_rats=['LE113'])

@@ -36,6 +36,129 @@ dpii = 300
 # %
 # import get_matlab_data as gd
 
+def rm_top_right_lines(ax):
+    """
+    Remove top and right lines in ax.
+
+    Parameters
+    ----------
+    ax : axis
+        axis to remove lines from.
+
+    Returns
+    -------
+    None.
+
+    """
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+
+
+def box_plot(data, ax, x, lw=.5, fliersize=4, color='k', widths=0.35):
+    bp = ax.boxplot(data, positions=[x], widths=widths)
+    for p in ['whiskers', 'caps', 'boxes', 'medians']:
+        for bpp in bp[p]:
+            bpp.set(color=color, linewidth=lw)
+    bp['fliers'][0].set(markeredgecolor=color, markerfacecolor=color, alpha=0.5,
+                        marker='x', markersize=fliersize)
+    ax.set_xticks([])
+
+
+class SeabornFig2Grid():
+    """
+    See:
+    https://stackoverflow.com/questions/35042255/
+    how-to-plot-multiple-seaborn-jointplot-in-subplot/47664533#47664533
+    """
+
+    def __init__(self, seaborngrid, fig, subplot_spec):
+        self.fig = fig
+        self.sg = seaborngrid
+        self.subplot = subplot_spec
+        if isinstance(self.sg, sns.axisgrid.FacetGrid) or \
+           isinstance(self.sg, sns.axisgrid.PairGrid):
+            self._movegrid()
+        elif isinstance(self.sg, sns.axisgrid.JointGrid):
+            self._movejointgrid()
+        self._finalize()
+
+    def _movegrid(self):
+        """ Move PairGrid or Facetgrid """
+        self._resize()
+        n = self.sg.axes.shape[0]
+        m = self.sg.axes.shape[1]
+        self.subgrid =\
+            gridspec.GridSpecFromSubplotSpec(n, m, subplot_spec=self.subplot)
+        for i in range(n):
+            for j in range(m):
+                self._moveaxes(self.sg.axes[i, j], self.subgrid[i, j])
+
+    def _movejointgrid(self):
+        """ Move Jointgrid """
+        h = self.sg.ax_joint.get_position().height
+        h2 = self.sg.ax_marg_x.get_position().height
+        r = int(np.round(h / h2))
+        self._resize()
+        self.subgrid =\
+            gridspec.GridSpecFromSubplotSpec(
+                r + 1, r + 1, subplot_spec=self.subplot)
+
+        self._moveaxes(self.sg.ax_joint, self.subgrid[1:, :-1])
+        self._moveaxes(self.sg.ax_marg_x, self.subgrid[0, :-1])
+        self._moveaxes(self.sg.ax_marg_y, self.subgrid[1:, -1])
+
+    def _moveaxes(self, ax, gs):
+        # https://stackoverflow.com/a/46906599/4124317
+        ax.remove()
+        ax.figure = self.fig
+        self.fig.axes.append(ax)
+        self.fig.add_axes(ax)
+        ax._subplotspec = gs
+        ax.set_position(gs.get_position(self.fig))
+        ax.set_subplotspec(gs)
+
+    def _finalize(self):
+        plt.close(self.sg.fig)
+        self.fig.canvas.mpl_connect("resize_event", self._resize)
+        self.fig.canvas.draw()
+
+    def _resize(self, evt=None):
+        self.sg.fig.set_size_inches(self.fig.get_size_inches())
+
+
+def multivariateGrid(col_x, col_y, col_k, df, colors=[], alpha=.5, s=2):
+    def rgb_to_hex(c):
+        c = 255*c
+        c = tuple([int(x) for x in c])
+        c = '#%02x%02x%02x' % c
+        return c
+
+    def colored_scatter(x, y, c=None):
+        def scatter(*args, **kwargs):
+            args = (x, y)
+            if c is not None:
+                kwargs['c'] = c
+            kwargs['alpha'] = alpha
+            kwargs['s'] = s
+            kwargs['edgecolor'] = 'none'
+            plt.scatter(*args, **kwargs)
+
+        return scatter
+
+    g = sns.JointGrid(x=col_x, y=col_y, data=df)
+    legends = []
+    counter = 0
+    for name, df_group in df.groupby(col_k):
+        legends.append(name)
+        c = rgb_to_hex(colors[counter])
+        g.plot_joint(colored_scatter(df_group[col_x], df_group[col_y], c))
+        sns.distplot(df_group[col_x].values, ax=g.ax_marg_x, color=c, hist=False)
+        sns.distplot(df_group[col_y].values, ax=g.ax_marg_y, color=c, hist=False,
+                     vertical=True)
+        counter += 1
+    # plt.legend(legends)
+    return g
+
 # matplotlib.rcParams['font.family'] = 'Arial'
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = 'Helvetica'
@@ -322,7 +445,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
         Xmerge_hist_trials_error, ymerge_hist_labels_error, _ =\
         gpt.merge_pseudo_hist_trials(Xdata_hist_set, ylabels_hist_set,
                                      unique_states, unique_cohs, files,
-                                     false_files, 10,  RECORD_TRIALS=1,
+                                     false_files, 2,  RECORD_TRIALS=1,
                                      RECORDED_TRIALS=[])
 
     # finding decoding axis
@@ -1060,7 +1183,7 @@ if __name__ == '__main__':
 
     PREV_CH = 'L'
     NUM_SAMPLES = 200  # 200
-    THRESH_TRIAL = 1
+    THRESH_TRIAL=2
     PLOT_ALL_TRIALS_3D = False
     S_PLOTS = 5
     BOX_WDTH = 0.25
@@ -1072,31 +1195,31 @@ if __name__ == '__main__':
     testing:  20 per state, 20*4*2=160 trials per test
     '''
     RUN_ALL = True
-    RERUN = True
+    RERUN   = True
     DOREVERSE = 0
 
     RECORD_TRIALS = 1
     CONTROL = 0
 
-    # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
-    # XLIMS_2D = [-3, 3]
-    # YLIMS_2D = [-7, 7]
-    # YTICKS_2D = [-6., 0., 6.]
-    # XTICKS_2D = [-2., 0., 2.]
-    # CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
-    # XLIM_CTXT = [12000, 13000]
-    # YTICKS_CTXT = [-2, 0, 2]
-    # YLIM_CTXT = [-2.2, 2.2]
-
-    BOTTOM_3D = -10  # where to plot blue/red projected dots in 3D figure
-    XLIMS_2D = [-15, 15]
-    YLIMS_2D = [-15, 15]
-    YTICKS_2D = [-15., 0., 15.]
-    XTICKS_2D = [-15., 0., 15.]
+    BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
+    XLIMS_2D = [-3, 3]
+    YLIMS_2D = [-7, 7]
+    YTICKS_2D = [-6., 0., 6.]
+    XTICKS_2D = [-2., 0., 2.]
     CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
     XLIM_CTXT = [12000, 13000]
-    YTICKS_CTXT = [-15, 0, 15]
-    YLIM_CTXT = [-15.2, 15.2]
+    YTICKS_CTXT = [-2, 0, 2]
+    YLIM_CTXT = [-2.2, 2.2]
+
+    # BOTTOM_3D = -10  # where to plot blue/red projected dots in 3D figure
+    # XLIMS_2D = [-15,15]
+    # YLIMS_2D = [-15, 15 ]
+    # YTICKS_2D = [-15., 0., 15.]
+    # XTICKS_2D = [-15., 0., 15.]
+    # CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
+    # XLIM_CTXT = [12000, 13000]
+    # YTICKS_CTXT = [-15, 0, 15]
+    # YLIM_CTXT = [-15.2, 15.2]
 
     # # %%
     # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
@@ -1109,13 +1232,11 @@ if __name__ == '__main__':
     #     except:
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
-    # 'files_pop_analysis/'
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
     # dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'Rat15_'  # 'LE100_'#
-    # '202*.npz')  # Rat7_ss_45_data_for_python.mat
-    files = glob.glob(dir+IDX_RAT+'ss*.npz')
+    IDX_RAT = 'LE113_'#'Rat15_'#
+    files = glob.glob(dir+IDX_RAT+'202*.npz')  #'ss*.npz')# Rat7_ss_45_data_for_python.mat
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
 
@@ -1207,4 +1328,37 @@ if __name__ == '__main__':
     print('rep, correct:', auc_repc, '; error:', auc_repe)
     auc_alte = np.mean(data_flt['AUCs_alte'])
     auc_altc = np.mean(data_flt['AUCs_altc'])
-    print('alt, correct:', auc_altc, '; error:', auc_alte)
+    print('alt, correct:', auc_altc,'; error:',auc_alte)
+
+    ### figure ploting -- distribution of bootstrap results
+    fig_ctxt,ax_ctxt = plt.subplots(figsize=(4, 4))
+    BOX_WDTH = 0.25
+    ORANGE = np.array((255, 127, 0)) / 255
+    df = {'rep_ac': data_flt['AUCs_repc'], 'rep_ae': data_flt['AUCs_repe'],
+          'alt_ac': data_flt['AUCs_altc'], 'alt_ae': data_flt['AUCs_alte']}
+    order = ['rep_ac','rep_ae','alt_ac','alt_ae']
+    df = pd.DataFrame(df)
+    from statannot import add_stat_annotation
+    sns.set(style='whitegrid')
+    
+
+    ax_ctxt = sns.boxplot(data=df,order=order)
+    add_stat_annotation(ax_ctxt,data=df,order=order,box_pairs=[('rep_ac','rep_ae'),('alt_ac','alt_ae'),('rep_ae','alt_ae')],test='Mann-Whitney',text_format='star',loc='inside',verbose=2)
+    # box_plot(data=data_flt['AUCs_repc'], ax=ax_ctxt, x=2*0+0.25,
+    #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
+    # box_plot(data=data_flt['AUCs_repe'], ax=ax_ctxt, x=2*0+0.75,
+    #          lw=.5, fliersize=4, color='k', widths=BOX_WDTH)
+    # box_plot(data=data_flt['AUCs_altc'], ax=ax_ctxt, x=2*1+0.25,
+    #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
+    # box_plot(data=data_flt['AUCs_alte'], ax=ax_ctxt, x=2*1+0.75,
+    #          lw=.5, fliersize=4, color='k', widths=BOX_WDTH)
+    # ax_ctxt.set_ylabel('Transition bias impact')
+    # ax_ctxt.set_xticks([0.5, 2.5])
+    # ax_ctxt.set_xticklabels(['Repeating', 'Alternating'])
+
+
+
+
+
+
+

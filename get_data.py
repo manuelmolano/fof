@@ -414,14 +414,14 @@ def get_responses(filt_evs, e_data, b_data, cl, pre_post=[-1000, 0],
 
 
 def plot_psth(algn_spks, pre_post, behav_data, w=5):
-    rew_side = behav_data['rewside'].values
-    # rew_side = rew_side[indx_valid]
+    ctxt = behav_data['prob_repeat'].values
+    # ctxt = ctxt[indx_valid]
     bins = np.linspace(pre_post[0], pre_post[1], int(np.diff(pre_post)/w)+1)
     f, ax = plt.subplots(nrows=2)
     colors = [verde, morado]
     offset = 0
-    for i_r, r in enumerate(np.unique(rew_side)):
-        spks_side = algn_spks[rew_side == r]
+    for i_r, r in enumerate(np.unique(ctxt)):
+        spks_side = algn_spks[ctxt == r]
         spks_side[np.logical_or(spks_side < pre_post[0],
                                 spks_side > pre_post[1])] = np.nan
         for i_tr in range(spks_side.shape[0]):
@@ -431,8 +431,9 @@ def plot_psth(algn_spks, pre_post, behav_data, w=5):
                           color=colors[i_r], s=2)
         offset = spks_side.shape[0]
         psth = np.histogram(spks_side, bins)
-        ax[1].plot(bins[:-1]+w/2, psth[0], color=colors[i_r])
+        ax[1].plot(bins[:-1]+w/2, psth[0], color=colors[i_r], label=str(r))
         ax[1].axvline(x=0, color='k', linestyle='--')
+    ax[1].legend()
     return f, ax
 
 
@@ -453,10 +454,10 @@ if __name__ == '__main__':
             'files_pop_analysis/'
         if not os.path.exists(SV_FOLDER):
             os.mkdir(SV_FOLDER)
-        inv = np.load(main_folder+'/sess_inv_extended.npz',
-                      allow_pickle=1)
+        inv = np.load(main_folder+'/sess_inv_extended.npz', allow_pickle=1)
         batch_fof_data(inv=inv, main_folder=main_folder, plot=True,
-                       pre_post=[-1000, 0], sel_sess=['LE113_2021-06-05_12-38-09'])
+                       pre_post=[-1000, 0])
+    # , sel_sess=['LE113_2021-06-05_12-38-09'])
     # sel_sess=['LE113_2021-06-21_13-54-42',
     #           'LE81_2020-12-21_10-00-52',
     #           'LE81_2020-11-30_10-41-44'])

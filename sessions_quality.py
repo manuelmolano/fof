@@ -57,7 +57,8 @@ def set_title(ax, session, inv, inv_sbsmpld, i):
     ks_to_check = [k for k in inv.keys() if k not in ['num_stim_analogue',
                                                       'sil_per', 'rat', 'session',
                                                       'bhv_session', 'sgnl_stts',
-                                                      'state', 'date']]
+                                                      'state', 'date', 'time',
+                                                      'script', 'folder']]
     for k in ks_to_check:
         # print(k)
         # print(inv[k][i])
@@ -550,9 +551,10 @@ if __name__ == '__main__':
     if home == 'manuel':
         sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
-        sv_folder = drpbx_folder+'/ttl_psths/'
+        sv_folder = drpbx_folder+'/ttl_psths_sbsTrue/'
 
-    inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
+    # inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
+    inv = np.load(main_folder+'/sess_inv_sbsTrue.npz', allow_pickle=1)
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
     # specify rats/sessions to analyze

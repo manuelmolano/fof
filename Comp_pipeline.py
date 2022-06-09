@@ -11,7 +11,7 @@ from mpl_toolkits import mplot3d
 
 # from sklearn import datasets, svm, pipeline
 # from sklearn.kernel_approximation import (RBFSampler, Nystroem)
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 import seaborn as sns
 import pandas as pd
 # import os
@@ -35,6 +35,7 @@ dpii = 300
 
 # %
 # import get_matlab_data as gd
+
 
 def rm_top_right_lines(ax):
     """
@@ -158,6 +159,7 @@ def multivariateGrid(col_x, col_y, col_k, df, colors=[], alpha=.5, s=2):
         counter += 1
     # plt.legend(legends)
     return g
+
 
 # matplotlib.rcParams['font.family'] = 'Arial'
 plt.rcParams['font.family'] = 'sans-serif'
@@ -1179,11 +1181,13 @@ merging and generating pseudo trials for how tr. bias affects behaviour (stage 2
 '''
 # def from_trbias_to_beh
 
+
+# --- MAIN
 if __name__ == '__main__':
 
     PREV_CH = 'L'
     NUM_SAMPLES = 200  # 200
-    THRESH_TRIAL=2
+    THRESH_TRIAL = 2
     PLOT_ALL_TRIALS_3D = False
     S_PLOTS = 5
     BOX_WDTH = 0.25
@@ -1195,7 +1199,7 @@ if __name__ == '__main__':
     testing:  20 per state, 20*4*2=160 trials per test
     '''
     RUN_ALL = True
-    RERUN   = True
+    RERUN = True
     DOREVERSE = 0
 
     RECORD_TRIALS = 1
@@ -1235,8 +1239,8 @@ if __name__ == '__main__':
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
     # dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'LE113_'#'Rat15_'#
-    files = glob.glob(dir+IDX_RAT+'202*.npz')  #'ss*.npz')# Rat7_ss_45_data_for_python.mat
+    IDX_RAT = 'LE113_'  # 'Rat15_'# 'ss*.npz')# Rat7_ss_45_data_for_python.mat
+    files = glob.glob(dir+IDX_RAT+'202*.npz')
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
 
@@ -1328,22 +1332,24 @@ if __name__ == '__main__':
     print('rep, correct:', auc_repc, '; error:', auc_repe)
     auc_alte = np.mean(data_flt['AUCs_alte'])
     auc_altc = np.mean(data_flt['AUCs_altc'])
-    print('alt, correct:', auc_altc,'; error:',auc_alte)
+    print('alt, correct:', auc_altc, '; error:', auc_alte)
 
-    ### figure ploting -- distribution of bootstrap results
-    fig_ctxt,ax_ctxt = plt.subplots(figsize=(4, 4))
+    # figure ploting -- distribution of bootstrap results
+    fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
     BOX_WDTH = 0.25
     ORANGE = np.array((255, 127, 0)) / 255
     df = {'rep_ac': data_flt['AUCs_repc'], 'rep_ae': data_flt['AUCs_repe'],
           'alt_ac': data_flt['AUCs_altc'], 'alt_ae': data_flt['AUCs_alte']}
-    order = ['rep_ac','rep_ae','alt_ac','alt_ae']
+    order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
     df = pd.DataFrame(df)
     from statannot import add_stat_annotation
     sns.set(style='whitegrid')
-    
-
-    ax_ctxt = sns.boxplot(data=df,order=order)
-    add_stat_annotation(ax_ctxt,data=df,order=order,box_pairs=[('rep_ac','rep_ae'),('alt_ac','alt_ae'),('rep_ae','alt_ae')],test='Mann-Whitney',text_format='star',loc='inside',verbose=2)
+    box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
+    ax_ctxt = sns.boxplot(data=df, order=order)
+    add_stat_annotation(ax_ctxt, data=df,
+                        order=order, box_pairs=box_pairs,
+                        test='Mann-Whitney', text_format='star',
+                        loc='inside', verbose=2)
     # box_plot(data=data_flt['AUCs_repc'], ax=ax_ctxt, x=2*0+0.25,
     #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
     # box_plot(data=data_flt['AUCs_repe'], ax=ax_ctxt, x=2*0+0.75,
@@ -1355,10 +1361,3 @@ if __name__ == '__main__':
     # ax_ctxt.set_ylabel('Transition bias impact')
     # ax_ctxt.set_xticks([0.5, 2.5])
     # ax_ctxt.set_xticklabels(['Repeating', 'Alternating'])
-
-
-
-
-
-
-

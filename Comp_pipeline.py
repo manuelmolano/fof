@@ -485,8 +485,8 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
 
     # shuffling data
     coeffs, intercepts, Xtest_shuffle_correct, ytest_shuffle_correct,\
-        yevi_shuffle_correct, Xtest_shuffle_error, ytest_shuffle_error, yevi_shuffle_error,\
-        _\
+        yevi_shuffle_correct, Xtest_shuffle_error, ytest_shuffle_error,\
+        yevi_shuffle_error,\
         = bl.shuffle_linsvm_proj_step(coeffs, intercepts, Xdata_hist_set, NN,
                                       ylabels_hist_set, unique_states,
                                       unique_cohs, files, false_files, type,
@@ -1599,21 +1599,27 @@ if __name__ == '__main__':
     sns.set(style='whitegrid')
 
     ax_ctxt = sns.boxplot(data=df, order=order)
-    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=[('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), (
-        'rep_ae', 'alt_ae')], test='Mann-Whitney', text_format='star', loc='inside', verbose=2)
+    box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
+    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=box_pairs,
+                        test='Mann-Whitney', text_format='star', loc='inside',
+                        verbose=2)
 
     fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
     BOX_WDTH = 0.25
     ORANGE = np.array((255, 127, 0)) / 255
-    df = {'rep_ac': data_flt_shuffle['AUCs_repc'], 'rep_ae': data_flt_shuffle['AUCs_repe'],
-          'alt_ac': data_flt_shuffle['AUCs_altc'], 'alt_ae': data_flt_shuffle['AUCs_alte']}
+    df = {'rep_ac': data_flt_shuffle['AUCs_repc'],
+          'rep_ae': data_flt_shuffle['AUCs_repe'],
+          'alt_ac': data_flt_shuffle['AUCs_altc'],
+          'alt_ae': data_flt_shuffle['AUCs_alte']}
     order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
     df = pd.DataFrame(df)
     from statannot import add_stat_annotation
     sns.set(style='whitegrid')
     ax_ctxt = sns.boxplot(data=df, order=order)
-    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=[('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), (
-        'rep_ae', 'alt_ae')], test='Mann-Whitney', text_format='star', loc='inside', verbose=2)
+    box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
+    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=box_pairs,
+                        test='Mann-Whitney', text_format='star', loc='inside',
+                        verbose=2)
     # box_plot(data=data_flt['AUCs_repc'], ax=ax_ctxt, x=2*0+0.25,
     #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
     # box_plot(data=data_flt['AUCs_repe'], ax=ax_ctxt, x=2*0+0.75,

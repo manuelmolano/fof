@@ -57,7 +57,8 @@ def set_title(ax, session, inv, inv_sbsmpld, i):
     ks_to_check = [k for k in inv.keys() if k not in ['num_stim_analogue',
                                                       'sil_per', 'rat', 'session',
                                                       'bhv_session', 'sgnl_stts',
-                                                      'state', 'date']]
+                                                      'state', 'date', 'time',
+                                                      'script', 'folder']]
     for k in ks_to_check:
         # print(k)
         # print(inv[k][i])
@@ -106,19 +107,21 @@ def plot_psths(samples, e_data, offset, margin_psth):
         chnls = [0, 1] if i_e < 3 else [2, 3]
         lbls = [' (36)', ' (37)'] if i_e < 3 else [' (38)', ' (39)']
         evs = e_data[ev]
+        evs = e_data['s_rate_eff']*(evs+offset)
+        evs = evs.astype(int)
+        evs = evs[np.logical_and(evs > margin_psth,
+                                 evs < samples.shape[0]-margin_psth)]
+        evs = evs[:500]
         if len(evs) > 0:
-            evs = e_data['s_rate_eff']*(evs+offset)
-            evs = evs.astype(int)
             peri_evs_1 = np.array([samples[x-margin_psth:x+margin_psth,
                                            chnls[0]] for x in evs])
             peri_evs_2 = np.array([samples[x-margin_psth:x+margin_psth,
                                            chnls[1]] for x in evs])
             try:
-                for i_ex in range(10):
-                    ax_psth.plot(xs, peri_evs_1[i_ex], color=colors[0],
-                                 lw=.5, alpha=.2)
-                    ax_psth.plot(xs, peri_evs_2[i_ex], color=colors[1],
-                                 lw=.5, alpha=.2)
+                ax_psth.plot(xs, peri_evs_1[:10, :].T, color=colors[0], lw=.5,
+                             alpha=.2)
+                ax_psth.plot(xs, peri_evs_2[:10, :].T, color=colors[1], lw=.5,
+                             alpha=.2)
                 psth_1 = np.mean(peri_evs_1, axis=0)
                 psth_2 = np.mean(peri_evs_2, axis=0)
                 ax_psth.plot(xs, psth_1, color=colors[0], lw=1,
@@ -550,9 +553,10 @@ if __name__ == '__main__':
     if home == 'manuel':
         sv_folder = main_folder+'/ttl_psths/'
     elif home == 'molano':
-        sv_folder = drpbx_folder+'/ttl_psths/'
+        sv_folder = drpbx_folder+'/ttl_psths_sbsTrue/'
 
-    inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
+    # inv = np.load(main_folder+'/sess_inv_sbsFalse.npz', allow_pickle=1)
+    inv = np.load(main_folder+'/sess_inv_sbsTrue.npz', allow_pickle=1)
     # np.load('/home/'+home+'/fof_data/sess_inv_sbsTrue.npz', allow_pickle=1)
     inv_sbsmpld = None
     # specify rats/sessions to analyze

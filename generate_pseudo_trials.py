@@ -185,6 +185,102 @@ def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,fil
                     Xmerge_trials_correct[state] = data_temp[state][idxsample,:]
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
+def shuffle_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files,idx_delete,EACHSTATES=20,RECORD_TRIALS=0, RECORDED_TRIALS=[]):
+    unique_choices = [0,1]
+    Xmerge_trials_correct,ymerge_labels_correct = {},{}
+    Xmerge_trials_error,ymerge_labels_error = {},{}
+
+    merge_trials_hist = {}
+    NSTATES  = 4
+    ctxt_iid = np.zeros((8,2))
+    ctxt_iid[0,:] = np.array([0,1])
+    ctxt_iid[1,:] = np.array([0,1])
+
+    ctxt_iid[2,:] = np.array([2,3])
+    ctxt_iid[3,:] = np.array([2,3])
+
+    ctxt_iid[4,:] = np.array([4,5])
+    ctxt_iid[5,:] = np.array([4,5])
+
+    ctxt_iid[6,:] = np.array([6,7])
+    ctxt_iid[7,:] = np.array([6,7])
+
+
+    for state in unique_states:
+        if state>=4:
+            break
+        for idxf in range(len(files)):
+            if(idxf in idx_delete):
+                continue
+            data_temp  = Xdata_set[idxf,'error'].copy()
+            label_temp = ylabels_set[idxf,'error'].copy()
+            ### record shuffling trials 
+            data_shuffle  = np.zeros((EACHSTATES,np.shape(data_temp[state])[1]))
+            label_shuffle = np.zeros((EACHSTATES,np.shape(label_temp[state])[1]))
+
+            shuffle_states = np.random.choice(np.squeeze(ctxt_iid[state,:]),size=EACHSTATES,replace=True)
+            for idx_s, shuffle_state in enumerate(shuffle_states):
+                try:
+                    totaltrials=np.shape(data_temp[shuffle_state])[0]
+                except:
+                    print('exist for initial finding')
+                    continue
+                if totaltrials<1:
+                    continue                  
+                idxsample = np.random.choice(np.arange(totaltrials),size=1,replace=False)
+                data_shuffle[idx_s,:] = data_temp[shuffle_state][idxsample,:]
+                label_shuffle[idx_s,:]= label_temp[shuffle_state][idxsample,:]
+
+            if (idxf == 0):
+                ymerge_labels_error[state] = label_shuffle
+                Xmerge_trials_error[state] = data_shuffle
+            else:
+                try:    
+                    Xmerge_trials_error[state] = np.hstack((Xmerge_trials_error[state],data_shuffle))
+                    ymerge_labels_error[state] = np.hstack((ymerge_labels_error[state],label_shuffle))
+                except:
+                    ymerge_labels_error[state] = label_shuffle
+                    Xmerge_trials_error[state] = data_shuffle
+    
+    for state in unique_states:
+        if state<4:
+            continue
+        for idxf in range(len(files)):
+            if(idxf in idx_delete):
+                continue
+            data_temp  = Xdata_set[idxf,'correct'].copy()
+            label_temp = ylabels_set[idxf,'correct'].copy()
+
+            ### record shuffling trials 
+            data_shuffle  = np.zeros((EACHSTATES,np.shape(data_temp[state])[1]))
+            label_shuffle = np.zeros((EACHSTATES,np.shape(label_temp[state])[1]))
+
+            shuffle_states = np.random.choice(np.squeeze(ctxt_iid[state,:]),size=EACHSTATES,replace=True)
+
+            for idx_s, shuffle_state in enumerate(shuffle_states):
+                try:
+                    totaltrials=np.shape(data_temp[shuffle_state])[0]
+                except:
+                    print('exist for initial finding')
+                    continue
+                if totaltrials<1:
+                    continue                  
+                idxsample = np.random.choice(np.arange(totaltrials),size=1,replace=False)
+                data_shuffle[idx_s,:] = data_temp[shuffle_state][idxsample,:]
+                label_shuffle[idx_s,:]= label_temp[shuffle_state][idxsample,:]
+
+            if (idxf == 0):
+                ymerge_labels_correct[state] = label_shuffle
+                Xmerge_trials_correct[state] = data_shuffle
+            else:
+                try:    
+                    Xmerge_trials_correct[state] = np.hstack((Xmerge_trials_correct[state],data_shuffle))
+                    ymerge_labels_correct[state] = np.hstack((ymerge_labels_correct[state],label_shuffle))
+                except:
+                    ymerge_labels_correct[state] = label_shuffle
+                    Xmerge_trials_correct[state] = data_shuffle
+    return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
+
 def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}

@@ -153,7 +153,8 @@ def multivariateGrid(col_x, col_y, col_k, df, colors=[], alpha=.5, s=2):
         legends.append(name)
         c = rgb_to_hex(colors[counter])
         g.plot_joint(colored_scatter(df_group[col_x], df_group[col_y], c))
-        sns.distplot(df_group[col_x].values, ax=g.ax_marg_x, color=c, hist=False)
+        sns.distplot(df_group[col_x].values,
+                     ax=g.ax_marg_x, color=c, hist=False)
         sns.distplot(df_group[col_y].values, ax=g.ax_marg_y, color=c, hist=False,
                      vertical=True)
         counter += 1
@@ -482,17 +483,37 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                                             RECORD_TRIALS=RECORD_TRIALS,
                                             RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
 
+    # shuffling data
+    coeffs, intercepts, Xtest_shuffle_correct, ytest_shuffle_correct,\
+        yevi_shuffle_correct, Xtest_shuffle_error, ytest_shuffle_error, yevi_shuffle_error,\
+        _\
+        = bl.shuffle_linsvm_proj_step(coeffs, intercepts, Xdata_hist_set, NN,
+                                      ylabels_hist_set, unique_states,
+                                      unique_cohs, files, false_files, type,
+                                      DOREVERSE=DOREVERSE,
+                                      n_iterations=NITERATIONS,
+                                      N_pseudo_dec=NPSEUDODEC,
+                                      train_percent=PERCENTTRAIN,
+                                      RECORD_TRIALS=RECORD_TRIALS,
+                                      RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+
     lst = [coeffs, intercepts,
            ytest_set_correct,
            yevi_set_correct,
+           ytest_shuffle_correct,
+           yevi_shuffle_correct,
            coeffs, intercepts,  # Xtest_set_error,
            ytest_set_error,  yevi_set_error,
+           ytest_shuffle_error, yevi_shuffle_error,
            RECORDED_TRIALS_SET]
     stg = ["coefs_correct, intercepts_correct,"
            "ytest_set_correct, "
            "yevi_set_correct, "
+           "ytest_shuffle_correct, "
+           "yevi_shuffle_correct, "
            "coefs_error, intercepts_error,"  # " Xtest_set_error,"
            "ytest_set_error, yevi_set_error,"
+           "ytest_shuffle_error, yevi_shuffle_error, "
            "RECORDED_TRIALS_SET"]
     d = list_to_dict(lst=lst, string=stg)
     return d
@@ -637,6 +658,131 @@ def flatten_data(data_tr, data_dec):
     d = list_to_dict(lst=lst, string=stg)
     return d
 
+
+def flatten_shuffle_data(data_tr, data_dec):
+    yevi_set_correct = data_dec['yevi_shuffle_correct']
+    ytest_set_correct = data_dec['ytest_shuffle_correct']
+    IPOOLS = NITERATIONS
+    # flatten data --- correct
+    nlabels = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
+    ytruthlabels_c = np.zeros((nlabels, 1))
+    yevi_c = np.zeros((3 + 1 + 1, 1))
+
+    AUCs_c = np.zeros(IPOOLS)
+    AUCs_repc = np.zeros(IPOOLS)
+    AUCs_altc = np.zeros(IPOOLS)
+    for i in range(IPOOLS):
+        # bootstrappin
+        hist_evi = yevi_set_correct[i, :, :]
+        test_labels = ytest_set_correct[i, :, :]
+        idx = np.arange(np.shape(hist_evi)[0])
+        ytruthlabels_c = np.append(
+            ytruthlabels_c, test_labels[idx, :].T, axis=1)
+        yevi_c = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)
+
+        yauc_c_org = np.squeeze(ytest_set_correct[i, :, SVMAXIS])
+        yauc_c = np.zeros_like(yauc_c_org)
+
+        yauc_c[np.where(yauc_c_org == 0+2)[0]] = 1
+        yauc_c[np.where(yauc_c_org == 1+2)[0]] = 2
+        assert (yauc_c != 0).all()
+        fpr, tpr, thresholds = metrics.roc_curve(
+            yauc_c, np.squeeze(yevi_set_correct[i, :, SVMAXIS]), pos_label=2)
+        auc_ac = metrics.auc(fpr, tpr)
+        AUCs_c[i] = auc_ac
+
+        # SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
+            np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
+        yauc_c_ctxtrep, yauc_c_ctxtalt =\
+            np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
+        yauc_c_evirep, yauc_c_evialt =\
+            np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS])
+
+        yauc_c_ctxtrep, yauc_c_ctxtalt = yauc_c_ctxtrep-1, yauc_c_ctxtalt-1
+
+        fpr_rep, tpr_rep, thresholds = metrics.roc_curve(
+            yauc_c_ctxtrep, yauc_c_evirep, pos_label=2)
+        auc_ac_rep = metrics.auc(fpr_rep, tpr_rep)
+        AUCs_repc[i] = auc_ac_rep
+
+        fpr_alt, tpr_alt, thresholds = metrics.roc_curve(
+            yauc_c_ctxtalt, yauc_c_evialt, pos_label=2)
+        auc_ac_alt = metrics.auc(fpr_alt, tpr_alt)
+        AUCs_altc[i] = auc_ac_alt
+
+    ytruthlabels_c, yevi_c = ytruthlabels_c[:, 1:], yevi_c[:, 1:]
+    f, ax_temp = plt.subplots(ncols=2)
+    ax_temp[0].hist(AUCs_c, bins=20, alpha=0.9, facecolor='yellow')
+
+    '''
+    After Error Trials
+    '''
+    yevi_set_error = data_dec['yevi_shuffle_error']
+    ytest_set_error = data_dec['ytest_shuffle_error']
+
+    nlabels = np.shape(np.squeeze(ytest_set_error[0, :, :]))[1]
+    ytruthlabels_e = np.zeros((nlabels, 1))
+    yevi_e = np.zeros((3 + 1 + 1, 1))
+
+    AUCs_e = np.zeros(IPOOLS)
+    AUCs_repe = np.zeros(IPOOLS)
+    AUCs_alte = np.zeros(IPOOLS)
+    for i in range(IPOOLS):
+        hist_evi = yevi_set_error[i, :, :]
+        test_labels = ytest_set_error[i, :, :]
+        idx = np.arange(np.shape(hist_evi)[0])
+        ytruthlabels_e = np.append(
+            ytruthlabels_e, test_labels[idx, :].T, axis=1)
+        yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)
+
+        yauc_e_org = np.squeeze(ytest_set_error[i, :, SVMAXIS])
+        yauc_e = np.zeros_like(yauc_e_org)
+
+        yauc_e[np.where(yauc_e_org == 0)[0]] = 1
+        yauc_e[np.where(yauc_e_org == 1)[0]] = 2
+        assert (yauc_c != 0).all()
+        fpr, tpr, thresholds = metrics.roc_curve(
+            yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]), pos_label=2)
+        auc_ae = metrics.auc(fpr, tpr)
+        AUCs_e[i] = auc_ae
+
+        # SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
+            0], np.where(ytest_set_error[i, :, 1] == 1)[0]
+        yauc_e_ctxtrep, yauc_e_ctxtalt =\
+            np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
+        yauc_e_evirep, yauc_e_evialt =\
+            np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
+
+        yauc_e_ctxtrep, yauc_e_ctxtalt = yauc_e_ctxtrep+1, yauc_e_ctxtalt+1
+
+        fpr_rep, tpr_rep, thresholds = metrics.roc_curve(
+            yauc_e_ctxtrep, yauc_e_evirep, pos_label=2)
+        auc_ae_rep = metrics.auc(fpr_rep, tpr_rep)
+        AUCs_repe[i] = auc_ae_rep
+
+        fpr_alt, tpr_alt, thresholds = metrics.roc_curve(
+            yauc_e_ctxtalt, yauc_e_evialt, pos_label=2)
+        auc_ae_alt = metrics.auc(fpr_alt, tpr_alt)
+        AUCs_alte[i] = auc_ae_alt
+
+    ax_temp[1].hist(AUCs_e, bins=20, alpha=0.9, facecolor='black')
+
+    ytruthlabels_e, yevi_e = ytruthlabels_e[:, 1:], yevi_e[:, 1:]
+    lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
+           AUCs_c, AUCs_e,
+           AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte]
+    stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
+           "AUCs_c, AUCs_e, "
+           "AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte"]
+    d_shuffle = list_to_dict(lst=lst, string=stg)
+    return d_shuffle
+
 # visualizing the results
 
 
@@ -719,8 +865,8 @@ def projection_3D(data_flt, data_flt_light, prev_outc):
         np.where(ytruthlabels_c[1, ridx] == AX_PREV_CH_OUTC[prev_outc][0])[0],\
         np.where(ytruthlabels_c[1, ridx] == AX_PREV_CH_OUTC[prev_outc][1])[0]
     ax.scatter(x[igreen], y[igreen], zflat[igreen],
-               s=S_PLOTS, c=BLUE, alpha=0.9)
-    ax.scatter(x[iblue], y[iblue], zflat[iblue], s=S_PLOTS, c=RED, alpha=0.9)
+               s=S_PLOTS*3, c=BLUE, alpha=0.9)
+    ax.scatter(x[iblue], y[iblue], zflat[iblue], s=S_PLOTS*3, c=RED, alpha=0.9)
 
 
 def projections_2D(data_flt, prev_outc, fit=False, name=''):
@@ -943,6 +1089,108 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     # # else:
     # #     plt.close(figs[0].fig)
     # #     return figs[1]
+
+
+def projections_2D_shuffle(data_flt, prev_outc, fit=False, name=''):
+    ytruthlabels = data_flt['ytruthlabels_'+prev_outc]
+    yevi = data_flt['yevi_'+prev_outc]
+    '''
+    Four conditions (four clouds)
+    '''
+    idxprel = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+    idxctxtr = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+
+    idxprer = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    idxctxta = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+
+    idxprelctxtr = np.intersect1d(idxprel, idxctxtr)
+    idxprelctxta = np.intersect1d(idxprel, idxctxta)
+    idxprerctxtr = np.intersect1d(idxprer, idxctxtr)
+    idxprerctxta = np.intersect1d(idxprer, idxctxta)
+
+    idxsample = np.zeros((4, NUM_SAMPLES), dtype=int)
+    idxsample[0, :] = idxprelctxtr[:NUM_SAMPLES]
+    idxsample[1, :] = idxprelctxta[:NUM_SAMPLES]
+    idxsample[2, :] = idxprerctxtr[:NUM_SAMPLES]
+    idxsample[3, :] = idxprerctxta[:NUM_SAMPLES]
+
+    idxpreal, idxprear = np.union1d(idxsample[0, :], idxsample[1, :]), np.union1d(
+        idxsample[2, :], idxsample[3, :])
+
+    idxctxtr, idxctxta = np.union1d(idxsample[0, :], idxsample[2, :]), np.union1d(
+        idxsample[1, :], idxsample[3, :])
+
+    # -------- context versus tr. bias ----------------
+    # plot samples
+    # previous left
+    # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
+    # idxleft = idxpreal
+    # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
+    # idxright = idxprear
+    # figs = []
+    for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
+        ctxt = np.squeeze(yevi[1, idx])
+        tr_bias = np.squeeze(yevi[SVMAXIS, idx])
+        df = {'Context encoding': ctxt, 'Transition bias encoding': tr_bias,
+              'Upcoming Stimulus Category': ytruthlabels[SVMAXIS, idx]}
+        df = pd.DataFrame(df)
+        fig = multivariateGrid(col_x='Context encoding',
+                               col_y='Transition bias encoding',
+                               col_k='Upcoming Stimulus Category', df=df,
+                               colors=[GREEN, PURPLE], s=S_PLOTS, alpha=.75)
+        fig.ax_marg_x.set_xlim(XLIMS_2D)
+        fig.ax_marg_y.set_ylim(YLIMS_2D)
+        fig.ax_joint.axhline(y=0, color='k', linestyle='--', lw=0.5)
+        fig.fig.suptitle('a'+prev_outc+' / Prev. Ch. '+prev_ch)
+        if prev_outc == 'c':
+            fig.ax_joint.set_yticks(YTICKS_2D)
+        else:
+            fig.ax_joint.set_yticks([])
+            fig.ax_joint.set_ylabel('')
+        fig.ax_joint.set_xticks(XTICKS_2D)
+        fig.fig.set_figwidth(3)
+        fig.fig.set_figheight(3)
+        # fit
+        if fit:
+            coefficients = np.polyfit(ctxt, tr_bias, 1)
+            poly = np.poly1d(coefficients)
+            new_y = poly([np.min(ctxt), np.max(ctxt)])
+            fig.ax_joint.plot([np.min(ctxt), np.max(ctxt)], new_y, color='k',
+                              lw=0.5)
+
+    # --------- previous ch. versus tr. bias
+    idxrpt = idxctxtr
+    idxalt = idxctxta
+    # figs = []
+    for idx, ctxt in zip([idxrpt, idxalt], ['Rep', 'Alt']):
+        prev_ch = np.squeeze(yevi[0, idx])
+        tr_bias = np.squeeze(yevi[SVMAXIS, idx])
+        df = {'Prev ch. encoding': prev_ch, 'Transition bias encoding': tr_bias,
+              'Upcoming Stimulus Category': ytruthlabels[SVMAXIS, idx]}
+        df = pd.DataFrame(df)
+        fig = multivariateGrid(col_x='Prev ch. encoding',
+                               col_y='Transition bias encoding',
+                               col_k='Upcoming Stimulus Category', df=df,
+                               colors=[GREEN, PURPLE], s=S_PLOTS, alpha=.75)
+        fig.ax_marg_x.set_xlim(XLIMS_2D)
+        fig.ax_marg_y.set_ylim(YLIMS_2D)
+        fig.ax_joint.axhline(y=0, color='k', linestyle='--', lw=0.5)
+        fig.fig.suptitle('a'+prev_outc+' / Ctxt. '+ctxt)
+        if prev_outc == 'c':
+            fig.ax_joint.set_yticks(YTICKS_2D)
+        else:
+            fig.ax_joint.set_yticks([])
+            fig.ax_joint.set_ylabel('')
+        fig.ax_joint.set_xticks(XTICKS_2D)
+        fig.fig.set_figwidth(3)
+        fig.fig.set_figheight(3)
+        # fit
+        if fit:
+            coefficients = np.polyfit(prev_ch, tr_bias, 1)
+            poly = np.poly1d(coefficients)
+            new_y = poly([np.min(prev_ch), np.max(prev_ch)])
+            fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
+                              lw=0.5)
 
 
 def ctxtbin_defect(data_flt):
@@ -1187,13 +1435,14 @@ if __name__ == '__main__':
 
     PREV_CH = 'L'
     NUM_SAMPLES = 200  # 200
-    THRESH_TRIAL = 2
+    THRESH_TRIAL = 1
+
     PLOT_ALL_TRIALS_3D = False
     S_PLOTS = 5
     BOX_WDTH = 0.25
     SVMAXIS = 3
     AX_PREV_CH_OUTC = {'c': [2, 3], 'e': [0, 1]}
-    NITERATIONS, NPSEUDODEC, PERCENTTRAIN = 100, 50, 0.6
+    NITERATIONS, NPSEUDODEC, PERCENTTRAIN = 50, 50, 0.6
     '''
     training: 30 per state, 30*4*2=240 trials per train
     testing:  20 per state, 20*4*2=160 trials per test
@@ -1205,25 +1454,25 @@ if __name__ == '__main__':
     RECORD_TRIALS = 1
     CONTROL = 0
 
-    BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
-    XLIMS_2D = [-3, 3]
-    YLIMS_2D = [-7, 7]
-    YTICKS_2D = [-6., 0., 6.]
-    XTICKS_2D = [-2., 0., 2.]
-    CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
-    XLIM_CTXT = [12000, 13000]
-    YTICKS_CTXT = [-2, 0, 2]
-    YLIM_CTXT = [-2.2, 2.2]
-
-    # BOTTOM_3D = -10  # where to plot blue/red projected dots in 3D figure
-    # XLIMS_2D = [-15,15]
-    # YLIMS_2D = [-15, 15 ]
-    # YTICKS_2D = [-15., 0., 15.]
-    # XTICKS_2D = [-15., 0., 15.]
+    # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
+    # XLIMS_2D = [-3, 3]
+    # YLIMS_2D = [-7, 7]
+    # YTICKS_2D = [-6., 0., 6.]
+    # XTICKS_2D = [-2., 0., 2.]
     # CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
     # XLIM_CTXT = [12000, 13000]
-    # YTICKS_CTXT = [-15, 0, 15]
-    # YLIM_CTXT = [-15.2, 15.2]
+    # YTICKS_CTXT = [-2, 0, 2]
+    # YLIM_CTXT = [-2.2, 2.2]
+
+    BOTTOM_3D = -30  # where to plot blue/red projected dots in 3D figure
+    XLIMS_2D = [-5, 5]  # [-15,15]
+    YLIMS_2D = [-10, 10]  # [-15, 15 ]
+    YTICKS_2D = [-10, 0, 10]  # [-15., 0., 15.]
+    XTICKS_2D = [-5, 0, 5]  # [-15., 0., 15.]
+    CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
+    XLIM_CTXT = [12000, 13000]
+    YTICKS_CTXT = [-10, 0, 10]  # [-15, 0, 15]
+    YLIM_CTXT = [-10, 0, 10]  # [-15.2, 15.2]
 
     # # %%
     # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
@@ -1239,7 +1488,7 @@ if __name__ == '__main__':
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
     # dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'LE113_'  # 'Rat15_'# 'ss*.npz')# Rat7_ss_45_data_for_python.mat
+    IDX_RAT = 'LE81_'  # 'Rat15_'  # 'ss*.npz')#Rat7_ss_45_data_for_python.mat
     files = glob.glob(dir+IDX_RAT+'202*.npz')
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
     # files = glob.glob(dir+'Rat7_ss_*.npz')
@@ -1292,12 +1541,16 @@ if __name__ == '__main__':
         np.savez(dataname, **data_dec)
 
     data_flt = flatten_data(data_tr, data_dec)
+    data_flt_shuffle = flatten_shuffle_data(data_tr, data_dec)
 
     projection_3D(data_flt, data_flt, 'c')
     projection_3D(data_flt, data_flt, 'e')
 
     projections_2D(data_flt, prev_outc='c', fit=False, name='')
     projections_2D(data_flt, prev_outc='e', fit=False, name='')
+
+    projections_2D_shuffle(data_flt_shuffle, prev_outc='c', fit=False, name='')
+    projections_2D_shuffle(data_flt_shuffle, prev_outc='e', fit=False, name='')
 
     # x-axis bin ctxt, y-axis transition bias
     corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(
@@ -1344,12 +1597,23 @@ if __name__ == '__main__':
     df = pd.DataFrame(df)
     from statannot import add_stat_annotation
     sns.set(style='whitegrid')
-    box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
+
     ax_ctxt = sns.boxplot(data=df, order=order)
-    add_stat_annotation(ax_ctxt, data=df,
-                        order=order, box_pairs=box_pairs,
-                        test='Mann-Whitney', text_format='star',
-                        loc='inside', verbose=2)
+    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=[('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), (
+        'rep_ae', 'alt_ae')], test='Mann-Whitney', text_format='star', loc='inside', verbose=2)
+
+    fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
+    BOX_WDTH = 0.25
+    ORANGE = np.array((255, 127, 0)) / 255
+    df = {'rep_ac': data_flt_shuffle['AUCs_repc'], 'rep_ae': data_flt_shuffle['AUCs_repe'],
+          'alt_ac': data_flt_shuffle['AUCs_altc'], 'alt_ae': data_flt_shuffle['AUCs_alte']}
+    order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
+    df = pd.DataFrame(df)
+    from statannot import add_stat_annotation
+    sns.set(style='whitegrid')
+    ax_ctxt = sns.boxplot(data=df, order=order)
+    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=[('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), (
+        'rep_ae', 'alt_ae')], test='Mann-Whitney', text_format='star', loc='inside', verbose=2)
     # box_plot(data=data_flt['AUCs_repc'], ax=ax_ctxt, x=2*0+0.25,
     #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
     # box_plot(data=data_flt['AUCs_repe'], ax=ax_ctxt, x=2*0+0.75,

@@ -4,7 +4,7 @@ import glob
 # import time
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib.gridspec as gridspec
 # Import libraries
 # from collections import Counter
 from mpl_toolkits import mplot3d
@@ -200,41 +200,6 @@ def list_to_dict(lst, string):
     string = string.split(',')
     d = {s: v for s, v in zip(string, lst)}
     return d
-
-
-def multivariateGrid(col_x, col_y, col_k, df, colors=[], alpha=.5, s=2):
-    def rgb_to_hex(c):
-        c = 255*c
-        c = tuple([int(x) for x in c])
-        c = '#%02x%02x%02x' % c
-        return c
-
-    def colored_scatter(x, y, c=None):
-        def scatter(*args, **kwargs):
-            args = (x, y)
-            if c is not None:
-                kwargs['c'] = c
-            kwargs['alpha'] = alpha
-            kwargs['s'] = s
-            kwargs['edgecolor'] = 'none'
-            plt.scatter(*args, **kwargs)
-
-        return scatter
-
-    g = sns.JointGrid(x=col_x, y=col_y, data=df)
-    legends = []
-    counter = 0
-    for name, df_group in df.groupby(col_k):
-        legends.append(name)
-        c = rgb_to_hex(colors[counter])
-        g.plot_joint(colored_scatter(df_group[col_x], df_group[col_y], c))
-        sns.distplot(df_group[col_x].values,
-                     ax=g.ax_marg_x, color=c, hist=False)
-        sns.distplot(df_group[col_y].values, ax=g.ax_marg_y, color=c, hist=False,
-                     vertical=True)
-        counter += 1
-    # plt.legend(legends)
-    return g
 
 
 def get_all_quantities(files, numtrans=0, SKIPNAN=0):
@@ -434,7 +399,7 @@ def filter_sessions(data_tr, unique_states, unique_cohs):
 
 
 def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
-                 DOREVERSE=0, CONTROL=0, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
+                 DOREVERSE=0, CONTROL=0, RECORD_TRIALS=1, REC_TRIALS_SET=[]):
     # Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
     #     data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
     #     data_tr['ylabels_hist_set'], data_tr['files']
@@ -454,13 +419,13 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
     # finding decoding axis
     NN = np.shape(Xmerge_hist_trials_correct[4])[1]
     if(RECORD_TRIALS == 1):
-        RECORDED_TRIALS_SET = {}
+        REC_TRIALS_SET = {}
         for itr in range(NITERATIONS):
-            RECORDED_TRIALS_SET[itr] = {}
+            REC_TRIALS_SET[itr] = {}
     if(RECORD_TRIALS == 1):
         coeffs, intercepts, sup_vec_act, Xsup_vec_ctxt, Xsup_vec_bias,\
             Xsup_vec_cc, Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-            Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET\
+            Xtest_set_error, ytest_set_error, yevi_set_error, REC_TRIALS_SET\
             = bl.bootstrap_linsvm_step(Xdata_hist_set, NN, ylabels_hist_set,
                                        unique_states, unique_cohs, files,
                                        false_files, type, DOREVERSE=DOREVERSE,
@@ -468,11 +433,11 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                                        N_pseudo_dec=NPSEUDODEC,
                                        train_percent=PERCENTTRAIN,
                                        RECORD_TRIALS=RECORD_TRIALS,
-                                       RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+                                       RECORDED_TRIALS_SET=REC_TRIALS_SET)
     else:
         coeffs, intercepts, Xtest_set_correct, ytest_set_correct,\
             yevi_set_correct, Xtest_set_error, ytest_set_error, yevi_set_error,\
-            RECORDED_TRIALS_SET\
+            REC_TRIALS_SET\
             = bl.bootstrap_linsvm_proj_step(wc, bc, Xdata_hist_set, NN,
                                             ylabels_hist_set, unique_states,
                                             unique_cohs, files, false_files, type,
@@ -481,7 +446,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                                             N_pseudo_dec=NPSEUDODEC,
                                             train_percent=PERCENTTRAIN,
                                             RECORD_TRIALS=RECORD_TRIALS,
-                                            RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+                                            RECORDED_TRIALS_SET=REC_TRIALS_SET)
 
     # shuffling data
     coeffs, intercepts, Xtest_shuffle_correct, ytest_shuffle_correct,\
@@ -495,7 +460,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                                       N_pseudo_dec=NPSEUDODEC,
                                       train_percent=PERCENTTRAIN,
                                       RECORD_TRIALS=RECORD_TRIALS,
-                                      RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+                                      RECORDED_TRIALS_SET=REC_TRIALS_SET)
 
     lst = [coeffs, intercepts,
            ytest_set_correct,
@@ -505,7 +470,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
            coeffs, intercepts,  # Xtest_set_error,
            ytest_set_error,  yevi_set_error,
            ytest_shuffle_error, yevi_shuffle_error,
-           RECORDED_TRIALS_SET]
+           REC_TRIALS_SET]
     stg = ["coefs_correct, intercepts_correct,"
            "ytest_set_correct, "
            "yevi_set_correct, "
@@ -514,7 +479,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
            "coefs_error, intercepts_error,"  # " Xtest_set_error,"
            "ytest_set_error, yevi_set_error,"
            "ytest_shuffle_error, yevi_shuffle_error, "
-           "RECORDED_TRIALS_SET"]
+           "REC_TRIALS_SET"]
     d = list_to_dict(lst=lst, string=stg)
     return d
 
@@ -1314,14 +1279,14 @@ def ctxtbin_defect(data_flt):
 
 
 def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
-                 NITERATIONS, ax, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
+                 NITERATIONS, ax, RECORD_TRIALS=1, REC_TRIALS_SET=[]):
     Xdata_set, ylabels_set = data_tr['Xdata_set'], data_tr['ylabels_set']
     metadata = data_tr['metadata']
     coeffs, intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
     if (RECORD_TRIALS == 1):
-        RECORDED_TRIALS_SET = {}
+        REC_TRIALS_SET = {}
         for i in range(NITERATIONS):
-            RECORDED_TRIALS_SET[i] = {}
+            REC_TRIALS_SET[i] = {}
 
     FIX_TRBIAS_BINS = np.array([-1, 0, 1])
 
@@ -1342,11 +1307,11 @@ def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
     for idx in range(NITERATIONS):
         unique_states = np.arange(0, 8, 1)
         Xmerge_trials_correct, ymerge_labels_correct, Xmerge_trials_error,\
-            ymerge_labels_error, RECORDED_TRIALS_SET[idx] =\
+            ymerge_labels_error, REC_TRIALS_SET[idx] =\
             gpt.merge_pseudo_beh_trials(Xdata_set, ylabels_set, unique_states,
                                         unique_cohs, files, false_files, metadata,
                                         EACHSTATES, RECORD_TRIALS=RECORD_TRIALS,
-                                        RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[idx])
+                                        RECORDED_TRIALS_SET=REC_TRIALS_SET[idx])
 
         unique_cohs = [-1, 0, 1]
         unique_states = np.arange(4, 8, 1)
@@ -1400,8 +1365,8 @@ def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
     # ax[1].plot(trbias_range_error[1,:], psychometric_trbias_error[1,:],
     #            color=colors[i],lw=1.5)
 
-    lst = [RECORDED_TRIALS_SET]
-    stg = ["RECORDED_TRIALS_SET"]
+    lst = [REC_TRIALS_SET]
+    stg = ["REC_TRIALS_SET"]
     d_beh = list_to_dict(lst=lst, string=stg)
     return curveslopes_correct, curveintercept_correct, curveslopes_error,\
         curveintercept_error, d_beh
@@ -1485,13 +1450,13 @@ if __name__ == '__main__':
     #     except:
     #         continue
     #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
-    # dir = '//home/molano/DMS_electro/DataEphys/pre_processed/'
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
+    dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'LE81_'  # 'Rat15_'  # 'ss*.npz')#Rat7_ss_45_data_for_python.mat
-    files = glob.glob(dir+IDX_RAT+'202*.npz')
+    IDX_RAT = 'Rat15_'  # 'Rat15_'  # 'ss*.npz')#Rat7_ss_45_data_for_python.mat
+    # files = glob.glob(dir+IDX_RAT+'202*.npz')
     # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
-    # files = glob.glob(dir+'Rat7_ss_*.npz')
+    files = glob.glob(dir+IDX_RAT+'ss_*.npz')
 
     # Whether to skip the NaN at the beginning or not
     SKIPNAN = 0
@@ -1514,27 +1479,27 @@ if __name__ == '__main__':
     if(RECORD_TRIALS == 0):
         dataname = dir+IDX_RAT+'data_dec.npz'
         data_dec = np.load(dataname, allow_pickle=True)
-        RECORDED_TRIALS_SET = data_dec['RECORDED_TRIALS_SET']
-        RECORDED_TRIALS_SET = RECORDED_TRIALS_SET.item()
+        REC_TRIALS_SET = data_dec['REC_TRIALS_SET']
+        REC_TRIALS_SET = REC_TRIALS_SET.item()
         wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
     else:
-        RECORDED_TRIALS_SET = np.zeros(NITERATIONS)
+        REC_TRIALS_SET = np.zeros(NITERATIONS)
 
     if(CONTROL == 1):
         data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
                                 mode='decoding', DOREVERSE=0,
                                 CONTROL=CONTROL, RECORD_TRIALS=1,
-                                RECORDED_TRIALS_SET=np.zeros(NITERATIONS))
+                                REC_TRIALS_SET=np.zeros(NITERATIONS))
         wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
         data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
                                 mode='decoding', DOREVERSE=0,
                                 CONTROL=0, RECORD_TRIALS=RECORD_TRIALS,
-                                RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+                                REC_TRIALS_SET=REC_TRIALS_SET)
     else:
         data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
                                 mode='decoding', DOREVERSE=0,
                                 CONTROL=CONTROL, RECORD_TRIALS=RECORD_TRIALS,
-                                RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+                                REC_TRIALS_SET=REC_TRIALS_SET)
 
     if(RECORD_TRIALS == 1):
         dataname = dir+IDX_RAT+'data_dec.npz'
@@ -1564,16 +1529,16 @@ if __name__ == '__main__':
     if(RECORD_TRIALS == 0):
         dataname = dir+IDX_RAT+'data_beh.npz'
         data_beh = np.load(dataname, allow_pickle=True)
-        RECORDED_TRIALS_SET = data_beh['RECORDED_TRIALS_SET']
-        RECORDED_TRIALS_SET = RECORDED_TRIALS_SET.item()
+        REC_TRIALS_SET = data_beh['REC_TRIALS_SET']
+        REC_TRIALS_SET = REC_TRIALS_SET.item()
     else:
-        RECORDED_TRIALS_SET = np.zeros(EACHSTATES)
+        REC_TRIALS_SET = np.zeros(EACHSTATES)
     fig, ax = plt.subplots(1, 2, figsize=(6, 3), tight_layout=True)
     curveslopes_correct, curveintercept_correct, curveslopes_error,\
         curveintercept_error, data_beh =\
         bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
                      NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-                     RECORDED_TRIALS_SET=RECORDED_TRIALS_SET)
+                     REC_TRIALS_SET=REC_TRIALS_SET)
     # print('>>>>>>>>>>> Curve-beh, slopes AC: ',curveslopes_correct)
     # print('>>>>>>>>>>> Curve-beh, slopes AE: ',curveslopes_error)
     if(RECORD_TRIALS == 1):

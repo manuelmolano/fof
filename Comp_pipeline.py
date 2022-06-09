@@ -451,7 +451,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
     # shuffling data
     coeffs, intercepts, Xtest_shuffle_correct, ytest_shuffle_correct,\
         yevi_shuffle_correct, Xtest_shuffle_error, ytest_shuffle_error,\
-        yevi_shuffle_error,\
+        yevi_shuffle_error, _\
         = bl.shuffle_linsvm_proj_step(coeffs, intercepts, Xdata_hist_set, NN,
                                       ylabels_hist_set, unique_states,
                                       unique_cohs, files, false_files, type,

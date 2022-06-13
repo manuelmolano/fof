@@ -1,7 +1,5 @@
 # Load packages;
 import glob
-# import scipy.io as sio
-# import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -14,7 +12,7 @@ from mpl_toolkits import mplot3d
 # from sklearn.decomposition import PCA
 import seaborn as sns
 import pandas as pd
-# import os
+import os
 from sklearn import metrics
 
 # from sklearn.utils import resample  # for Bootstrap sampling
@@ -34,7 +32,7 @@ image_format = 'svg'  # e.g .png, .svg, etc.
 dpii = 300
 
 # %
-# import get_matlab_data as gd
+import get_data as gd
 
 
 def rm_top_right_lines(ax):
@@ -1439,19 +1437,8 @@ if __name__ == '__main__':
     YTICKS_CTXT = [-10, 0, 10]  # [-15, 0, 15]
     YLIM_CTXT = [-10, 0, 10]  # [-15.2, 15.2]
 
-    # # %%
-    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
-    # files = glob.glob(dir+'Rat15_ss_*_data_for_python.mat')
-    # Rat7_ss_45_data_for_python.mat
-    # for f in files:
-    #     matfile = os.path.basename(f)
-    #     try:num
-    #         data,units = gd.get_data_file(f)
-    #     except:
-    #         continue
-    #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
-    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
-    dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/'
+    # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
     IDX_RAT = 'Rat15_'  # 'Rat15_'  # 'ss*.npz')#Rat7_ss_45_data_for_python.mat
     # files = glob.glob(dir+IDX_RAT+'202*.npz')

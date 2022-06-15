@@ -43,7 +43,7 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
             print(i)
-        print('...... iteration index:', i,'........')
+        # print('...... iteration index:', i,'........')
         ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
         # N_pseudo_dec, N_pseudo_beh = 100,25
         Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error,merge_trials_hist=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,N_pseudo_dec,RECORD_TRIALS, RECORDED_TRIALS_SET[i])
@@ -78,10 +78,13 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         if DOREVERSE:
             ylabels_traine[:, 3] = 1-ylabels_traine[:, 3]
 
-        if(CONTROL):
+        if(CONTROL==1):
             Xdata_train   = Xdata_traine.copy()
             ylabels_train = ylabels_traine.copy() 
-        else:          
+        elif(CONTROL==2):
+            Xdata_train   = Xdata_trainc.copy()
+            ylabels_train = ylabels_trainc.copy() 
+        elif(CONTROL==0):          
             Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
             ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
         # fit model
@@ -105,6 +108,14 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         Xsup_vec_bias[i]  = lin_bias.support_vectors_
 
         lin_cc.fit(Xdata_train, np.squeeze(ylabels_train[:, 4]))
+        Xsup_vec_cc[i]    = lin_cc.support_vectors_
+
+        ### --- percentage of right choices -----
+        ycchoice = np.zeros(np.shape(ylabels_train)[0])
+        for iset in range(np.shape(ylabels_train)[0]):
+            cchoice_labels = Counter(ylabels_train[iset,4::6])
+            ycchoice[iset] = (cchoice_labels.most_common(1)[0][0])
+        lin_cc.fit(Xdata_train, ycchoice)
         Xsup_vec_cc[i]    = lin_cc.support_vectors_
 
         if i == 0:
@@ -165,6 +176,14 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
             bias_labels=Counter(ylabels_testc[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
         ylabels_testc[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            cchoice_labels = Counter(ylabels_testc[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_testc[:,4] = ycchoice_test[:]
+
         Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
         
         if i == 0:
@@ -192,6 +211,13 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
             bias_labels=Counter(ylabels_teste[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
         ylabels_teste[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            cchoice_labels = Counter(ylabels_teste[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_teste[:,4] = ycchoice_test[:]
 
         Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
 
@@ -246,7 +272,7 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
         linw_ctxt, linb_ctxt = coeffs_pool[:, i*5+1], intercepts_pool[0, 5*i+1]
         linw_xor, linb_xor   = coeffs_pool[:, i*5+2], intercepts_pool[0, 5*i+2]
         linw_bias, linb_bias = coeffs_pool[:, i*5+3], intercepts_pool[0, 5*i+3]
-        linw_cc, linb_cc     = coeffs_pool[:, i * 5+4], intercepts_pool[0, 5*i+4]
+        linw_cc, linb_cc     = coeffs_pool[:, i*5+4], intercepts_pool[0, 5*i+4]
         # evaluate evidence model--CORRECT
         evidences_c = np.zeros((ntest, 3 + 2))
         evidences_c[:, 0] = np.squeeze(
@@ -266,6 +292,14 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
             bias_labels=Counter(ylabels_testc[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
         ylabels_testc[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            cchoice_labels = Counter(ylabels_testc[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_testc[:,4] = ycchoice_test[:]
+
         Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
 
         if i == 0:
@@ -293,6 +327,13 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
             bias_labels=Counter(ylabels_teste[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
         ylabels_teste[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            cchoice_labels = Counter(ylabels_teste[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_teste[:,4] = ycchoice_test[:]
 
         Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
 
@@ -365,6 +406,15 @@ def shuffle_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, yl
             bias_labels=Counter(ylabels_testc[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
         ylabels_testc[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            cchoice_labels = Counter(ylabels_testc[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_testc[:,4] = ycchoice_test[:]
+
+
         Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
 
         if i == 0:
@@ -392,6 +442,13 @@ def shuffle_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, yl
             bias_labels=Counter(ylabels_teste[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
         ylabels_teste[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            cchoice_labels = Counter(ylabels_teste[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_teste[:,4] = ycchoice_test[:]
 
         Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
 

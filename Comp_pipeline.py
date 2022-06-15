@@ -3,7 +3,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-Import libraries
+# Import libraries
 from collections import Counter
 from mpl_toolkits import mplot3d
 
@@ -1411,7 +1411,7 @@ if __name__ == '__main__':
     DOREVERSE = 0
 
     RECORD_TRIALS = 1
-    CONTROL = 0
+    CONTROL = 1#normal#1#ae trained#2#ac trained
 
     # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
     # XLIMS_2D = [-3, 3]
@@ -1436,8 +1436,9 @@ if __name__ == '__main__':
     dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/'
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats = ['Patxi', 'Rat15', 'Rat31', 'Rat32', 'Rat7']
+    rats =  ['Rat15',] #['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
+        # plt.close('all')
         print('xxxxxxxxxxxxxxxx')
         print(r)
         IDX_RAT = r+'_'
@@ -1474,24 +1475,30 @@ if __name__ == '__main__':
         else:
             REC_TRIALS_SET = np.zeros(NITERATIONS)
 
-        if(CONTROL == 1):
+        if(CONTROL > 0):#==1):
             data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
                                     mode='decoding', DOREVERSE=0,
                                     CONTROL=CONTROL, RECORD_TRIALS=1,
                                     REC_TRIALS_SET=np.zeros(NITERATIONS))
             wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
-            data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
-                                    mode='decoding', DOREVERSE=0,
-                                    CONTROL=0, RECORD_TRIALS=RECORD_TRIALS,
-                                    REC_TRIALS_SET=REC_TRIALS_SET)
+            # data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
+            #                         mode='decoding', DOREVERSE=0,
+            #                         CONTROL=0, RECORD_TRIALS=RECORD_TRIALS,
+            #                         REC_TRIALS_SET=REC_TRIALS_SET)
         else:
             data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
                                     mode='decoding', DOREVERSE=0,
                                     CONTROL=CONTROL, RECORD_TRIALS=RECORD_TRIALS,
                                     REC_TRIALS_SET=REC_TRIALS_SET)
 
-        if(RECORD_TRIALS == 1):
+        if(RECORD_TRIALS == 1 and CONTROL==0):
             dataname = dir+IDX_RAT+'data_dec.npz'
+            np.savez(dataname, **data_dec)
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_dec_ae.npz'
+            np.savez(dataname, **data_dec)
+        if(RECORD_TRIALS == 1 and CONTROL==2):
+            dataname = dir+IDX_RAT+'data_dec_ac.npz'
             np.savez(dataname, **data_dec)
 
         print('Get AUCs (and d-primes)')
@@ -1532,8 +1539,14 @@ if __name__ == '__main__':
                          NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
                          REC_TRIALS_SET=REC_TRIALS_SET)
 
-        if(RECORD_TRIALS == 1):
+        if(RECORD_TRIALS == 1 and CONTROL==0):
             dataname = dir+IDX_RAT+'data_beh.npz'
+            np.savez(dataname, **data_beh)
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_beh_ae.npz'
+            np.savez(dataname, **data_beh)
+        if(RECORD_TRIALS == 1  and CONTROL==2):
+            dataname = dir+IDX_RAT+'data_beh_ac.npz'
             np.savez(dataname, **data_beh)
 
         auc_repc = np.mean(data_flt['AUCs_repc'])

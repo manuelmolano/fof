@@ -300,10 +300,10 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 temp_beh    = []
                 for choice in unique_choices: 
                     if np.shape(temp_trials)[0]==0:
-                        temp_trials=data_temp[state,coh,choice]
+                        temp_trials= data_temp[state,coh,choice]
                         temp_beh   = choice*np.ones(np.shape(temp_trials)[0])
                     else:
-                        temp_trials=np.vstack((temp_trials,data_temp[state,coh,choice]))
+                        temp_trials= np.vstack((temp_trials,data_temp[state,coh,choice]))
                         temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
                 totaltrials = np.shape(temp_trials)[0]              
                 
@@ -330,10 +330,10 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 temp_beh    = []
                 for choice in unique_choices: 
                     if np.shape(temp_trials)[0]==0:
-                        temp_trials=data_temp[state,coh,choice]
+                        temp_trials= data_temp[state,coh,choice]
                         temp_beh   = choice*np.ones(np.shape(temp_trials)[0])
                     else:
-                        temp_trials=np.vstack((temp_trials,data_temp[state,coh,choice]))
+                        temp_trials= np.vstack((temp_trials,data_temp[state,coh,choice]))
                         temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
                 totaltrials = np.shape(temp_trials)[0]              
                 
@@ -394,9 +394,9 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
             idxbin  = np.intersect1d(idxbinh,idxbinl)
             
             ### cal normalization coefficient
-            normalization = trbias_w[idxbin]/np.sum(trbias_w[idxbin])
+            normalization   = trbias_w[idxbin]/np.sum(trbias_w[idxbin])
             perc_right[i-1] = np.sum(rightchoice[idxbin]*normalization)#np.sum(rightchoice[idxbin])/len(idxbin)
         # ax.plot(ax_trbias,perc_right)
         psychometric_trbias[idxcoh,:] = perc_right.copy()
-        trbias_range[idxcoh,:] = ax_trbias.copy()
+        trbias_range[idxcoh,:]        = ax_trbias.copy()
     return psychometric_trbias,trbias_range

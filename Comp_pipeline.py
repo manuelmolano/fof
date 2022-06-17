@@ -1,12 +1,10 @@
 # Load packages;
 import glob
-# import scipy.io as sio
-# import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 # Import libraries
-# from collections import Counter
+from collections import Counter
 from mpl_toolkits import mplot3d
 
 # from sklearn import datasets, svm, pipeline
@@ -14,27 +12,21 @@ from mpl_toolkits import mplot3d
 # from sklearn.decomposition import PCA
 import seaborn as sns
 import pandas as pd
-# import os
+import os
 from sklearn import metrics
-
-# from sklearn.utils import resample  # for Bootstrap sampling
-# from sklearn.metrics import accuracy_score
-# from scipy import stats
-# from sklearn.linear_model import LinearRegression
 
 # self-defined functions
 import general_util_ctxtgt as guc
 import generate_pseudo_trials as gpt
 import required_data_dec as rdd
 import bootstrap_linear as bl
-# from collections import Counter
 
 
 image_format = 'svg'  # e.g .png, .svg, etc.
 dpii = 300
 
 # %
-# import get_matlab_data as gd
+import get_data as gd
 
 
 def rm_top_right_lines(ax):
@@ -203,34 +195,53 @@ def list_to_dict(lst, string):
 
 
 def get_all_quantities(files, numtrans=0, SKIPNAN=0):
+    """
+    Obtain dataset (responses, labels) for generating pseudo-trials
+
+    Parameters
+    ----------
+    files: dict
+        sessions' data, containing neuron responses/env/behaviours
+
+    SKIPNAN: bool
+        skip the nan (beh/env/resp) trials or not
+
+    Returns
+    -------
+    d : dict 
+        dictionary, the items are dataset for generating history pseudo-trials
+        and behaviour pseudo-trials
+
+    """
     icount = 0
-    Xdata_set = {}
+    ## dataset for generating behaviour pseudo-trials
+    Xdata_set   = {}
     ylabels_set = {}
-    Xdata_hist_set = {}
+    ## dataset for generating history pseudo-trials
+    Xdata_hist_set   = {}
     ylabels_hist_set = {}
 
-    metadata = {}
+    ## meta data for files
+    metadata       = {}
     pseudo_neurons = 0
-    remarkfile = ""
+    remarkfile     = ""
     for i in range(len(files)):
         for T in ['correct', 'error']:
-            Xdata_set[i, T] = {}
+            Xdata_set[i, T]   = {}
             ylabels_set[i, T] = {}
 
-            Xdata_hist_set[i, T] = {}
+            Xdata_hist_set[i, T]   = {}
             ylabels_hist_set[i, T] = {}
 
-    # nnfiles = np.zeros(len(files))
     files = [f for f in files if f.find('data_dec') == -1]
     for idxs, f in enumerate(files):
         if icount < 0:
             break
         data = np.load(f, allow_pickle=True)
         print('file', f)
-        # print('unique stimulus:',np.unique(data['obscategory'][::2]))
+
         tt, stm, dyns, ctx, gt, choice, eff_choice, rw, obsc =\
             guc.get_RNNdata_ctxtgt(data)
-        # print('responses:',np.shape(data['states']),'; gt',np.shape(data['gt']))
         if(np.shape(data['states'])[0] != np.shape(data['gt'])[0]):
             remarkfile = remarkfile+"; "+f
             continue
@@ -243,12 +254,14 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
 
         icount += 1
 
+        ### Function to extract Neuronal responses/Environment variables/Behaviour labels for individual sessions
         Xdata, ydata, Xdata_idx, Xconds_2, Xacts_1,\
             Xrws_1, Xlfs_1, Xrse_6, rses, Xacts_0, Xgts_0,\
             Xcohs_0, Xdata_trialidx, Xstates =\
             rdd.req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
                                  rw, obsc, BLOCK_CTXT=1)
 
+        ### Function to separate after correct dataset from after error dataset 
         Xdata_correct, Xdata_error, correct_trial, error_trial, rses_correct,\
             rses_error, Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\
             Xcohs_0_error, ydata_bias_correct, ydata_bias_error,\
@@ -264,17 +277,22 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
                                   Xacts_0, Xgts_0, Xcohs_0, Xdata_trialidx,
                                   Xstates, margin=[1, 2], idd=1)
 
+
+        ### To integrate all the env/behaviour variables that are further used as labels together
         ylabels_correct = rdd.set_ylabels(Xdata_correct, ydata_choices_correct,
                                           ydata_conds_correct, ydata_xor_correct,
                                           ydata_bias_correct,
                                           ydata_cchoices_correct, Xcohs_0_correct)
-        ylabels_error = rdd.set_ylabels(Xdata_error, ydata_choices_error,
+        ylabels_error   = rdd.set_ylabels(Xdata_error, ydata_choices_error,
                                         ydata_conds_error, ydata_xor_error,
                                         ydata_bias_error, ydata_cchoices_error,
                                         Xcohs_0_error)
 
         pseudo_neurons += np.shape(Xdata_correct)[1]
 
+        ### cluster:
+        ###     history trials according to their history states -- previous choice, block context
+        ###     behaviour trials according to their history states and the stimulus coherence
         Xdata_set[idxs, 'correct'], ylabels_set[idxs, 'correct'],\
             Xdata_hist_set[idxs, 'correct'], ylabels_hist_set[idxs, 'correct'] =\
             rdd.State_trials(Xdata_correct, ydata_states_correct,
@@ -293,78 +311,6 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
                           'AEtrials': np.shape(Xdata_error)[0],
                           }
 
-        Xdata_hist_set[i, T] = {}
-        ylabels_hist_set[i, T] = {}
-
-    # nnfiles = np.zeros(len(files))
-    files = [f for f in files if f.find('data_dec') == -1]
-    for idxs, f in enumerate(files):
-        if icount < 0:
-            break
-        data = np.load(f, allow_pickle=True)
-        # print('unique stimulus:',np.unique(data['obscategory'][::2]))
-        tt, stm, dyns, ctx, gt, choice, eff_choice, rw, obsc =\
-            guc.get_RNNdata_ctxtgt(data)
-        print('file: ', f)
-        print('responses:', np.shape(
-            data['states']), '; gt', np.shape(data['gt']))
-        if(np.shape(data['states'])[0] != np.shape(data['gt'])[0]):
-            remarkfile = remarkfile+"; "+f
-            continue
-        stim_trials, idx_effect, ctxt_trials = guc.transform_stim_trials_ctxtgt(
-            data)
-        icount += 1
-
-        Xdata, ydata, Xdata_idx, Xconds_2, Xacts_1,\
-            Xrws_1, Xlfs_1, Xrse_6, rses, Xacts_0, Xgts_0, Xcohs_0,\
-            Xdata_trialidx, Xstates =\
-            rdd.req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
-                                 rw, obsc, BLOCK_CTXT=1)
-
-        Xdata_correct, Xdata_error, correct_trial, error_trial, rses_correct,\
-            rses_error, Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\
-            Xcohs_0_error, ydata_bias_correct, ydata_bias_error,\
-            ydata_xor_correct, ydata_xor_error, ydata_conds_correct,\
-            ydata_conds_error, ydata_choices_correct, ydata_choices_error,\
-            ydata_cchoices_correct, ydata_cchoices_error, ydata_cgts_correct,\
-            ydata_cgts_error, Xdata_idx_correct, Xdata_idx_error,\
-            Xdata_trialidx_correct, Xdata_trialidx_error, ydata_states_correct,\
-            ydata_states_error =\
-            rdd.sep_correct_error(data['stimulus'], dyns, Xdata, ydata, Xdata_idx,
-                                  Xconds_2, Xacts_1, Xrws_1, Xlfs_1, Xrse_6, rses,
-                                  Xacts_0, Xgts_0, Xcohs_0, Xdata_trialidx,
-                                  Xstates, margin=[1, 2], idd=1)
-        print('Validate trials:', np.shape(Xdata_correct))
-
-        ylabels_correct =\
-            rdd.set_ylabels(Xdata_correct, ydata_choices_correct,
-                            ydata_conds_correct, ydata_xor_correct,
-                            ydata_bias_correct, ydata_cchoices_correct,
-                            Xcohs_0_correct)
-        ylabels_error =\
-            rdd.set_ylabels(Xdata_error, ydata_choices_error, ydata_conds_error,
-                            ydata_xor_error, ydata_bias_error,
-                            ydata_cchoices_error, Xcohs_0_error)
-
-        pseudo_neurons += np.shape(Xdata_correct)[1]
-
-        Xdata_set[idxs, 'correct'], ylabels_set[idxs, 'correct'],\
-            Xdata_hist_set[idxs, 'correct'], ylabels_hist_set[idxs, 'correct'] =\
-            rdd.State_trials(Xdata_correct, ydata_states_correct,
-                             ydata_cchoices_correct, Xcohs_0_correct,
-                             ylabels_correct, 0,)
-        Xdata_set[idxs, 'error'], ylabels_set[idxs, 'error'],\
-            Xdata_hist_set[idxs, 'error'], ylabels_hist_set[idxs, 'error'] =\
-            rdd.State_trials(Xdata_error, ydata_states_error, ydata_cchoices_error,
-                             Xcohs_0_error, ylabels_error, 0,)
-        metadata[idxs] = {'filename': f,
-                          'totaltrials': np.shape(Xdata_correct)[0] +
-                          np.shape(Xdata_error)[0],
-                          'neuronnumber': np.shape(Xdata_correct)[1],
-                          'ACtrials': np.shape(Xdata_correct)[0],
-                          'AEtrials': np.shape(Xdata_error)[0],
-                          }
-
     lst = [Xdata_set, Xdata_hist_set,
            ylabels_set, ylabels_hist_set,
            Xcohs_0, files, metadata]
@@ -375,12 +321,27 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
     return d
 
 
-'''
-Filtering 'good' sessions
-'''
-
-
 def filter_sessions(data_tr, unique_states, unique_cohs):
+    """
+    Filtering sessions with sufficient state-trials
+
+    Parameters
+    ----------
+    data_tr: dict
+        dataset for generating pseudo-trials
+
+    unique_states: array
+        history states: 4 for ac and 4 for ae
+
+    unique_cohs: array
+        stimulus coherences -- positive/zero/negative
+
+    Returns
+    -------
+    false_files : array 
+        some specific states (hist/beh) have zero trials in these failed sessions.
+
+    """
     Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
         data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
         data_tr['ylabels_hist_set'], data_tr['files']
@@ -400,9 +361,39 @@ def filter_sessions(data_tr, unique_states, unique_cohs):
 
 def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                  DOREVERSE=0, CONTROL=0, RECORD_TRIALS=1, REC_TRIALS_SET=[]):
-    # Xdata_set, Xdata_hist_set, ylabels_set, ylabels_hist_set, files =\
-    #     data_tr['Xdata_set'], data_tr['Xdata_hist_set'], data_tr['ylabels_set'],\
-    #     data_tr['ylabels_hist_set'], data_tr['files']
+    """
+    Obtaining SVM decoders for history information, using neuronal responses before stimulus presentations
+
+    Parameters
+    ----------
+    data_tr: dict
+        dataset for generating pseudo-trials
+
+    wc,bc,we,be: array
+        (reloading) weights and bias of SVM decoders
+
+    false_files : array 
+        some specific states (hist/beh) have zero trials in these failed sessions.
+
+    DOREVERSE: bool
+        if reversing the labels for ae trials or not 
+
+    CONTROL: bool
+        training decoders using only ae trials as a CONTROL
+
+    RECORD_TRIALS: bool
+        recording selected trials and decoders (or reloading saved data)
+
+    REC_TRIALS_SET: dict 
+        reloading saved data
+
+    Returns
+    -------
+    d : dict
+        dictionary contains: weights and bias of the SVM decoders for history information.
+        labels of the testing dataset, encodings of the testing dataset. 
+
+    """
     Xdata_hist_set, ylabels_hist_set, files = data_tr['Xdata_hist_set'], \
         data_tr['ylabels_hist_set'], data_tr['files']
 
@@ -485,24 +476,45 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
 
 
 def flatten_data(data_tr, data_dec):
-    yevi_set_correct = data_dec['yevi_set_correct']
+    """
+    Flatten the encoding of history information (session-by-session)
+
+    Parameters
+    ----------
+    data_tr: dict
+        dataset for generating pseudo-trials
+
+    data_dec: dict
+        dataset containing the encodings of history information and labels
+
+
+    Returns
+    -------
+    d : dict
+        flatten data
+
+    """
+    yevi_set_correct  = data_dec['yevi_set_correct']
     ytest_set_correct = data_dec['ytest_set_correct']
-    IPOOLS = NITERATIONS
-    # flatten data --- correct
+    IPOOLS = NITERATIONS ## should be consistent with the number of iterations used in bootstrap
+    
+    ### flatten data --- after correct
     nlabels = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
     ytruthlabels_c = np.zeros((nlabels, 1))
-    yevi_c = np.zeros((3 + 1 + 1, 1))
-    dprimes_c = np.zeros(IPOOLS)
+    yevi_c         = np.zeros((3 + 1 + 1, 1))
+    ### Gaussian assumption
+    dprimes_c    = np.zeros(IPOOLS)
     dprimes_repc = np.zeros(IPOOLS)
     dprimes_altc = np.zeros(IPOOLS)
-    AUCs_c = np.zeros(IPOOLS)
+
+    AUCs_c    = np.zeros(IPOOLS)
     AUCs_repc = np.zeros(IPOOLS)
     AUCs_altc = np.zeros(IPOOLS)
+
     for i in range(IPOOLS):
-        # bootstrappin
-        hist_evi = yevi_set_correct[i, :, :]
-        test_labels = ytest_set_correct[i, :, :]
+        hist_evi    = yevi_set_correct[i, :, :]
         idx = np.arange(np.shape(hist_evi)[0])
+        test_labels = ytest_set_correct[i, :, :]
         ytruthlabels_c = np.append(
             ytruthlabels_c, test_labels[idx, :].T, axis=1)
         yevi_c = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)
@@ -510,9 +522,9 @@ def flatten_data(data_tr, data_dec):
             guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),
                                  np.squeeze(ytest_set_correct[i, :, SVMAXIS]))
 
+        ### calculate AUC
         yauc_c_org = np.squeeze(ytest_set_correct[i, :, SVMAXIS])
-        yauc_c = np.zeros_like(yauc_c_org)
-
+        yauc_c     = np.zeros_like(yauc_c_org)
         yauc_c[np.where(yauc_c_org == 0+2)[0]] = 1
         yauc_c[np.where(yauc_c_org == 1+2)[0]] = 2
         assert (yauc_c != 0).all()
@@ -521,7 +533,7 @@ def flatten_data(data_tr, data_dec):
         auc_ac = metrics.auc(fpr, tpr)
         AUCs_c[i] = auc_ac
 
-        # SEPARATE REP AND ALT CONTEXTS
+        ### calculate AUC conditioned on Block contexts
         ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
             np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
         yauc_c_ctxtrep, yauc_c_ctxtalt =\
@@ -557,11 +569,13 @@ def flatten_data(data_tr, data_dec):
 
     nlabels = np.shape(np.squeeze(ytest_set_error[0, :, :]))[1]
     ytruthlabels_e = np.zeros((nlabels, 1))
-    yevi_e = np.zeros((3 + 1 + 1, 1))
-    dprimes_e = np.zeros(IPOOLS)
+    yevi_e         = np.zeros((3 + 1 + 1, 1))
+
+    dprimes_e    = np.zeros(IPOOLS)
     dprimes_repe = np.zeros(IPOOLS)
     dprimes_alte = np.zeros(IPOOLS)
-    AUCs_e = np.zeros(IPOOLS)
+
+    AUCs_e    = np.zeros(IPOOLS)
     AUCs_repe = np.zeros(IPOOLS)
     AUCs_alte = np.zeros(IPOOLS)
     for i in range(IPOOLS):
@@ -574,9 +588,10 @@ def flatten_data(data_tr, data_dec):
         dprimes_e[i] =\
             guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),
                                  np.squeeze(ytest_set_error[i, :, SVMAXIS]))
+        
+
         yauc_e_org = np.squeeze(ytest_set_error[i, :, SVMAXIS])
         yauc_e = np.zeros_like(yauc_e_org)
-
         yauc_e[np.where(yauc_e_org == 0)[0]] = 1
         yauc_e[np.where(yauc_e_org == 1)[0]] = 2
         assert (yauc_c != 0).all()
@@ -685,7 +700,7 @@ def flatten_shuffle_data(data_tr, data_dec):
     '''
     After Error Trials
     '''
-    yevi_set_error = data_dec['yevi_shuffle_error']
+    yevi_set_error  = data_dec['yevi_shuffle_error']
     ytest_set_error = data_dec['ytest_shuffle_error']
 
     nlabels = np.shape(np.squeeze(ytest_set_error[0, :, :]))[1]
@@ -748,12 +763,14 @@ def flatten_shuffle_data(data_tr, data_dec):
     d_shuffle = list_to_dict(lst=lst, string=stg)
     return d_shuffle
 
-# visualizing the results
 
-
+'''
+Results Visualizations
+'''
 def projection_3D(data_flt, data_flt_light, prev_outc):
     ytruthlabels_c = data_flt['ytruthlabels_'+prev_outc]
-    yevi_c = data_flt['yevi_'+prev_outc]
+    yevi_c         = data_flt['yevi_'+prev_outc]
+
     ridx = np.random.choice(np.arange(len(yevi_c[1, :])),
                             size=200, replace=False)
     ridx = ridx.astype(np.int32)
@@ -766,7 +783,7 @@ def projection_3D(data_flt, data_flt_light, prev_outc):
         ridx_congruent, size=int(NUM_SAMPLES), replace=False)
 
     fig = plt.figure()  # XXX: this was in line 352 (after x, y, z = ...)
-    ax = fig.add_subplot(111, projection='3d')
+    ax  = fig.add_subplot(111, projection='3d')
     # --- PLOTING CONGRUENT TRIALS, WITH CLEAR TRANSITIONS
     x, y, z = yevi_c[1, ridx], yevi_c[0, ridx], yevi_c[3, ridx]
     cms = []
@@ -836,14 +853,14 @@ def projection_3D(data_flt, data_flt_light, prev_outc):
 
 def projections_2D(data_flt, prev_outc, fit=False, name=''):
     ytruthlabels = data_flt['ytruthlabels_'+prev_outc]
-    yevi = data_flt['yevi_'+prev_outc]
+    yevi         = data_flt['yevi_'+prev_outc]
     '''
     Four conditions (four clouds)
     '''
-    idxprel = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+    idxprel  = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
     idxctxtr = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
 
-    idxprer = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    idxprer  = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
     idxctxta = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
 
     idxprelctxtr = np.intersect1d(idxprel, idxctxtr)
@@ -852,7 +869,7 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     idxprerctxta = np.intersect1d(idxprer, idxctxta)
 
     idxsample = np.zeros((4, NUM_SAMPLES), dtype=int)
-    idxsample[0, :] = idxprelctxtr[:NUM_SAMPLES]
+    idxsample[0, :] = idxprelctxtr[:NUM_SAMPLES]#np.random.choice(idxprelctxtr, size=NUM_SAMPLES, replace=True)
     idxsample[1, :] = idxprelctxta[:NUM_SAMPLES]
     idxsample[2, :] = idxprerctxtr[:NUM_SAMPLES]
     idxsample[3, :] = idxprerctxta[:NUM_SAMPLES]
@@ -866,17 +883,13 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     # -------- context versus tr. bias ----------------
     # plot samples
     # previous left
-    # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
-    # idxleft = idxpreal
-    # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
-    # idxright = idxprear
     # figs = []
     for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
-        ctxt = np.squeeze(yevi[1, idx])
+        ctxt    = np.squeeze(yevi[1, idx])
         tr_bias = np.squeeze(yevi[SVMAXIS, idx])
         df = {'Context encoding': ctxt, 'Transition bias encoding': tr_bias,
               'Upcoming Stimulus Category': ytruthlabels[SVMAXIS, idx]}
-        df = pd.DataFrame(df)
+        df  = pd.DataFrame(df)
         fig = multivariateGrid(col_x='Context encoding',
                                col_y='Transition bias encoding',
                                col_k='Upcoming Stimulus Category', df=df,
@@ -1062,10 +1075,10 @@ def projections_2D_shuffle(data_flt, prev_outc, fit=False, name=''):
     '''
     Four conditions (four clouds)
     '''
-    idxprel = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
+    idxprel  = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
     idxctxtr = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][0])[0]
 
-    idxprer = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
+    idxprer  = np.where(ytruthlabels[0, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
     idxctxta = np.where(ytruthlabels[1, :] == AX_PREV_CH_OUTC[prev_outc][1])[0]
 
     idxprelctxtr = np.intersect1d(idxprel, idxctxtr)
@@ -1088,10 +1101,6 @@ def projections_2D_shuffle(data_flt, prev_outc, fit=False, name=''):
     # -------- context versus tr. bias ----------------
     # plot samples
     # previous left
-    # np.random.choice(idxpreal, size=NUM_SAMPLES, replace=False)
-    # idxleft = idxpreal
-    # np.random.choice(idxprear, size=NUM_SAMPLES, replace=False)
-    # idxright = idxprear
     # figs = []
     for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
         ctxt = np.squeeze(yevi[1, idx])
@@ -1208,7 +1217,6 @@ def ctxtbin_defect(data_flt):
             idx_e = np.intersect1d(np.where(ctxt_evi_e > CTXT_BIN[i])[
                                    0], np.where(ctxt_evi_e < CTXT_BIN[i+1])[0])
         Tbias_ctxt_e[i] = (yevi_e[SVMAXIS, idx_e])
-        # print(">>>>>>>ebias:",np.mean(np.abs(Tbias_ctxt_e[i])))
         Tbias_ctxt_elabel[i] = (ytruthlabels_e[SVMAXIS, idx_e])
         # True Positive (TP): predict a label of 1 (positive), the true label is 1
         TP = np.sum(np.logical_and(
@@ -1225,25 +1233,6 @@ def ctxtbin_defect(data_flt):
         ACC_error[i] = (TP+TN)/(TP+TN+FP+FN)
         dprime_ctxtdp_e[i] = guc.calculate_dprime(
             Tbias_ctxt_e[i], Tbias_ctxt_elabel[i])
-        # # ploting histogram
-        # ax2[i][0].hist(Tbias_ctxt_c[i][np.where(Tbias_ctxt_clabel[i] == 2)[
-        #                0]], bins=binss, facecolor=GREEN, alpha=0.5)
-        # ax2[i][0].hist(Tbias_ctxt_c[i][np.where(Tbias_ctxt_clabel[i] == 3)[
-        #                0]], bins=binss, facecolor='tab:purple', alpha=0.5)
-
-        # ax2[i][1].hist(Tbias_ctxt_e[i][np.where(Tbias_ctxt_elabel[i] == 2-2)[0]],
-        #                bins=binss, facecolor=GREEN, alpha=0.5)
-        # ax2[i][1].hist(Tbias_ctxt_e[i][np.where(Tbias_ctxt_elabel[i] == 3-2)[0]],
-        #                bins=binss, facecolor='tab:purple', alpha=0.5)
-
-    # image_name = SAVELOC + '/hist_ctxtbin_'+METHOD+'.svg'
-    # fig2.savefig(image_name, format=IMAGE_FORMAT, dpi=300)
-    # plt.close(fig2)
-
-    # axacc.plot((CTXT_BIN[:-1]+CTXT_BIN[1:])/2.0,
-    #            ACC_correct[:-1], lw=1.5, color='yellow', alpha=0.75)
-    # axacc.plot((CTXT_BIN[:-1]+CTXT_BIN[1:])/2.0,
-    #            ACC_error[:-1], lw=1.5, color='black', alpha=0.75)
 
     # calculate Pearson's correlation
     # AC trials
@@ -1280,6 +1269,34 @@ def ctxtbin_defect(data_flt):
 
 def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
                  NITERATIONS, ax, RECORD_TRIALS=1, REC_TRIALS_SET=[]):
+    """
+    Bootstrapping for psychometric curve generation
+
+    Parameters
+    ----------
+    data_tr: dict
+        dataset for generating pseudo-trials
+
+    data_dec: dict
+        dataset containing the encodings of history information and labels
+
+    unique_cohs: array -- [-1, 0, 1]
+
+    EACHSTATES: int
+        number of pseudo trials per state
+
+    NITERATIONS: int
+        number of steps (bootstrap)
+
+    ax: figure handle
+
+
+    Returns
+    -------
+    d : dict
+        PSYCHOMETRIC CURVES AND SLOPES
+
+    """
     Xdata_set, ylabels_set = data_tr['Xdata_set'], data_tr['ylabels_set']
     metadata = data_tr['metadata']
     coeffs, intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
@@ -1371,29 +1388,6 @@ def bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
     return curveslopes_correct, curveintercept_correct, curveslopes_error,\
         curveintercept_error, d_beh
 
-    # unique_cohs   = [-1,0,1]
-    # EACHSTATES    = 60
-    # Xdata_set,ylabels_set = data_tr['Xdata_set'],data_tr['ylabels_set']
-    # metadata = data_tr['metadata']
-    # coeffs,intercepts = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    # Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,
-    # ymerge_labels_error=gpt.merge_pseudo_beh_trials(Xdata_set,
-    # ylabels_set,unique_states,unique_cohs,files,false_files,metadata,EACHSTATES)
-    # unique_states = np.arange(4,8,1)
-    # _=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_correct,
-    #                                          ymerge_labels_correct,
-    # [4,5,6,7],[-1,0,1],[0,1], EACHSTATES=EACHSTATES)
-    # unique_states = np.arange(4)
-    # _=gpt.behaviour_trbias_proj(coeffs, intercepts, Xmerge_trials_error,
-    #                                          ymerge_labels_error, [0,1,2,3],
-    # [-1,0,1],[0,1], EACHSTATES=EACHSTATES)
-
-
-'''
-merging and generating pseudo trials for how tr. bias affects behaviour (stage 2)
-'''
-# def from_trbias_to_beh
-
 
 # --- MAIN
 if __name__ == '__main__':
@@ -1417,7 +1411,7 @@ if __name__ == '__main__':
     DOREVERSE = 0
 
     RECORD_TRIALS = 1
-    CONTROL = 0
+    CONTROL = 1#normal#1#ae trained#2#ac trained
 
     # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
     # XLIMS_2D = [-3, 3]
@@ -1439,160 +1433,170 @@ if __name__ == '__main__':
     YTICKS_CTXT = [-10, 0, 10]  # [-15, 0, 15]
     YLIM_CTXT = [-10, 0, 10]  # [-15.2, 15.2]
 
-    # # %%
-    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
-    # files = glob.glob(dir+'Rat15_ss_*_data_for_python.mat')
-    # Rat7_ss_45_data_for_python.mat
-    # for f in files:
-    #     matfile = os.path.basename(f)
-    #     try:num
-    #         data,units = gd.get_data_file(f)
-    #     except:
-    #         continue
-    #     # print('response:',np.shape(data['states']),np.shape(data['contexts']))
-    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
-    dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/'
+    # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    IDX_RAT = 'Rat15_'  # 'Rat15_'  # 'ss*.npz')#Rat7_ss_45_data_for_python.mat
-    # files = glob.glob(dir+IDX_RAT+'202*.npz')
-    # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
-    files = glob.glob(dir+IDX_RAT+'ss_*.npz')
+    rats =  ['Rat15',] #['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    for r in rats:
+        # plt.close('all')
+        print('xxxxxxxxxxxxxxxx')
+        print(r)
+        IDX_RAT = r+'_'
+        # files = glob.glob(dir+IDX_RAT+'202*.npz')
+        # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
+        files = glob.glob(dir+IDX_RAT+'ss_*.npz')
 
-    # Whether to skip the NaN at the beginning or not
-    SKIPNAN = 0
-    data_tr = get_all_quantities(files, numtrans=0, SKIPNAN=SKIPNAN)
+        # GET QUANTITIES
+        print('Get quantities')
+        # Whether to skip the NaN at the beginning or not
+        SKIPNAN = 0
+        data_tr = get_all_quantities(files, numtrans=0, SKIPNAN=SKIPNAN)
 
-    unique_states = np.arange(8)
-    unique_cohs = [-1, 0, 1]
-    false_files, MIN_TRIALS, num_hist_trials, num_beh_trials = filter_sessions(
-        data_tr, unique_states, unique_cohs)
-    print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:", MIN_TRIALS)
+        unique_states = np.arange(8)
+        unique_cohs = [-1, 0, 1]
+        false_files, MIN_TRIALS, num_hist_trials, num_beh_trials = filter_sessions(
+            data_tr, unique_states, unique_cohs)
+        print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:", MIN_TRIALS)
 
-    unique_states = np.arange(8)
-    unique_cohs = [-1, 0, 1]
-    false_files, MIN_TRIALS, num_hist_trials, num_beh_trials = filter_sessions(
-        data_tr, unique_states, unique_cohs)
-    print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:", MIN_TRIALS)
+        unique_states = np.arange(8)
+        unique_cohs = [-1, 0, 1]
+        false_files, MIN_TRIALS, num_hist_trials, num_beh_trials = filter_sessions(
+            data_tr, unique_states, unique_cohs)
+        print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:", MIN_TRIALS)
 
-    wc, bc = [], []
+        wc, bc = [], []
 
-    if(RECORD_TRIALS == 0):
-        dataname = dir+IDX_RAT+'data_dec.npz'
-        data_dec = np.load(dataname, allow_pickle=True)
-        REC_TRIALS_SET = data_dec['REC_TRIALS_SET']
-        REC_TRIALS_SET = REC_TRIALS_SET.item()
-        wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    else:
-        REC_TRIALS_SET = np.zeros(NITERATIONS)
+        if(RECORD_TRIALS == 0):
+            dataname = dir+IDX_RAT+'data_dec.npz'
+            data_dec = np.load(dataname, allow_pickle=True)
+            REC_TRIALS_SET = data_dec['REC_TRIALS_SET']
+            REC_TRIALS_SET = REC_TRIALS_SET.item()
+            wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
+        else:
+            REC_TRIALS_SET = np.zeros(NITERATIONS)
 
-    if(CONTROL == 1):
-        data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
-                                mode='decoding', DOREVERSE=0,
-                                CONTROL=CONTROL, RECORD_TRIALS=1,
-                                REC_TRIALS_SET=np.zeros(NITERATIONS))
-        wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
-        data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
-                                mode='decoding', DOREVERSE=0,
-                                CONTROL=0, RECORD_TRIALS=RECORD_TRIALS,
-                                REC_TRIALS_SET=REC_TRIALS_SET)
-    else:
-        data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
-                                mode='decoding', DOREVERSE=0,
-                                CONTROL=CONTROL, RECORD_TRIALS=RECORD_TRIALS,
-                                REC_TRIALS_SET=REC_TRIALS_SET)
+        if(CONTROL > 0):#==1):
+            data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
+                                    mode='decoding', DOREVERSE=0,
+                                    CONTROL=CONTROL, RECORD_TRIALS=1,
+                                    REC_TRIALS_SET=np.zeros(NITERATIONS))
+            wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
+            # data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
+            #                         mode='decoding', DOREVERSE=0,
+            #                         CONTROL=0, RECORD_TRIALS=RECORD_TRIALS,
+            #                         REC_TRIALS_SET=REC_TRIALS_SET)
+        else:
+            data_dec = get_dec_axes(data_tr, wc, bc, [], [], false_files,
+                                    mode='decoding', DOREVERSE=0,
+                                    CONTROL=CONTROL, RECORD_TRIALS=RECORD_TRIALS,
+                                    REC_TRIALS_SET=REC_TRIALS_SET)
 
-    if(RECORD_TRIALS == 1):
-        dataname = dir+IDX_RAT+'data_dec.npz'
-        np.savez(dataname, **data_dec)
+        if(RECORD_TRIALS == 1 and CONTROL==0):
+            dataname = dir+IDX_RAT+'data_dec.npz'
+            np.savez(dataname, **data_dec)
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_dec_ae.npz'
+            np.savez(dataname, **data_dec)
+        if(RECORD_TRIALS == 1 and CONTROL==2):
+            dataname = dir+IDX_RAT+'data_dec_ac.npz'
+            np.savez(dataname, **data_dec)
 
-    data_flt = flatten_data(data_tr, data_dec)
-    data_flt_shuffle = flatten_shuffle_data(data_tr, data_dec)
+        print('Get AUCs (and d-primes)')
+        data_flt         = flatten_data(data_tr, data_dec)
+        data_flt_shuffle = flatten_shuffle_data(data_tr, data_dec)
 
-    projection_3D(data_flt, data_flt, 'c')
-    projection_3D(data_flt, data_flt, 'e')
+        print('3D projections ac and ae')
+        projection_3D(data_flt, data_flt, 'c')
+        projection_3D(data_flt, data_flt, 'e')
 
-    projections_2D(data_flt, prev_outc='c', fit=False, name='')
-    projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        print('2D projections')
+        projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        projections_2D(data_flt, prev_outc='e', fit=False, name='')
 
-    projections_2D_shuffle(data_flt_shuffle, prev_outc='c', fit=False, name='')
-    projections_2D_shuffle(data_flt_shuffle, prev_outc='e', fit=False, name='')
+        projections_2D_shuffle(data_flt_shuffle, prev_outc='c', fit=False, name='')
+        projections_2D_shuffle(data_flt_shuffle, prev_outc='e', fit=False, name='')
 
-    # x-axis bin ctxt, y-axis transition bias
-    corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(
-        data_flt)
-    print('>>>>>>>>>>> P-correlation, left AC: ', corrl_ac, ' right AC: ',
-          corrr_ac, ' left AE: ', corrl_ae, ' right AE: ', corrr_ae)
+        print('Pearson Correlation: Transition bias v.s. context')
+        # x-axis bin ctxt, y-axis transition bias
+        corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(data_flt)
+        print('>>>>>>>>>>> P-correlation, left AC: ', corrl_ac, ' right AC: ',  corrr_ac, ' left AE: ', corrl_ae, ' right AE: ', corrr_ae)
 
-    # transition bias to behaviour
-    unique_cohs = [-1, 0, 1]
-    EACHSTATES = 60
-    if(RECORD_TRIALS == 0):
-        dataname = dir+IDX_RAT+'data_beh.npz'
-        data_beh = np.load(dataname, allow_pickle=True)
-        REC_TRIALS_SET = data_beh['REC_TRIALS_SET']
-        REC_TRIALS_SET = REC_TRIALS_SET.item()
-    else:
-        REC_TRIALS_SET = np.zeros(EACHSTATES)
-    fig, ax = plt.subplots(1, 2, figsize=(6, 3), tight_layout=True)
-    curveslopes_correct, curveintercept_correct, curveslopes_error,\
-        curveintercept_error, data_beh =\
-        bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
-                     NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-                     REC_TRIALS_SET=REC_TRIALS_SET)
-    # print('>>>>>>>>>>> Curve-beh, slopes AC: ',curveslopes_correct)
-    # print('>>>>>>>>>>> Curve-beh, slopes AE: ',curveslopes_error)
-    if(RECORD_TRIALS == 1):
-        dataname = dir+IDX_RAT+'data_beh.npz'
-        np.savez(dataname, **data_beh)
+        # transition bias to behaviour
+        print('Slopes -- Psychometric curves')
+        unique_cohs = [-1, 0, 1]
+        EACHSTATES = 60
+        if(RECORD_TRIALS == 0):
+            dataname = dir+IDX_RAT+'data_beh.npz'
+            data_beh = np.load(dataname, allow_pickle=True)
+            REC_TRIALS_SET = data_beh['REC_TRIALS_SET']
+            REC_TRIALS_SET = REC_TRIALS_SET.item()
+        else:
+            REC_TRIALS_SET = np.zeros(EACHSTATES)
+        fig, ax = plt.subplots(1, 2, figsize=(6, 3), tight_layout=True)
+        curveslopes_correct, curveintercept_correct, curveslopes_error,\
+            curveintercept_error, data_beh =\
+            bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES,
+                         NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
+                         REC_TRIALS_SET=REC_TRIALS_SET)
 
-    auc_repc = np.mean(data_flt['AUCs_repc'])
-    auc_repe = np.mean(data_flt['AUCs_repe'])
-    print('rep, correct:', auc_repc, '; error:', auc_repe)
-    auc_alte = np.mean(data_flt['AUCs_alte'])
-    auc_altc = np.mean(data_flt['AUCs_altc'])
-    print('alt, correct:', auc_altc, '; error:', auc_alte)
+        if(RECORD_TRIALS == 1 and CONTROL==0):
+            dataname = dir+IDX_RAT+'data_beh.npz'
+            np.savez(dataname, **data_beh)
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_beh_ae.npz'
+            np.savez(dataname, **data_beh)
+        if(RECORD_TRIALS == 1  and CONTROL==2):
+            dataname = dir+IDX_RAT+'data_beh_ac.npz'
+            np.savez(dataname, **data_beh)
 
-    # figure ploting -- distribution of bootstrap results
-    fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
-    BOX_WDTH = 0.25
-    ORANGE = np.array((255, 127, 0)) / 255
-    df = {'rep_ac': data_flt['AUCs_repc'], 'rep_ae': data_flt['AUCs_repe'],
-          'alt_ac': data_flt['AUCs_altc'], 'alt_ae': data_flt['AUCs_alte']}
-    order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
-    df = pd.DataFrame(df)
-    from statannot import add_stat_annotation
-    sns.set(style='whitegrid')
+        auc_repc = np.mean(data_flt['AUCs_repc'])
+        auc_repe = np.mean(data_flt['AUCs_repe'])
+        print('rep, correct:', auc_repc, '; error:', auc_repe)
+        auc_alte = np.mean(data_flt['AUCs_alte'])
+        auc_altc = np.mean(data_flt['AUCs_altc'])
+        print('alt, correct:', auc_altc, '; error:', auc_alte)
 
-    ax_ctxt = sns.boxplot(data=df, order=order)
-    box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
-    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=box_pairs,
-                        test='Mann-Whitney', text_format='star', loc='inside',
-                        verbose=2)
+        # figure ploting -- distribution of bootstrap results
+        fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
+        BOX_WDTH = 0.25
+        ORANGE = np.array((255, 127, 0)) / 255
+        df = {'rep_ac': data_flt['AUCs_repc'], 'rep_ae': data_flt['AUCs_repe'],
+              'alt_ac': data_flt['AUCs_altc'], 'alt_ae': data_flt['AUCs_alte']}
+        order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
+        df = pd.DataFrame(df)
+        from statannot import add_stat_annotation
+        sns.set(style='whitegrid')
 
-    fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
-    BOX_WDTH = 0.25
-    ORANGE = np.array((255, 127, 0)) / 255
-    df = {'rep_ac': data_flt_shuffle['AUCs_repc'],
-          'rep_ae': data_flt_shuffle['AUCs_repe'],
-          'alt_ac': data_flt_shuffle['AUCs_altc'],
-          'alt_ae': data_flt_shuffle['AUCs_alte']}
-    order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
-    df = pd.DataFrame(df)
-    from statannot import add_stat_annotation
-    sns.set(style='whitegrid')
-    ax_ctxt = sns.boxplot(data=df, order=order)
-    box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
-    add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=box_pairs,
-                        test='Mann-Whitney', text_format='star', loc='inside',
-                        verbose=2)
-    # box_plot(data=data_flt['AUCs_repc'], ax=ax_ctxt, x=2*0+0.25,
-    #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
-    # box_plot(data=data_flt['AUCs_repe'], ax=ax_ctxt, x=2*0+0.75,
-    #          lw=.5, fliersize=4, color='k', widths=BOX_WDTH)
-    # box_plot(data=data_flt['AUCs_altc'], ax=ax_ctxt, x=2*1+0.25,
-    #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
-    # box_plot(data=data_flt['AUCs_alte'], ax=ax_ctxt, x=2*1+0.75,
-    #          lw=.5, fliersize=4, color='k', widths=BOX_WDTH)
-    # ax_ctxt.set_ylabel('Transition bias impact')
-    # ax_ctxt.set_xticks([0.5, 2.5])
-    # ax_ctxt.set_xticklabels(['Repeating', 'Alternating'])
+        ax_ctxt = sns.boxplot(data=df, order=order)
+        box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
+        add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=box_pairs,
+                            test='Mann-Whitney', text_format='star', loc='inside',
+                            verbose=2)
+
+        fig_ctxt, ax_ctxt = plt.subplots(figsize=(4, 4))
+        BOX_WDTH = 0.25
+        ORANGE = np.array((255, 127, 0)) / 255
+        df = {'rep_ac': data_flt_shuffle['AUCs_repc'],
+              'rep_ae': data_flt_shuffle['AUCs_repe'],
+              'alt_ac': data_flt_shuffle['AUCs_altc'],
+              'alt_ae': data_flt_shuffle['AUCs_alte']}
+        order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
+        df = pd.DataFrame(df)
+        from statannot import add_stat_annotation
+        sns.set(style='whitegrid')
+        ax_ctxt = sns.boxplot(data=df, order=order)
+        box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]
+        add_stat_annotation(ax_ctxt, data=df, order=order, box_pairs=box_pairs,
+                            test='Mann-Whitney', text_format='star', loc='inside',
+                            verbose=2)
+        # box_plot(data=data_flt['AUCs_repc'], ax=ax_ctxt, x=2*0+0.25,
+        #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
+        # box_plot(data=data_flt['AUCs_repe'], ax=ax_ctxt, x=2*0+0.75,
+        #          lw=.5, fliersize=4, color='k', widths=BOX_WDTH)
+        # box_plot(data=data_flt['AUCs_altc'], ax=ax_ctxt, x=2*1+0.25,
+        #          lw=.5, fliersize=4, color=ORANGE, widths=BOX_WDTH)
+        # box_plot(data=data_flt['AUCs_alte'], ax=ax_ctxt, x=2*1+0.75,
+        #          lw=.5, fliersize=4, color='k', widths=BOX_WDTH)
+        # ax_ctxt.set_ylabel('Transition bias impact')
+        # ax_ctxt.set_xticks([0.5, 2.5])
+        # ax_ctxt.set_xticklabels(['Repeating', 'Alternating'])

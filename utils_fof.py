@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # ## EPHYS analysis
-from utilsJ.Behavior import ComPipe
+# from utilsJ.Behavior import ComPipe
 # Load modules and data
 import scipy.signal as ss
 import glob

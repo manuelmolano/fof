@@ -95,7 +95,7 @@ def insert_nans(mat, odd, filling=np.nan):
 
 
 def batch_dms_data(main_folder):
-    rats = ['Patxi', 'Rat15', 'Rat31', 'Rat32', 'Rat7']
+    rats = ['Rat15', 'Rat32']#,'Patxi', 'Rat31', , 'Rat7'
     for r in rats:
         print('xxxxxxxxxxxxxxxx')
         print(r)
@@ -117,7 +117,7 @@ def batch_dms_data(main_folder):
         print('-------------')
 
 
-def get_dms_data(file, ev_algmt='S', pre_post=[-1, 0], w=0.1):
+def get_dms_data(file, ev_algmt='S', pre_post=[-0.1, 0.0], w=0.1):
     """
 
     Parameters
@@ -440,10 +440,10 @@ def plot_psth(algn_spks, pre_post, behav_data, w=5):
 # --- MAIN
 if __name__ == '__main__':
     plt.close('all')
-    area = 'fof'  # 'fof'  # 'dms'
+    area = 'dms'  # 'fof'  # 'dms'
     if area == 'dms':
-        # main_folder = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
-        main_folder = '/home/molano/DMS_electro/DataEphys/pre_processed/'
+        main_folder = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'
+        # main_folder = '/home/molano/DMS_electro/DataEphys/pre_processed/'
         batch_dms_data(main_folder=main_folder)
     elif area == 'fof':
         home = 'molano'

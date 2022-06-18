@@ -673,8 +673,10 @@ def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx,  Xconds_2,
 
     ydata_states_error   = Xstates[error_trial]
 
+    ac_ae_ratio = len(correct_trial)/len(error_trial)
 
-    return Xdata_correct, Xdata_error,correct_trial, error_trial,rses_correct, rses_error, \
+
+    return ac_ae_ratio,Xdata_correct, Xdata_error,correct_trial, error_trial,rses_correct, rses_error, \
         Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\
         Xcohs_0_error, ydata_bias_correct, ydata_bias_error, ydata_xor_correct,\
         ydata_xor_error, ydata_conds_correct, ydata_conds_error,\

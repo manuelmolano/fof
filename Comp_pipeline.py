@@ -14,6 +14,7 @@ import seaborn as sns
 import pandas as pd
 import os
 from sklearn import metrics
+from statannot import add_stat_annotation
 
 # self-defined functions
 import general_util_ctxtgt as guc
@@ -26,7 +27,7 @@ image_format = 'svg'  # e.g .png, .svg, etc.
 dpii = 300
 
 # %
-import get_data as gd
+# import get_data as gd
 
 
 def rm_top_right_lines(ax):
@@ -225,6 +226,7 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
     metadata       = {}
     pseudo_neurons = 0
     remarkfile     = ""
+    ac_ae_ratio_set = []
     for i in range(len(files)):
         for T in ['correct', 'error']:
             Xdata_set[i, T]   = {}
@@ -233,6 +235,7 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
             Xdata_hist_set[i, T]   = {}
             ylabels_hist_set[i, T] = {}
 
+    
     files = [f for f in files if f.find('data_dec') == -1]
     for idxs, f in enumerate(files):
         if icount < 0:
@@ -262,7 +265,7 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
                                  rw, obsc, BLOCK_CTXT=1)
 
         ### Function to separate after correct dataset from after error dataset 
-        Xdata_correct, Xdata_error, correct_trial, error_trial, rses_correct,\
+        ace_ratio,Xdata_correct, Xdata_error, correct_trial, error_trial, rses_correct,\
             rses_error, Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\
             Xcohs_0_error, ydata_bias_correct, ydata_bias_error,\
             ydata_xor_correct,\
@@ -276,6 +279,7 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
                                   Xconds_2, Xacts_1, Xrws_1, Xlfs_1, Xrse_6, rses,
                                   Xacts_0, Xgts_0, Xcohs_0, Xdata_trialidx,
                                   Xstates, margin=[1, 2], idd=1)
+        ac_ae_ratio_set.append(ace_ratio)
 
 
         ### To integrate all the env/behaviour variables that are further used as labels together
@@ -311,10 +315,11 @@ def get_all_quantities(files, numtrans=0, SKIPNAN=0):
                           'AEtrials': np.shape(Xdata_error)[0],
                           }
 
-    lst = [Xdata_set, Xdata_hist_set,
+    overall_ac_ae_ratio = np.mean(ac_ae_ratio_set)
+    lst = [overall_ac_ae_ratio,Xdata_set, Xdata_hist_set,
            ylabels_set, ylabels_hist_set,
            Xcohs_0, files, metadata]
-    stg = ["Xdata_set, Xdata_hist_set,"
+    stg = ["overall_ac_ae_ratio, Xdata_set, Xdata_hist_set,"
            "ylabels_set, ylabels_hist_set,"
            "Xcohs_0, files, metadata"]
     d = list_to_dict(lst=lst, string=stg)
@@ -421,7 +426,7 @@ def get_dec_axes(data_tr, wc, bc, we, be, false_files, mode='decoding',
                                        unique_states, unique_cohs, files,
                                        false_files, type, DOREVERSE=DOREVERSE,
                                        CONTROL=CONTROL, n_iterations=NITERATIONS,
-                                       N_pseudo_dec=NPSEUDODEC,
+                                       N_pseudo_dec=NPSEUDODEC, ACE_RATIO = ACE_RATIO,
                                        train_percent=PERCENTTRAIN,
                                        RECORD_TRIALS=RECORD_TRIALS,
                                        RECORDED_TRIALS_SET=REC_TRIALS_SET)
@@ -1402,6 +1407,7 @@ if __name__ == '__main__':
     SVMAXIS = 3
     AX_PREV_CH_OUTC = {'c': [2, 3], 'e': [0, 1]}
     NITERATIONS, NPSEUDODEC, PERCENTTRAIN = 50, 50, 0.6
+    ACE_RATIO = 0.5 #default
     '''
     training: 30 per state, 30*4*2=240 trials per train
     testing:  20 per state, 20*4*2=160 trials per test
@@ -1411,7 +1417,7 @@ if __name__ == '__main__':
     DOREVERSE = 0
 
     RECORD_TRIALS = 1
-    CONTROL = 1#normal#1#ae trained#2#ac trained
+    CONTROL = 0#normal#1#ae trained#2#ac trained
 
     # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
     # XLIMS_2D = [-3, 3]
@@ -1433,7 +1439,7 @@ if __name__ == '__main__':
     YTICKS_CTXT = [-10, 0, 10]  # [-15, 0, 15]
     YLIM_CTXT = [-10, 0, 10]  # [-15.2, 15.2]
 
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'files_pop_analysis/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/00-01s/'#'files_pop_analysis/'
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
     rats =  ['Rat15',] #['Patxi',  'Rat31', 'Rat15', 'Rat7',
@@ -1451,6 +1457,7 @@ if __name__ == '__main__':
         # Whether to skip the NaN at the beginning or not
         SKIPNAN = 0
         data_tr = get_all_quantities(files, numtrans=0, SKIPNAN=SKIPNAN)
+        ACE_RATIO=data_tr['overall_ac_ae_ratio']
 
         unique_states = np.arange(8)
         unique_cohs = [-1, 0, 1]
@@ -1582,7 +1589,7 @@ if __name__ == '__main__':
               'alt_ae': data_flt_shuffle['AUCs_alte']}
         order = ['rep_ac', 'rep_ae', 'alt_ac', 'alt_ae']
         df = pd.DataFrame(df)
-        from statannot import add_stat_annotation
+        
         sns.set(style='whitegrid')
         ax_ctxt = sns.boxplot(data=df, order=order)
         box_pairs = [('rep_ac', 'rep_ae'), ('alt_ac', 'alt_ae'), ('rep_ae', 'alt_ae')]

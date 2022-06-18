@@ -94,17 +94,22 @@ def insert_nans(mat, odd, filling=np.nan):
     return new_mat
 
 
-def batch_dms_data(main_folder):
-    rats = ['Rat15', 'Rat32']#,'Patxi', 'Rat31', , 'Rat7'
-    for r in rats:
+def batch_dms_data(main_folder, rt_limit=1):
+    rats = ['Rat31', 'Rat15', 'Rat32', 'Rat7', 'Patxi']
+    fig, ax = plt.subplots(nrows=2, ncols=3)
+    ax = ax.flatten()
+    for i_r, r in enumerate(rats):
         print('xxxxxxxxxxxxxxxx')
         print(r)
         files = glob.glob(main_folder+'/'+r+'*mat')
         num_unts = []
+        reaction_times = []
         for f in files:
             # print('--------------------------')
             # print(f)
-            data, units = get_dms_data(file=f)
+            data, units, rts = get_dms_data(file=f)
+            rts = [r[0] for r in rts if r < rt_limit]
+            reaction_times += rts
             num_unts.append(len(units))
         num_unts = np.array(num_unts)
         print('-------------')
@@ -115,6 +120,9 @@ def batch_dms_data(main_folder):
         print('Median number of units in sessions with units')
         print(np.median(num_unts[num_unts != 0]))
         print('-------------')
+        ax[i_r].hist(reaction_times, 100)
+        ax[i_r].set_title(r)
+        fig.savefig(main_folder+'/reaction_times.png')
 
 
 def get_dms_data(file, ev_algmt='S', pre_post=[-0.1, 0.0], w=0.1):
@@ -197,6 +205,8 @@ def get_dms_data(file, ev_algmt='S', pre_post=[-0.1, 0.0], w=0.1):
     all_evs_times = mat['ev_times_ss']
     spk_times = mat['spk_times_ss']
     ev_times = all_evs_times[:, ev_times_lbl == ev_algmt]
+    rts = all_evs_times[:, ev_times_lbl == 'MT'] -\
+        all_evs_times[:, ev_times_lbl == 'S']
     data = {}
     if len(spk_times) > 0:
         units = np.unique(spk_times[:, 1])
@@ -235,7 +245,7 @@ def get_dms_data(file, ev_algmt='S', pre_post=[-0.1, 0.0], w=0.1):
         #         print(data[k][-10:])
     else:
         units = []
-    return data, units
+    return data, units, rts
 
 
 def batch_fof_data(inv, main_folder, pre_post=[-1000, 1000], sel_sess=[],

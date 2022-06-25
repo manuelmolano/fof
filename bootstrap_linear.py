@@ -5,10 +5,16 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LinearRegression
 import generate_pseudo_trials as gpt
 from collections import Counter
+import matplotlib.pyplot as plt
+import math
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import scipy.stats as sstats
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 
 PRINT_PER = 1000
 
-def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
+def bootstrap_linsvm_PCA_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[],REDUCED_PC_TO=2):
 
     ### ac/ae ratio 
     CRATIO = ACE_RATIO/(1+ACE_RATIO)
@@ -20,11 +26,11 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
     itest   = N_pseudo_dec-ntrain
 
     Xtest_set_correct, ytest_set_correct, =\
-        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, REDUCED_PC_TO)),\
         np.zeros((n_iterations, ntest, nlabels))  
 
     Xtest_set_error, ytest_set_error, =\
-        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, REDUCED_PC_TO)),\
         np.zeros((n_iterations, ntest, nlabels))  
 
     yevi_set_correct = np.zeros((n_iterations, ntest, 3+2))
@@ -48,6 +54,7 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
     print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
     
     
+   
 
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
@@ -77,6 +84,30 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         # Sampling with replacement..whichever is not used in training data
         # will be used in test data
         # recording support vectors
+        if (REDUCED_PC_TO):
+            Xdata_converge   = np.append(Xdata_trainc, Xdata_traine, axis=0)
+            sc = StandardScaler()
+            Xdata_converge = sc.fit_transform(Xdata_converge)
+            Xdata_trainc = sc.fit_transform(Xdata_trainc)
+            Xdata_traine = sc.fit_transform(Xdata_traine)
+            Xdata_testc  = sc.fit_transform(Xdata_testc)
+            Xdata_teste  = sc.fit_transform(Xdata_teste)
+            pca = PCA(n_components=0.80,svd_solver='full')
+            pca.fit(Xdata_converge)
+            Xdata_testc  = pca.transform(Xdata_testc)
+            Xdata_trainc = pca.transform(Xdata_trainc)
+
+            Xdata_teste  = pca.transform(Xdata_teste)
+            Xdata_traine = pca.transform(Xdata_traine)
+            
+            Xdata_testc = Xdata_testc[:,1:]#[:,::2]#
+            Xdata_teste = Xdata_teste[:,1:]#[:,::2]#
+            Xdata_trainc = Xdata_trainc[:,1:]#[:,::2]#
+            Xdata_traine = Xdata_traine[:,1:]#[:,::2]#
+            print("Explained variance:", pca.n_components_)
+            print("Explained variance:", pca.explained_variance_ratio_)
+
+
         Xsup_vec_act  = {}  # np.zeros((n_iterations,1,NN))
         Xsup_vec_ctxt = {}  # np.zeros((n_iterations,1,NN))
         Xsup_vec_xor  = {}
@@ -90,12 +121,24 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         if(CONTROL==1):
             Xdata_train   = Xdata_traine.copy()
             ylabels_train = ylabels_traine.copy() 
+            # #### adding more
+    
+            # Xdata_traine_,Xdata_teste_=Xmerge_hist_trials_error[0][ntraine+itest:ntraine+itest+ntrainc,:],Xmerge_hist_trials_error[0][ntraine+itest+ntrainc:ntraine+itest,:]
+            # ylabels_traine,ylabels_teste = ymerge_hist_labels_error[0][:ntraine,:],ymerge_hist_labels_error[0][ntraine:ntraine+itest,:]
+            # for state in range(1,4):
+            #     Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_hist_trials_correct[state+4][:ntrainc ,:])),np.vstack((Xdata_testc,Xmerge_hist_trials_correct[state+4][ntrainc:ntrainc+itest,:]))
+            #     ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,ymerge_hist_labels_correct[state+4][:ntrainc,:])),np.vstack((ylabels_testc,ymerge_hist_labels_correct[state+4][ntrainc:ntrainc+itest,:]))
+             
+            #     Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_hist_trials_error[state][:ntraine,:])),np.vstack((Xdata_teste,Xmerge_hist_trials_error[state][ntraine:ntraine+itest,:]))
+            #     ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,ymerge_hist_labels_error[state][:ntraine,:])),np.vstack((ylabels_teste,ymerge_hist_labels_error[state][ntraine:ntraine+itest,:]))
         elif(CONTROL==2):
             Xdata_train   = Xdata_trainc.copy()
             ylabels_train = ylabels_trainc.copy() 
         elif(CONTROL==0):          
             Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
             ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
+
+        print("~~~~~~~~~~~~~~ shape of the training dataset:",np.shape(Xdata_train))
         # fit model
         # model.fit(X_train,y_train) i.e model.fit(train set, train label as it
         # is a classifier)
@@ -115,6 +158,310 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
             ytr_bias[iset]=(bias_labels.most_common(1)[0][0])
         lin_bias.fit(Xdata_train, ytr_bias)
         Xsup_vec_bias[i]  = lin_bias.support_vectors_
+
+        lin_cc.fit(Xdata_train, np.squeeze(ylabels_train[:, 4]))
+        Xsup_vec_cc[i]    = lin_cc.support_vectors_
+
+        ### --- percentage of right choices -----
+        ycchoice = np.zeros(np.shape(ylabels_train)[0])
+        for iset in range(np.shape(ylabels_train)[0]):
+            cchoice_labels = Counter(ylabels_train[iset,4::6])
+            ycchoice[iset] = (cchoice_labels.most_common(1)[0][0])
+        lin_cc.fit(Xdata_train, ycchoice)
+        Xsup_vec_cc[i]    = lin_cc.support_vectors_
+        fig,ax = plt.subplots(figsize=(5,5))
+
+        # get the separating hyperplane
+        w = lin_bias.coef_[0]
+        a = -w[0] / w[1]
+        xx = np.linspace(-5, 5)
+        yy = a * xx -(lin_bias.intercept_[0])/ w[1]
+        margin = 1/np.sqrt(np.sum(lin_bias.coef_**2))
+        yy_down = yy-np.sqrt(1 + a**2)*margin
+        yy_up = yy + np.sqrt(1 + a ** 2) * margin
+
+        ax.plot(xx,yy,'k-')
+        ax.plot(xx,yy_down,'k-')
+        ax.plot(xx,yy_up,'k-')
+
+        # get the separating hyperplane
+        w = lin_cc.coef_[0]
+        a = -w[0] / w[1]
+        xx = np.linspace(-5, 5)
+        yy = a*xx- (lin_cc.intercept_[0]) / w[1]
+        margin = 1 / np.sqrt(np.sum(lin_cc.coef_ ** 2))
+        yy_down = yy- np.sqrt(1 + a**2) * margin
+        yy_up = yy + np.sqrt(1 + a ** 2) * margin
+
+        ax.plot(xx,yy,'r-')
+        ax.plot(xx,yy_down,'r-')
+        ax.plot(xx,yy_up,'r-')
+        ax.scatter(Xdata_train[:,0],Xdata_train[:,1],c=ylabels_train[:,3],s=20)
+        ax.set_xlim([-10,10])
+        ax.set_ylim([-10,10])
+
+        if i == 0:
+            intercepts = np.zeros((1, 3 + 1 + 1))
+            intercepts[:, 0] = lin_pact.intercept_[:]
+            intercepts[:, 1] = lin_ctxt.intercept_[:]
+            intercepts[:, 2] = lin_xor.intercept_[:]
+            intercepts[:, 3] = lin_bias.intercept_[:]
+            intercepts[:, 4] = lin_cc.intercept_[:]
+
+            coeffs = np.zeros((REDUCED_PC_TO, 3 + 1 + 1))
+            coeffs[:, 0] = lin_pact.coef_[:]
+            coeffs[:, 1] = lin_ctxt.coef_[:]
+            coeffs[:, 2] = lin_xor.coef_[:]
+            coeffs[:, 3] = lin_bias.coef_[:]
+            coeffs[:, 4] = lin_cc.coef_[:]
+
+        else:
+            tintercepts = np.zeros((1, 3 + 1 + 1))
+            tintercepts[:, 0] = lin_pact.intercept_[:]
+            tintercepts[:, 1] = lin_ctxt.intercept_[:]
+            tintercepts[:, 2] = lin_xor.intercept_[:]
+            tintercepts[:, 3] = lin_bias.intercept_[:]
+            tintercepts[:, 4] = lin_cc.intercept_[:]
+            intercepts = np.append(intercepts, tintercepts, axis=1)
+
+            tcoeffs = np.zeros((REDUCED_PC_TO, 3 + 1 + 1))
+            tcoeffs[:, 0] = lin_pact.coef_[:]
+            tcoeffs[:, 1] = lin_ctxt.coef_[:]
+            tcoeffs[:, 2] = lin_xor.coef_[:]
+            tcoeffs[:, 3] = lin_bias.coef_[:]
+            tcoeffs[:, 4] = lin_cc.coef_[:]
+            coeffs = np.append(coeffs, tcoeffs, axis=1)
+
+        #### >>>>>>>> testing stage >>>>>>>>>>>>>>>>
+        #### -------- AC testing trials 
+        linw_pact, linb_pact = lin_pact.coef_[:], lin_pact.intercept_[:]
+        linw_ctxt, linb_ctxt = lin_ctxt.coef_[:], lin_ctxt.intercept_[:]
+        linw_xor, linb_xor   = lin_xor.coef_[:],  lin_xor.intercept_[:]
+        linw_bias, linb_bias = lin_bias.coef_[:], lin_bias.intercept_[:]
+        linw_cc, linb_cc     = lin_cc.coef_[:], lin_cc.intercept_[:]
+        # evaluate evidence model
+        evidences_c = np.zeros((ntest, 3 + 2))
+        evidences_c[:, 0] = np.squeeze(
+            Xdata_testc @ linw_pact.reshape(-1, 1) + linb_pact)
+        evidences_c[:, 1] = np.squeeze(
+            Xdata_testc @ linw_ctxt.reshape(-1, 1) + linb_ctxt)
+        evidences_c[:, 2] = np.squeeze(
+            Xdata_testc @ linw_xor.reshape(-1, 1) + linb_xor)
+        evidences_c[:, 3] = np.squeeze(
+            Xdata_testc @ linw_bias.reshape(-1, 1) + linb_bias)
+        evidences_c[:, 4] = np.squeeze(
+            Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
+
+        ### modifying ylabels_testc[:,3], upcoming stimulus category 
+        ytr_test_bias = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            bias_labels=Counter(ylabels_testc[iset,3::6])
+            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
+        ylabels_testc[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            cchoice_labels = Counter(ylabels_testc[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_testc[:,4] = ycchoice_test[:]
+
+        Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
+        
+        if i == 0:
+            yevi_set_correct[i, :, :] = evidences_c.copy()
+        else:
+            yevi_set_correct[i, :, :] = evidences_c.copy()
+
+        #### -------- AE testing trials --------------
+        # evaluate evidence model
+        evidences_e = np.zeros((ntest, 3 + 2))
+        evidences_e[:, 0] = np.squeeze(
+            Xdata_teste @ linw_pact.reshape(-1, 1) + linb_pact)
+        evidences_e[:, 1] = np.squeeze(
+            Xdata_teste @ linw_ctxt.reshape(-1, 1) + linb_ctxt)
+        evidences_e[:, 2] = np.squeeze(
+            Xdata_teste @ linw_xor.reshape(-1, 1) + linb_xor)
+        evidences_e[:, 3] = np.squeeze(
+            Xdata_teste @ linw_bias.reshape(-1, 1) + linb_bias)
+        evidences_e[:, 4] = np.squeeze(
+            Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
+
+        ### modifying ylabels_testc[:,3], upcoming stimulus category 
+        ytr_test_bias = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            bias_labels=Counter(ylabels_teste[iset,3::6])
+            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
+        ylabels_teste[:,3] = ytr_test_bias[:]
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            cchoice_labels = Counter(ylabels_teste[iset,4::6])
+            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+        ylabels_teste[:,4] = ycchoice_test[:]
+
+        Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
+
+        if i == 0:
+            yevi_set_error[i, :, :] = evidences_e.copy()
+        else:
+            yevi_set_error[i, :, :] = evidences_e.copy()
+    return coeffs, intercepts,\
+        Xsup_vec_act, Xsup_vec_ctxt, Xsup_vec_bias, Xsup_vec_cc,\
+        Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
+        Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET
+
+def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
+
+    ### ac/ae ratio 
+    CRATIO = ACE_RATIO/(1+ACE_RATIO)
+    ERATIO = 1-CRATIO
+    # NN      = np.shape(Xdata_hist_set[unique_states[0],'correct'])[1] 
+    nlabels = 6*(len(files)-len(false_files))
+    ntrain  = int(train_percent*N_pseudo_dec) # *4
+    ntest   = (N_pseudo_dec-ntrain)*4 # state
+    itest   = N_pseudo_dec-ntrain
+
+    Xtest_set_correct, ytest_set_correct, =\
+        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, nlabels))  
+
+    Xtest_set_error, ytest_set_error, =\
+        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, nlabels))  
+
+    yevi_set_correct = np.zeros((n_iterations, ntest, 3+2))
+    yevi_set_error   = np.zeros((n_iterations, ntest, 3+2))
+
+    stats = list()
+    lin_pact = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
+                       shrinking=False, tol=1e-6)
+    lin_ctxt = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
+                       shrinking=False, tol=1e-6)
+    lin_xor  = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
+                      shrinking=False, tol=1e-6)
+    # if (STIM_PERIOD==1):
+    # 	lin_bias = LinearRegression()
+    # elif(STIM_PERIOD==0): 
+    lin_bias = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',shrinking=False, tol=1e-6)
+    lin_cc   = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
+                 shrinking=False, tol=1e-6)
+
+    ntrainc = int(N_pseudo_dec/0.5*train_percent*CRATIO)
+    ntraine = N_pseudo_dec/0.5*train_percent-ntrainc
+    ntraine = int(ntraine)  
+    print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
+    
+    
+
+    for i in range(n_iterations):
+        if (i+1) % PRINT_PER == 0:
+            print(i)
+        # print('...... iteration index:', i,'........')
+        ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
+        # N_pseudo_dec, N_pseudo_beh = 100,25
+        Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error,merge_trials_hist=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,2*N_pseudo_dec,RECORD_TRIALS, RECORDED_TRIALS_SET[i])
+
+        if RECORD_TRIALS == 1:
+            RECORDED_TRIALS_SET[i]=merge_trials_hist
+
+
+        #### --------- state 0 -----------------------
+        if CONTROL ==0: 
+            Xdata_trainc,Xdata_testc=Xmerge_hist_trials_correct[4][:ntrainc,:],Xmerge_hist_trials_correct[4][ntrainc:ntrainc+itest,:] 
+            Xdata_traine,Xdata_teste=Xmerge_hist_trials_error[0][:ntraine,:],Xmerge_hist_trials_error[0][ntraine:ntraine+itest,:] 
+            ylabels_trainc,ylabels_testc = ymerge_hist_labels_correct[4][:ntrainc,:],ymerge_hist_labels_correct[4][ntrainc:ntrainc+itest,:] 
+            ylabels_traine,ylabels_teste = ymerge_hist_labels_error[0][:ntraine,:],ymerge_hist_labels_error[0][ntraine:ntraine+itest,:] 
+            for state in range(1,4): 
+                Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_hist_trials_correct[state+4][:ntrainc ,:])),np.vstack((Xdata_testc,Xmerge_hist_trials_correct[state+4][ntrainc:ntrainc+itest,:]))  
+                ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,ymerge_hist_labels_correct[state+4][:ntrainc,:])),np.vstack((ylabels_testc,ymerge_hist_labels_correct[state+4][ntrainc:ntrainc+itest,:]))  
+                Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_hist_trials_error[state][:ntraine,:])),np.vstack((Xdata_teste,Xmerge_hist_trials_error[state][ntraine:ntraine+itest,:])) 
+                ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,ymerge_hist_labels_error[state][:ntraine,:])),np.vstack((ylabels_teste,ymerge_hist_labels_error[state][ntraine:ntraine+itest,:])) 
+        elif CONTROL ==1: 
+            Xdata_testc   = Xmerge_hist_trials_correct[4][ntrainc:ntrainc+itest,:] 
+            ylabels_testc = ymerge_hist_labels_correct[4][ntrainc:ntrainc+itest,:] 
+            Xdata_traine,Xdata_teste=Xmerge_hist_trials_error[0][:ntraine+ntrainc,:],Xmerge_hist_trials_error[0][ntraine+ntrainc:ntrainc+ntraine+itest,:] 
+            ylabels_traine,ylabels_teste = ymerge_hist_labels_error[0][:ntraine+ntrainc,:],ymerge_hist_labels_error[0][ntraine+ntrainc:ntraine+ntrainc+itest,:] 
+            for state in range(1,4):
+	            Xdata_testc = np.vstack((Xdata_testc,Xmerge_hist_trials_correct[state+4][ntrainc:ntrainc+itest,:]))
+	            ylabels_testc = np.vstack((ylabels_testc,ymerge_hist_labels_correct[state+4][ntrainc:ntrainc+itest,:]))
+	         
+	            Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_hist_trials_error[state][:ntrainc+ntraine,:])),np.vstack((Xdata_teste,Xmerge_hist_trials_error[state][ntraine+ntrainc:ntraine+ntrainc+itest,:]))
+	            ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,ymerge_hist_labels_error[state][:ntraine+ntrainc,:])),np.vstack((ylabels_teste,ymerge_hist_labels_error[state][ntraine+ntrainc:ntraine+ntrainc+itest,:]))  
+            unique_choice_pseudo = np.unique(ylabels_traine[:,4::6])  
+            print('~~~~~ ~~~~ unique choice here:',unique_choice_pseudo, np.shape(ylabels_traine))
+        elif CONTROL ==2:
+	        Xdata_trainc,Xdata_testc=Xmerge_hist_trials_correct[4][:ntrainc+ntraine,:],Xmerge_hist_trials_correct[4][ntrainc+ntraine:ntrainc+ntraine+itest,:]
+	        ylabels_trainc,ylabels_testc = ymerge_hist_labels_correct[4][:ntrainc+ntraine,:],ymerge_hist_labels_correct[4][ntrainc+ntraine:ntrainc+ntraine+itest,:]
+
+	        Xdata_teste=Xmerge_hist_trials_error[0][ntraine:ntraine+itest,:]
+	        ylabels_teste = ymerge_hist_labels_error[0][ntraine:ntraine+itest,:]
+	        for state in range(1,4):
+	            Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_hist_trials_correct[state+4][:ntrainc+ntraine ,:])),np.vstack((Xdata_testc,Xmerge_hist_trials_correct[state+4][ntrainc+ntraine:ntraine+ntrainc+itest,:]))
+	            ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,ymerge_hist_labels_correct[state+4][:ntrainc+ntraine,:])),np.vstack((ylabels_testc,ymerge_hist_labels_correct[state+4][ntrainc+ntraine:ntrainc+ntraine+itest,:]))
+	         
+	            Xdata_teste   = np.vstack((Xdata_teste,Xmerge_hist_trials_error[state][ntraine:ntraine+itest,:]))
+	            ylabels_teste = np.vstack((ylabels_teste,ymerge_hist_labels_error[state][ntraine:ntraine+itest,:]))
+        # recording support vectors
+        Xsup_vec_act  = {}  # np.zeros((n_iterations,1,NN))
+        Xsup_vec_ctxt = {}  # np.zeros((n_iterations,1,NN))
+        Xsup_vec_xor  = {}
+        Xsup_vec_bias = {}  # np.zeros((n_iterations,1,NN))
+        Xsup_vec_cc   = {}
+
+
+
+        if(CONTROL==1):
+            if DOREVERSE:
+                ylabels_traine[:, 3] = 1-ylabels_traine[:, 3]
+            Xdata_train   = Xdata_traine.copy()
+            ylabels_train = ylabels_traine.copy() 
+        elif(CONTROL==2):
+            ylabels_trainc = ylabels_trainc - 2
+            ylabels_trainc[:,5::6] +=2 ### coherence
+            Xdata_train   = Xdata_trainc.copy()
+            ylabels_train = ylabels_trainc.copy() 
+        elif(CONTROL==0):  
+            if DOREVERSE:
+                ylabels_traine[:, 3] = 1-ylabels_traine[:, 3]
+            ylabels_trainc = ylabels_trainc - 2
+            ylabels_trainc[:,5::6] +=2 ### coherence
+            Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
+            ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
+        # fit model
+        # model.fit(X_train,y_train) i.e model.fit(train set, train label as it
+        # is a classifier)
+        lin_pact.fit(Xdata_train, np.squeeze(ylabels_train[:, 0]))
+        Xsup_vec_act[i]  = lin_pact.support_vectors_
+
+        lin_ctxt.fit(Xdata_train, np.squeeze(ylabels_train[:, 1]))
+        Xsup_vec_ctxt[i] = lin_ctxt.support_vectors_
+
+        lin_xor.fit(Xdata_train, np.squeeze(ylabels_train[:, 2]))
+        Xsup_vec_xor[i]  = lin_xor.support_vectors_
+        
+        ### ---- most common tr. bias -----------
+
+
+        # if(STIM_PERIOD==1): 
+        #     ycoh_stim = np.zeros(np.shape(ylabels_train)[0]) 
+        #     for iset in range(np.shape(ylabels_train)[0]): 
+        #         cohs_expectation = np.mean(ylabels_train[iset,5::6]) 
+        #         # print('~~~~~~~',ylabels_train[iset,5::6])
+        #         ycoh_stim[iset] = cohs_expectation  
+        #         # if(np.mean(ylabels_train[iset,3::6])>0.5): 
+        #         #     print('~~~~~~~ycoh_stim',iset,' ', ycoh_stim[iset]) 
+        #     ycoh_stim = sstats.zscore(ycoh_stim)
+        #     lin_bias.fit(Xdata_train,ycoh_stim) 
+        # elif(STIM_PERIOD==0): 
+        ytr_bias = np.zeros(np.shape(ylabels_train)[0]) 
+        for iset in range(np.shape(ylabels_train)[0]): 
+            bias_labels=Counter(ylabels_train[iset,3::6]) 
+            ytr_bias[iset]=(bias_labels.most_common(1)[0][0]) 
+        lin_bias.fit(Xdata_train, ytr_bias)
+        Xsup_vec_bias[i]  = lin_bias.support_vectors_
+        # print("~~~~~~~bias:",np.shape(lin_bias.coef_),np.shape(lin_bias.intercept_))
 
         lin_cc.fit(Xdata_train, np.squeeze(ylabels_train[:, 4]))
         Xsup_vec_cc[i]    = lin_cc.support_vectors_
@@ -466,5 +813,333 @@ def shuffle_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, yl
         else:
             yevi_set_error[i, :, :] = evidences_e.copy()
     return coeffs_pool, intercepts_pool, \
+        Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
+        Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET
+
+def bootstrap_linreg_step_stimperiod(Xdata_set,NN, ylabels_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
+    ### ac/ae ratio 
+    CRATIO = ACE_RATIO/(1+ACE_RATIO)
+    ERATIO = 1-CRATIO
+    cohs_true =  [-1.00000000e+00, -7.55200000e-01,  -4.41500000e-01,  4.41500000e-01,  7.55200000e-01, 1.00000000e+0]#[-1., -0.4816, -0.2282 ,  0.2282,  0.4816,  1.] #[-1., -0.4816, -0.2282,  0. ,  0.2282,  0.4816,  1.] 
+    unique_states = np.arange(0, 8, 1)   
+    nlabels   = 6*(len(files)-len(false_files))
+    ntrain    = int(train_percent*N_pseudo_dec) # *4
+    ntest     = (N_pseudo_dec-ntrain)*(len(cohs_true)) # state
+    itest     = N_pseudo_dec-ntrain
+
+    Xtest_set, ytest_set, =\
+        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, nlabels))  
+
+    yevi_set = np.zeros((n_iterations, ntest, 2))
+    lin_stim = LinearRegression()
+    lin_cc   = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
+                 shrinking=False, tol=1e-6)
+
+    for i in range(n_iterations):
+        if (i+1) % PRINT_PER == 0:
+            print(i)
+
+        Xmerge_trials, ymerge_labels,merge_trials =\
+            gpt.merge_pseudo_beh_trials_stimperiod(Xdata_set, ylabels_set, unique_states,
+                                        unique_cohs, files, false_files,
+                                        N_pseudo_dec, RECORD_TRIALS=RECORD_TRIALS,
+                                        RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i])
+        if RECORD_TRIALS == 1:
+            RECORDED_TRIALS_SET[i]=merge_trials
+
+        #### --------- state 0 -----------------------
+        Xdata_train,Xdata_test=Xmerge_trials[cohs_true[0]][:ntrain,:],Xmerge_trials[cohs_true[0]][ntrain:,:]
+        ylabels_train,ylabels_test = ymerge_labels[cohs_true[0]][:ntrain,:],ymerge_labels[cohs_true[0]][ntrain:,:]
+
+        for coh_t in cohs_true[1:]:
+            Xdata_train,Xdata_test = np.vstack((Xdata_train,Xmerge_trials[coh_t][:ntrain ,:])),np.vstack((Xdata_test,Xmerge_trials[coh_t][ntrain:,:]))
+            ylabels_train,ylabels_test = np.vstack((ylabels_train,ymerge_labels[coh_t][:ntrain,:])),np.vstack((ylabels_test,ymerge_labels[coh_t][ntrain:,:]))
+        # prepare train & test sets
+        if DOREVERSE:
+            ylabels_train[:, 3] = 1-ylabels_train[:, 3]
+
+        lin_stim.fit(Xdata_train,ylabels_train[:,5])
+        print('~~~~~~~~Linear Reg training score:',lin_stim.score(Xdata_train,ylabels_train[:,5]))
+        y_predicted = lin_stim.predict(Xdata_test)
+        rmse = mean_squared_error(y_predicted,ylabels_test[:,5])
+        r2   = r2_score(y_predicted,ylabels_test[:,5])        
+        print('~~~~~~~~Linear Reg testing score:',lin_stim.score(Xdata_test,ylabels_test[:,5]), rmse, r2)
+        
+        ### --- percentage of right choices -----
+        ycchoice = np.zeros(np.shape(ylabels_train)[0])
+        for iset in range(np.shape(ylabels_train)[0]):
+            cchoice_labels = Counter(ylabels_train[iset,4::6])
+            ycchoice[iset] = (cchoice_labels.most_common(1)[0][0])
+        lin_cc.fit(Xdata_train, ycchoice)
+        
+        
+        
+
+        if i == 0:
+            intercepts = np.zeros((1, 2))
+            intercepts[:, 0] = lin_stim.intercept_
+            intercepts[:, 1] = lin_cc.intercept_[:]
+
+            coeffs = np.zeros((NN,  2))
+            coeffs[:, 0] = lin_stim.coef_[:]
+            coeffs[:, 1] = lin_cc.coef_[:]
+        else:
+            tintercepts = np.zeros((1, 2))
+            tintercepts[:, 0] = lin_stim.intercept_
+            tintercepts[:, 1] = lin_cc.intercept_[:]
+            intercepts = np.append(intercepts, tintercepts, axis=1)
+
+            tcoeffs = np.zeros((NN, 2))
+            tcoeffs[:, 0] = lin_stim.coef_[:]
+            tcoeffs[:, 1] = lin_cc.coef_[:]
+            coeffs = np.append(coeffs, tcoeffs, axis=1)
+
+        #### >>>>>>>> testing stage >>>>>>>>>>>>>>>>
+        #### -------- AC testing trials 
+        linw_stim, linb_stim = lin_stim.coef_[:], lin_stim.intercept_
+        linw_cc, linb_cc     = lin_cc.coef_[:], lin_cc.intercept_[:]
+        # evaluate evidence model
+        evidences_ = np.zeros((ntest, 2))
+        evidences_[:, 0] = lin_stim.predict(Xdata_test)#np.squeeze(
+            # Xdata_test @ linw_stim.reshape(-1, 1) + linb_stim)
+        evidences_[:, 1] = np.squeeze(
+            Xdata_test @ linw_cc.reshape(-1, 1) + linb_cc)
+        Xtest_set[i, :, :], ytest_set[i, :, :]=Xdata_test[:, :].copy(), ylabels_test[:, :].copy()
+        
+        if i == 0:
+            yevi_set[i, :, :] = evidences_.copy()
+        else:
+            yevi_set[i, :, :] = evidences_.copy()
+
+    return coeffs, intercepts,\
+        Xtest_set, ytest_set, yevi_set,\
+        RECORDED_TRIALS_SET
+        
+def bootstrap_linsvm_step_fixationperiod(Xdata_set,NN, ylabels_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
+    ### ac/ae ratio 
+    CRATIO = ACE_RATIO/(1+ACE_RATIO)
+    ERATIO = 1-CRATIO
+    # NN      = np.shape(Xdata_hist_set[unique_states[0],'correct'])[1] 
+    nlabels = (len(files)-len(false_files))
+    ntrain  = int(train_percent*N_pseudo_dec) # *4
+    ntest   = (N_pseudo_dec-ntrain)*4 # state
+    itest   = N_pseudo_dec-ntrain
+    
+    ### ONLY USE COHERENCE = 0
+    COHAXIS = 1
+
+    Xtest_set_correct, ytest_set_correct, =\
+        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, nlabels))  
+
+    Xtest_set_error, ytest_set_error, =\
+        np.zeros((n_iterations, ntest, NN)),\
+        np.zeros((n_iterations, ntest, nlabels))  
+
+    yevi_set_correct = np.zeros((n_iterations, ntest, 3+2))
+    yevi_set_error   = np.zeros((n_iterations, ntest, 3+2))
+
+    # lin_cc   = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
+    #              shrinking=False, tol=1e-6)
+    lin_cc   = LinearRegression()
+
+    ntrainc = int(N_pseudo_dec/0.5*train_percent*CRATIO)
+    ntraine = N_pseudo_dec/0.5*train_percent-ntrainc
+    ntraine = int(ntraine)  
+    print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
+    
+    
+    i_sucess = -1
+    for i in range(n_iterations):
+        if (i+1) % PRINT_PER == 0:
+            print(i)
+        # print('...... iteration index:', i,'........')
+        ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
+        # N_pseudo_dec, N_pseudo_beh = 100,25
+        Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error,merge_trials=gpt.merge_pseudo_beh_trials(Xdata_set, ylabels_set, unique_states,unique_cohs, files, false_files, [],
+                                        2*N_pseudo_dec, RECORD_TRIALS=RECORD_TRIALS,
+                                        RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)
+        
+        # ###### [:, idx]!!!!!!
+        # ymerge_labels_correct = ymerge_labels_correct.T 
+        # ymerge_labels_error   = ymerge_labels_error.T
+
+        if RECORD_TRIALS == 1:
+            RECORDED_TRIALS_SET[i]=merge_trials
+
+
+        # #### --------- state 0 -----------------------
+        # Xdata_trainc,Xdata_testc=Xmerge_trials_correct[4,COHAXIS][:ntrainc,:],Xmerge_trials_correct[4,COHAXIS][ntrainc:ntrainc+itest,:]
+        # ylabels_trainc,ylabels_testc = (ymerge_labels_correct[4,COHAXIS].T)[:ntrainc,:],(ymerge_labels_correct[4,COHAXIS].T)[ntrainc:ntrainc+itest,:]
+        # # print('~~~~~~~',(ymerge_labels_correct[4,COHAXIS].T)[ntrainc:ntrainc+itest,:5])
+
+        # Xdata_traine,Xdata_teste=Xmerge_trials_error[0,COHAXIS][:ntraine,:],Xmerge_trials_error[0,COHAXIS][ntraine:ntraine+itest,:]
+        # ylabels_traine,ylabels_teste = (ymerge_labels_error[0,COHAXIS].T)[:ntraine,:],(ymerge_labels_error[0,COHAXIS].T)[ntraine:ntraine+itest,:]
+        # # print('~~~~~~~',(ymerge_labels_error[0,COHAXIS].T)[ntrainc:ntrainc+itest,:5])
+        # for state in range(1,4):
+        #     Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_trials_correct[state+4,COHAXIS][:ntrainc ,:])),np.vstack((Xdata_testc,Xmerge_trials_correct[state+4,COHAXIS][ntrainc:ntrainc+itest,:]))
+        #     ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,(ymerge_labels_correct[state+4,COHAXIS].T)[:ntrainc,:])),np.vstack((ylabels_testc,(ymerge_labels_correct[state+4,COHAXIS].T)[ntrainc:ntrainc+itest,:]))
+        #     # print(state+4,'~~~~~~~',(ymerge_labels_correct[state+4,COHAXIS].T)[ntrainc:ntrainc+itest,:5])
+         
+        #     Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_trials_error[state,COHAXIS][:ntraine,:])),np.vstack((Xdata_teste,Xmerge_trials_error[state,COHAXIS][ntraine:ntraine+itest,:]))
+        #     ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,(ymerge_labels_error[state,COHAXIS].T)[:ntraine,:])),np.vstack((ylabels_teste,(ymerge_labels_error[state,COHAXIS].T)[ntraine:ntraine+itest,:]))
+        ### --------- state 0 ----------------------- 
+        if CONTROL ==0: 
+            Xdata_trainc,Xdata_testc=Xmerge_trials_correct[4,COHAXIS][:ntrainc,:],Xmerge_trials_correct[4,COHAXIS][ntrainc:ntrainc+itest,:] 
+            ylabels_trainc,ylabels_testc = (ymerge_labels_correct[4,COHAXIS].T)[:ntrainc,:],(ymerge_labels_correct[4,COHAXIS].T)[ntrainc:ntrainc+itest,:] 
+            # print('~~~~~~~shape',np.shape(Xdata_trainc),ntraine+ntrainc) 
+            Xdata_traine,Xdata_teste=Xmerge_trials_error[0,COHAXIS][:ntraine,:],Xmerge_trials_error[0,COHAXIS][ntraine:ntraine+itest,:]
+            ylabels_traine,ylabels_teste = (ymerge_labels_error[0,COHAXIS].T)[:ntraine,:],(ymerge_labels_error[0,COHAXIS].T)[ntraine:ntraine+itest,:] 
+            for state in range(1,4):  
+                Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_trials_correct[state+4,COHAXIS][:ntrainc ,:])),np.vstack((Xdata_testc,Xmerge_trials_correct[state+4,COHAXIS][ntrainc:ntrainc+itest,:])) 
+                ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,(ymerge_labels_correct[state+4,COHAXIS].T)[:ntrainc,:])),np.vstack((ylabels_testc,(ymerge_labels_correct[state+4,COHAXIS].T)[ntrainc:ntrainc+itest,:]))
+                Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_trials_error[state,COHAXIS][:ntraine,:])),np.vstack((Xdata_teste,Xmerge_trials_error[state,COHAXIS][ntraine:ntraine+itest,:])) 
+                ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,(ymerge_labels_error[state,COHAXIS].T)[:ntraine,:])),np.vstack((ylabels_teste,(ymerge_labels_error[state,COHAXIS].T)[ntraine:ntraine+itest,:]))  
+        elif CONTROL ==1:  
+            Xdata_testc   = Xmerge_trials_correct[4,COHAXIS][ntrainc:ntrainc+itest,:]  
+            ylabels_testc = (ymerge_labels_correct[4,COHAXIS].T)[ntrainc:ntrainc+itest,:] 
+            Xdata_traine,Xdata_teste=Xmerge_trials_error[0,COHAXIS][:ntraine+ntrainc,:],Xmerge_trials_error[0,COHAXIS][ntraine+ntrainc:ntrainc+ntraine+itest,:] 
+            # print('~~~~~~~shape',np.shape(Xdata_traine),ntraine+ntrainc)
+            ylabels_traine,ylabels_teste = (ymerge_labels_error[0,COHAXIS].T)[:ntraine+ntrainc,:],(ymerge_labels_error[0,COHAXIS].T)[ntraine+ntrainc:ntraine+ntrainc+itest,:] 
+            for state in range(1,4): 
+                Xdata_testc = np.vstack((Xdata_testc,Xmerge_trials_correct[state+4,COHAXIS][ntrainc:ntrainc+itest,:])) 
+                ylabels_testc = np.vstack((ylabels_testc,(ymerge_labels_correct[state+4,COHAXIS].T)[ntrainc:ntrainc+itest,:])) 
+                Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_trials_error[state,COHAXIS][:ntrainc+ntraine,:])),np.vstack((Xdata_teste,Xmerge_trials_error[state,COHAXIS][ntraine+ntrainc:ntraine+ntrainc+itest,:])) 
+                ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,(ymerge_labels_error[state,COHAXIS].T)[:ntraine+ntrainc,:])),np.vstack((ylabels_teste,(ymerge_labels_error[state,COHAXIS].T)[ntraine+ntrainc:ntraine+ntrainc+itest,:])) 
+            
+            ### unique choice 
+            unique_choice_pseudo = np.unique(ylabels_traine[:,4::6])
+            # print('~~~~~ 0 coh ~~~~~ unique choice here:',unique_choice_pseudo,np.shape(ylabels_traine))
+        elif CONTROL ==2: 
+            Xdata_trainc,Xdata_testc=Xmerge_trials_correct[4,COHAXIS][:ntrainc+ntraine,:],Xmerge_trials_correct[4,COHAXIS][ntrainc+ntraine:ntrainc+ntraine+itest,:]
+            ylabels_trainc,ylabels_testc = (ymerge_labels_correct[4,COHAXIS].T)[:ntrainc+ntraine,:],(ymerge_labels_correct[4,COHAXIS].T)[ntrainc+ntraine:ntrainc+ntraine+itest,:] 
+            Xdata_teste=Xmerge_trials_error[0,COHAXIS][ntraine:ntraine+itest,:] 
+            ylabels_teste = (ymerge_labels_error[0,COHAXIS].T)[ntraine:ntraine+itest,:] 
+            for state in range(1,4): 
+                Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_trials_correct[state+4,COHAXIS][:ntrainc+ntraine ,:])),np.vstack((Xdata_testc,Xmerge_trials_correct[state+4,COHAXIS][ntrainc+ntraine:ntraine+ntrainc+itest,:]))  
+                ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,(ymerge_labels_correct[state+4,COHAXIS].T)[:ntrainc+ntraine,:])),np.vstack((ylabels_testc,(ymerge_labels_correct[state+4,COHAXIS].T)[ntrainc+ntraine:ntrainc+ntraine+itest,:])) 
+                Xdata_teste   = np.vstack((Xdata_teste,Xmerge_trials_error[state,COHAXIS][ntraine:ntraine+itest,:])) 
+                ylabels_teste = np.vstack((ylabels_teste,(ymerge_labels_error[state,COHAXIS].T)[ntraine:ntraine+itest,:]))
+
+        
+        ###### labels have no other labels except Behaviours/Stimulus
+        if(CONTROL==1): 
+            if DOREVERSE: 
+                ylabels_traine[:, :] = 1-ylabels_traine[:, :]
+            Xdata_train   = Xdata_traine.copy()
+            ylabels_train = ylabels_traine.copy() 
+        elif(CONTROL==2): 
+            Xdata_train    = Xdata_trainc.copy()
+            ### already substract 2 in previous step
+            ylabels_train = ylabels_trainc.copy() 
+        elif(CONTROL==0):   
+            if DOREVERSE:
+                ylabels_traine[:, :] = 1-ylabels_traine[:, :]
+            # already substract 2 in previous step
+            Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
+            
+            ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
+
+        
+
+        ### --- percentage of right choices -----
+        # ycchoice = np.zeros(np.shape(ylabels_train)[0])
+        # for iset in range(np.shape(ylabels_train)[0]):
+        #     cchoice_labels = Counter(ylabels_train[iset,:])
+        #     ycchoice[iset] = (cchoice_labels.most_common(1)[0][0])
+            
+        ycchoice = np.zeros(np.shape(ylabels_train)[0])
+        for iset in range(np.shape(ylabels_train)[0]):
+            cchoice_labels = Counter(ylabels_train[iset,:])
+            ycchoice[iset] = cchoice_labels[1]/np.shape(ylabels_train)[1]
+        
+        try:        
+            lin_cc.fit(Xdata_train, ycchoice)
+            print('sucessful',i,' iteration')
+            i_sucess  +=1
+        except:
+            print('The number of classes has to be greater than onfthe e; got 1 class')
+            continue
+
+        if i_sucess == 0:
+            intercepts = np.zeros((1, 3 + 1 + 1))
+            intercepts[:, 4] = lin_cc.intercept_#[:]
+
+            coeffs = np.zeros((NN, 3 + 1 + 1))
+            coeffs[:, 4] = lin_cc.coef_[:]
+
+        else:
+            tintercepts = np.zeros((1, 3 + 1 + 1))
+            tintercepts[:, 4] = lin_cc.intercept_#[:]
+            intercepts = np.append(intercepts, tintercepts, axis=1)
+
+            tcoeffs = np.zeros((NN, 3 + 1 + 1))
+            tcoeffs[:, 4] = lin_cc.coef_[:]
+            coeffs = np.append(coeffs, tcoeffs, axis=1)
+
+        #### >>>>>>>> testing stage >>>>>>>>>>>>>>>>
+        #### -------- AC testing trials 
+        linw_cc, linb_cc     = lin_cc.coef_[:], lin_cc.intercept_#[:]
+        # evaluate evidence model
+        evidences_c = np.zeros((ntest, 3 + 2))
+        evidences_c[:, 4] = np.squeeze(
+            Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
+
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_testc)[0])
+        for iset in range(np.shape(ylabels_testc)[0]):
+            cchoice_labels = Counter(ylabels_testc[iset,:])
+            # ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+            ycchoice_test[iset] = cchoice_labels[1]/np.shape(ylabels_testc)[1]
+            
+        ylabels_testc[:,4] = ycchoice_test[:]
+        print('~~~~~~test c:',np.mean(ylabels_testc[:,4]))
+        
+        ypredict_choice = lin_cc.predict(Xdata_testc)
+        # print('~~~~shape:',np.shape(ylabels_testc[:,4].flatten()),np.shape(np.squeeze(ylabels_testc[:,4])),np.shape(ypredict_choice))
+        # prediction_correct = accuracy_score((ylabels_testc[:,4]).flatten(),ypredict_choice)
+        rmse_correct = mean_squared_error(ypredict_choice,ylabels_testc[:,4])
+        r2_correct   = r2_score(ypredict_choice,ylabels_testc[:,4])     
+
+        Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
+        
+        if i_sucess == 0:
+            yevi_set_correct[i, :, :] = evidences_c.copy()
+        else:
+            yevi_set_correct[i, :, :] = evidences_c.copy()
+
+        #### -------- AE testing trials --------------
+        # evaluate evidence model
+        evidences_e = np.zeros((ntest, 3 + 2))
+        evidences_e[:, 4] = np.squeeze(
+            Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
+
+
+        ### --- percentage of right choices -----
+        ycchoice_test = np.zeros(np.shape(ylabels_teste)[0])
+        for iset in range(np.shape(ylabels_teste)[0]):
+            cchoice_labels = Counter(ylabels_teste[iset,:])
+            # ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
+            ycchoice_test[iset] = cchoice_labels[1]/np.shape(ylabels_teste)[1]
+        ylabels_teste[:,4] = ycchoice_test[:]
+        print('~~~~~~test e:',np.mean(ylabels_teste[:,4]))
+        ypredict_choice = lin_cc.predict(Xdata_teste)
+        # prediction_error = accuracy_score((ylabels_teste[:,4]).flatten(),ypredict_choice)
+        rmse_error = mean_squared_error(ypredict_choice,ylabels_teste[:,4])
+        r2_error   = r2_score(ypredict_choice,ylabels_teste[:,4])  
+        
+        # print('~~~~~~~~ performance:', prediction_correct,prediction_error)
+        print('~~~~~~~~ performance:', rmse_correct, '  ', rmse_error)
+        print('~~~~~~~ R2:', r2_correct,'    ',r2_error)
+
+        Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
+
+        if i_sucess  == 0:
+            yevi_set_error[i, :, :] = evidences_e.copy()
+        else:
+            yevi_set_error[i, :, :] = evidences_e.copy()
+    return coeffs, intercepts,\
         Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
         Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET

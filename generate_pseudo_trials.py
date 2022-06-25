@@ -65,7 +65,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
     correct_false = []
 
     min_beh_trials = 1e5
-    num_beh_trials = np.zeros((3,8,len(files)))
+    num_beh_trials = np.zeros((len(unique_cohs),8,len(files)))
     min_beh_trials = 1e5
 
     for idxf in range(len(files)):
@@ -281,7 +281,7 @@ def shuffle_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,f
                     Xmerge_trials_correct[state] = data_shuffle
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
-def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
+def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,metadata,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     yright_ratio_correct = {}
@@ -296,16 +296,28 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 if(idxf in falsefiles):
                     continue
                 data_temp  = Xdata_set[idxf,'correct'].copy()
+                label_temp = ylabels_set[idxf,'correct'].copy()
                 temp_trials = []
                 temp_beh    = []
                 for choice in unique_choices: 
                     if np.shape(temp_trials)[0]==0:
                         temp_trials= data_temp[state,coh,choice]
-                        temp_beh   = choice*np.ones(np.shape(temp_trials)[0])
+                        if(STIM_BEH==0):
+                            temp_beh   = label_temp[state,coh,choice][:,3::6]-2
+                            temp_beh   = temp_beh.flatten()
+                        elif(STIM_BEH==1):
+                            temp_beh   = choice*np.ones(np.shape(temp_trials)[0])
+                        # print('~~~~~~~~~~~ shape labels:',np.shape(temp_beh))
+                        # temp_beh   = np.reshape(temp_beh,(1,-1))
                     else:
-                        temp_trials= np.vstack((temp_trials,data_temp[state,coh,choice]))
-                        temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
-                totaltrials = np.shape(temp_trials)[0]              
+                        temp_trials = np.vstack((temp_trials,data_temp[state,coh,choice]))
+                        pend_ylabel = label_temp[state,coh,choice][:,3::6]-2
+                        pend_ylabel = pend_ylabel.flatten()
+                        if(STIM_BEH==0):
+                            temp_beh   = np.hstack((temp_beh,pend_ylabel))
+                        elif(STIM_BEH==1):
+                            temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
+                totaltrials = np.shape(temp_trials)[0]   
                 
                 if(RECORD_TRIALS):
                     idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
@@ -313,9 +325,17 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 else:
                     idxsample = RECORDED_TRIALS_SET[state,coh,idxf]
                 try:
-                    ymerge_labels_correct[state,coh] = np.vstack((ymerge_labels_correct[state,coh],temp_beh[idxsample])) 
+                    # if(STIM_BEH==1):
+                    #     labels = np.reshape(temp_beh[idxsample],(-1,1))
+                    # elif(STIM_BEH==0):
+                    #     labels = temp_beh[idxsample].copy()
+                    ymerge_labels_correct[state,coh] = np.vstack((ymerge_labels_correct[state,coh],temp_beh[idxsample])) #labels))
                     Xmerge_trials_correct[state,coh] = np.hstack((Xmerge_trials_correct[state,coh],temp_trials[idxsample,:]))
                 except:
+                    # if(STIM_BEH==1):
+                    #     labels = np.reshape(temp_beh[idxsample],(-1,1))
+                    # elif(STIM_BEH==0):
+                    #     labels = temp_beh[idxsample].copy()
                     ymerge_labels_correct[state,coh] = temp_beh[idxsample]#[np.sum(temp_beh[idxsample])/len(idxsample)]
                     Xmerge_trials_correct[state,coh] = temp_trials[idxsample,:]
     for state in unique_states:
@@ -326,29 +346,90 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 if(idxf in falsefiles):
                     continue
                 data_temp  = Xdata_set[idxf,'error'].copy()
+                label_temp = ylabels_set[idxf,'error'].copy()
                 temp_trials = []
                 temp_beh    = []
                 for choice in unique_choices: 
                     if np.shape(temp_trials)[0]==0:
                         temp_trials= data_temp[state,coh,choice]
-                        temp_beh   = choice*np.ones(np.shape(temp_trials)[0])
+                        if(STIM_BEH==0):
+                            temp_beh   = label_temp[state,coh,choice][:,3::6]#choice*np.ones(np.shape(temp_trials)[0])
+                            temp_beh   = temp_beh.flatten()
+                        elif(STIM_BEH==1):
+                            temp_beh   = choice*np.ones(np.shape(temp_trials)[0])
                     else:
-                        temp_trials= np.vstack((temp_trials,data_temp[state,coh,choice]))
-                        temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
-                totaltrials = np.shape(temp_trials)[0]              
+                        temp_trials = np.vstack((temp_trials,data_temp[state,coh,choice]))
+                        pend_ylabel = label_temp[state,coh,choice][:,3::6]
+                        pend_ylabel = pend_ylabel.flatten()
+                        if(STIM_BEH==0):
+                            temp_beh   = np.hstack((temp_beh,pend_ylabel))
+                        elif(STIM_BEH==1):
+                            temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
+                        # temp_beh   = np.hstack((temp_beh,choice*np.ones(np.shape(data_temp[state,coh,choice])[0])))
+                totaltrials = np.shape(temp_trials)[0]  
                 
                 if(RECORD_TRIALS):
                     idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
                     merge_trials[state,coh,idxf] = idxsample
                 else:
                     idxsample = RECORDED_TRIALS_SET[state,coh,idxf]
-                try:
-                    ymerge_labels_error[state,coh] = np.vstack((ymerge_labels_error[state,coh],temp_beh[idxsample])) 
+                try:                    
+                    ymerge_labels_error[state,coh] = np.vstack((ymerge_labels_error[state,coh],temp_beh[idxsample]))# np.hstack((ymerge_labels_correct[state,coh],labels))# 
                     Xmerge_trials_error[state,coh] = np.hstack((Xmerge_trials_error[state,coh],temp_trials[idxsample,:]))
                 except:
                     ymerge_labels_error[state,coh] = temp_beh[idxsample]#[np.sum(temp_beh[idxsample])/len(idxsample)]
                     Xmerge_trials_error[state,coh] = temp_trials[idxsample,:]
+                # print('~~~~~~~~',np.shape(ymerge_labels_error[state,coh]))
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials
+
+
+def merge_pseudo_beh_trials_stimperiod(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[]):
+    unique_choices = [0,1]
+    cohs_true      =  [-1.00000000e+00, -7.55200000e-01,  -4.41500000e-01, -0.00000000e+00,  4.41500000e-01,  7.55200000e-01, 1.00000000e+0]#[-1., -0.4816, -0.2282,  0. ,  0.2282,  0.4816,  1.] #[-1., -0.4816, -0.2282,  0. ,  0.2282,  0.4816,  1.]    
+    Xmerge_trials,ymerge_labels = {},{}
+    merge_trials = {}
+
+    for coh_t in cohs_true:
+    	for idxf in range(len(vfiles)): 
+            if(idxf in falsefiles):  
+                continue 
+            temp_trials = [] 
+            temp_beh    = [] 
+            for state in unique_states: 
+                for coh in unique_cohs: 
+                    for choice in unique_choices: 
+                        if state<4: 
+                            data_temp  = Xdata_set[idxf,'error'][state,coh,choice].copy() 
+                            label_temp = ylabels_set[idxf,'error'][state,coh,choice].copy() 
+                        elif(state>=4): 
+                            data_temp  = Xdata_set[idxf,'correct'][state,coh,choice].copy() 
+                            label_temp = ylabels_set[idxf,'correct'][state,coh,choice].copy()-2 
+                            label_temp[:,5]+=2
+                        possible_cohs = (label_temp[:,5].copy()).flatten() 
+                        possible_trials = np.where(possible_cohs==coh_t) 
+                        if(len(possible_trials)<1): 
+                            continue  
+                        if np.shape(temp_trials)[0]==0: 
+                            temp_trials = data_temp[possible_trials]  
+                            temp_beh    = label_temp[possible_trials] 
+                        else: 
+                            temp_trials = np.vstack((temp_trials,data_temp[possible_trials]))  
+                            temp_beh    = np.vstack((temp_beh,label_temp[possible_trials])) 
+            totaltrials = np.shape(temp_trials)[0]   
+		                
+            if(RECORD_TRIALS):
+                # print('stim:',coh_t,' file:',idxf, ' shape:',np.shape(totaltrials))
+                idxsample = np.random.choice(np.arange(totaltrials),size=EACHSTATES,replace=True)
+                merge_trials[coh_t,idxf] = idxsample
+            else:
+                idxsample = RECORDED_TRIALS_SET[coh_t,idxf]
+            try:
+                ymerge_labels[coh_t] = np.hstack((ymerge_labels[coh_t],temp_beh[idxsample]))
+                Xmerge_trials[coh_t] = np.hstack((Xmerge_trials[coh_t],temp_trials[idxsample,:]))
+            except:
+                ymerge_labels[coh_t] = temp_beh[idxsample]
+                Xmerge_trials[coh_t] = temp_trials[idxsample,:]
+    return Xmerge_trials,ymerge_labels,merge_trials
 
 
 def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
@@ -363,6 +444,7 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
     trbias_range        = np.zeros((len(unique_cohs), nbins_trbias))
     
     # fig, ax =plt.subplots(figsize=(4,4))
+    # print('unique cohs:',unique_cohs)
     for idxcoh, coh in enumerate(unique_cohs):
         maxtrbias,mintrbias=-MAXV,MAXV
         evidences   = []#np.zeros(NS*NCH*EACHSTATES)
@@ -377,9 +459,12 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
                 idxdecoder = idx+idxs*EACHSTATES+idxcoh*(len(unique_states)*EACHSTATES)#np.random.choice(np.arange(0, NDEC, 1),size=1, replace=True)
                 idxdecoder = np.mod(idxdecoder, NDEC)
                 linw_bias, linb_bias = coeffs_pool[:, idxdecoder*5+3], intercepts_pool[0, 5*idxdecoder+3]
+                # print('~~~~merge:',np.shape(Xdata_test),np.shape(linw_bias))
                 evidences   = np.append(evidences,np.squeeze(
                 Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
                 temp_perc   = np.sum(ymerge_labels[state,coh][:,idx])/np.shape(ymerge_labels[state,coh])[0]
+                # temp_perc   = np.sum(ymerge_labels[state,coh][idx,:])/np.shape(ymerge_labels[state,coh])[1]
+                # print('~~~~~~expectation:',temp_perc)
                 rightchoice = np.append(rightchoice,temp_perc)
                 trbias_w    = np.append(trbias_w, weight_per)
         
@@ -395,8 +480,35 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
             
             ### cal normalization coefficient
             normalization   = trbias_w[idxbin]/np.sum(trbias_w[idxbin])
-            perc_right[i-1] = np.sum(rightchoice[idxbin]*normalization)#np.sum(rightchoice[idxbin])/len(idxbin)
+            perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)# np.sum(rightchoice[idxbin]*normalization)#
         # ax.plot(ax_trbias,perc_right)
         psychometric_trbias[idxcoh,:] = perc_right.copy()
         trbias_range[idxcoh,:]        = ax_trbias.copy()
     return psychometric_trbias,trbias_range
+
+
+def behaviour_stim_proj(yevi,ylabels, fit=False, name='',NBINS=5):
+    # print('>>>>> 111shape:',np.shape(yevi),np.shape(ylabels))
+    evidences = np.squeeze(yevi[:,0].copy())
+    trbias_w   = ylabels[:,4::6].copy()
+    rightchoice = np.mean(trbias_w,axis=1)
+    nbins_trbias        = NBINS
+    psychometric_trbias = np.zeros(nbins_trbias)
+    trbias_range        = np.zeros(nbins_trbias)
+     
+    ### 
+    maxtrbias ,mintrbias = max(evidences),min(evidences)
+    binss = np.linspace(mintrbias,maxtrbias,nbins_trbias+1)
+    perc_right = np.zeros(nbins_trbias)
+    ax_trbias  = (binss[1:]+binss[:-1])/2.0
+    for i in range(1,nbins_trbias+1):
+        idxbinh = np.where(evidences<binss[i])[0]
+        idxbinl = np.where(evidences>binss[i-1])[0]
+        idxbin  = np.intersect1d(idxbinh,idxbinl)
+        ### cal normalization coefficient
+        perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)#np.sum(rightchoice[idxbin])/len(idxbin)
+    # ax.plot(ax_trbias,perc_right)
+    psychometric_trbias[:] = perc_right.copy()
+    trbias_range[:]        = ax_trbias.copy()
+    return psychometric_trbias,trbias_range
+

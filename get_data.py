@@ -125,7 +125,7 @@ def batch_dms_data(main_folder, rt_limit=1):
         fig.savefig(main_folder+'/reaction_times.png')
 
 
-def get_dms_data(file, ev_algmt='S', pre_post=[-0.1, 0.0], w=0.1):
+def get_dms_data(file, ev_algmt='S', pre_post=[0, 0.1], w=0.1):
     """
 
     Parameters

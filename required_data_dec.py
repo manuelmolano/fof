@@ -701,6 +701,7 @@ def State_trials(Xdata,Xstates,Xchoices,Xcohs,ylabels,percent,):
     ### different states
     unique_states = np.sort(np.unique(Xstates))
     unique_cohs   = [-1,0,1] ### stimulus coherence -- binning into three values
+    # unique_cohs   = [-0.6,-0.25,0,0.25,0.6]
     Xdata_return  = {}
     ylabel_return = {}
  
@@ -711,6 +712,12 @@ def State_trials(Xdata,Xstates,Xchoices,Xcohs,ylabels,percent,):
     Xcohs_b[np.where(Xcohs<0)[0]]=-1
     Xcohs_b[np.where(Xcohs==0)[0]]=0
     Xcohs_b[np.where(Xcohs>0)[0]]=1
+    # Xcohs_b[np.where(Xcohs<0.3)[0]]=-0.6
+    # Xcohs_b[np.where(Xcohs==-0.2282)[0]]=-0.25
+    # Xcohs_b[np.where(Xcohs==0)[0]]=0
+    
+    # Xcohs_b[np.where(Xcohs==0.2282)[0]]=0.25
+    # Xcohs_b[np.where(Xcohs>0.3)[0]]=0.6
 
     Xcohs=Xcohs_b.copy()
     

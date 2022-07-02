@@ -14,304 +14,6 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 
 PRINT_PER = 1000
 
-def bootstrap_linsvm_PCA_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[],REDUCED_PC_TO=2):
-
-    ### ac/ae ratio 
-    CRATIO = ACE_RATIO/(1+ACE_RATIO)
-    ERATIO = 1-CRATIO
-    # NN      = np.shape(Xdata_hist_set[unique_states[0],'correct'])[1] 
-    nlabels = 6*(len(files)-len(false_files))
-    ntrain  = int(train_percent*N_pseudo_dec) # *4
-    ntest   = (N_pseudo_dec-ntrain)*4 # state
-    itest   = N_pseudo_dec-ntrain
-
-    Xtest_set_correct, ytest_set_correct, =\
-        np.zeros((n_iterations, ntest, REDUCED_PC_TO)),\
-        np.zeros((n_iterations, ntest, nlabels))  
-
-    Xtest_set_error, ytest_set_error, =\
-        np.zeros((n_iterations, ntest, REDUCED_PC_TO)),\
-        np.zeros((n_iterations, ntest, nlabels))  
-
-    yevi_set_correct = np.zeros((n_iterations, ntest, 3+2))
-    yevi_set_error   = np.zeros((n_iterations, ntest, 3+2))
-
-    stats = list()
-    lin_pact = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
-                       shrinking=False, tol=1e-6)
-    lin_ctxt = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
-                       shrinking=False, tol=1e-6)
-    lin_xor  = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
-                      shrinking=False, tol=1e-6)
-    lin_bias = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
-                       shrinking=False, tol=1e-6)
-    lin_cc   = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
-                     shrinking=False, tol=1e-6)
-
-    ntrainc = int(N_pseudo_dec/0.5*train_percent*CRATIO)
-    ntraine = N_pseudo_dec/0.5*train_percent-ntrainc
-    ntraine = int(ntraine)  
-    print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
-    
-    
-   
-
-    for i in range(n_iterations):
-        if (i+1) % PRINT_PER == 0:
-            print(i)
-        # print('...... iteration index:', i,'........')
-        ### >>>>>> generate training and testing dataset for decoder and testing(onestep)
-        # N_pseudo_dec, N_pseudo_beh = 100,25
-        Xmerge_hist_trials_correct,ymerge_hist_labels_correct,Xmerge_hist_trials_error,ymerge_hist_labels_error,merge_trials_hist=gpt.merge_pseudo_hist_trials(Xdata_hist_set,ylabels_hist_set,unique_states,unique_cohs,files,false_files,2*N_pseudo_dec,RECORD_TRIALS, RECORDED_TRIALS_SET[i])
-
-        if RECORD_TRIALS == 1:
-            RECORDED_TRIALS_SET[i]=merge_trials_hist
-
-
-        #### --------- state 0 -----------------------
-        Xdata_trainc,Xdata_testc=Xmerge_hist_trials_correct[4][:ntrainc,:],Xmerge_hist_trials_correct[4][ntrainc:ntrainc+itest,:]
-        ylabels_trainc,ylabels_testc = ymerge_hist_labels_correct[4][:ntrainc,:],ymerge_hist_labels_correct[4][ntrainc:ntrainc+itest,:]
-
-        Xdata_traine,Xdata_teste=Xmerge_hist_trials_error[0][:ntraine,:],Xmerge_hist_trials_error[0][ntraine:ntraine+itest,:]
-        ylabels_traine,ylabels_teste = ymerge_hist_labels_error[0][:ntraine,:],ymerge_hist_labels_error[0][ntraine:ntraine+itest,:]
-        for state in range(1,4):
-            Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_hist_trials_correct[state+4][:ntrainc ,:])),np.vstack((Xdata_testc,Xmerge_hist_trials_correct[state+4][ntrainc:ntrainc+itest,:]))
-            ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,ymerge_hist_labels_correct[state+4][:ntrainc,:])),np.vstack((ylabels_testc,ymerge_hist_labels_correct[state+4][ntrainc:ntrainc+itest,:]))
-         
-            Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_hist_trials_error[state][:ntraine,:])),np.vstack((Xdata_teste,Xmerge_hist_trials_error[state][ntraine:ntraine+itest,:]))
-            ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,ymerge_hist_labels_error[state][:ntraine,:])),np.vstack((ylabels_teste,ymerge_hist_labels_error[state][ntraine:ntraine+itest,:]))
-        # prepare train & test sets
-        # Sampling with replacement..whichever is not used in training data
-        # will be used in test data
-        # recording support vectors
-        if (REDUCED_PC_TO):
-            Xdata_converge   = np.append(Xdata_trainc, Xdata_traine, axis=0)
-            sc = StandardScaler()
-            Xdata_converge = sc.fit_transform(Xdata_converge)
-            Xdata_trainc = sc.fit_transform(Xdata_trainc)
-            Xdata_traine = sc.fit_transform(Xdata_traine)
-            Xdata_testc  = sc.fit_transform(Xdata_testc)
-            Xdata_teste  = sc.fit_transform(Xdata_teste)
-            pca = PCA(n_components=0.80,svd_solver='full')
-            pca.fit(Xdata_converge)
-            Xdata_testc  = pca.transform(Xdata_testc)
-            Xdata_trainc = pca.transform(Xdata_trainc)
-
-            Xdata_teste  = pca.transform(Xdata_teste)
-            Xdata_traine = pca.transform(Xdata_traine)
-            
-            Xdata_testc = Xdata_testc[:,1:]#[:,::2]#
-            Xdata_teste = Xdata_teste[:,1:]#[:,::2]#
-            Xdata_trainc = Xdata_trainc[:,1:]#[:,::2]#
-            Xdata_traine = Xdata_traine[:,1:]#[:,::2]#
-            print("Explained variance:", pca.n_components_)
-            print("Explained variance:", pca.explained_variance_ratio_)
-
-
-        Xsup_vec_act  = {}  # np.zeros((n_iterations,1,NN))
-        Xsup_vec_ctxt = {}  # np.zeros((n_iterations,1,NN))
-        Xsup_vec_xor  = {}
-        Xsup_vec_bias = {}  # np.zeros((n_iterations,1,NN))
-        Xsup_vec_cc   = {}
-
-        ylabels_trainc = ylabels_trainc - 2
-        if DOREVERSE:
-            ylabels_traine[:, 3] = 1-ylabels_traine[:, 3]
-
-        if(CONTROL==1):
-            Xdata_train   = Xdata_traine.copy()
-            ylabels_train = ylabels_traine.copy() 
-            # #### adding more
-    
-            # Xdata_traine_,Xdata_teste_=Xmerge_hist_trials_error[0][ntraine+itest:ntraine+itest+ntrainc,:],Xmerge_hist_trials_error[0][ntraine+itest+ntrainc:ntraine+itest,:]
-            # ylabels_traine,ylabels_teste = ymerge_hist_labels_error[0][:ntraine,:],ymerge_hist_labels_error[0][ntraine:ntraine+itest,:]
-            # for state in range(1,4):
-            #     Xdata_trainc,Xdata_testc = np.vstack((Xdata_trainc,Xmerge_hist_trials_correct[state+4][:ntrainc ,:])),np.vstack((Xdata_testc,Xmerge_hist_trials_correct[state+4][ntrainc:ntrainc+itest,:]))
-            #     ylabels_trainc,ylabels_testc = np.vstack((ylabels_trainc,ymerge_hist_labels_correct[state+4][:ntrainc,:])),np.vstack((ylabels_testc,ymerge_hist_labels_correct[state+4][ntrainc:ntrainc+itest,:]))
-             
-            #     Xdata_traine,Xdata_teste = np.vstack((Xdata_traine,Xmerge_hist_trials_error[state][:ntraine,:])),np.vstack((Xdata_teste,Xmerge_hist_trials_error[state][ntraine:ntraine+itest,:]))
-            #     ylabels_traine,ylabels_teste = np.vstack((ylabels_traine,ymerge_hist_labels_error[state][:ntraine,:])),np.vstack((ylabels_teste,ymerge_hist_labels_error[state][ntraine:ntraine+itest,:]))
-        elif(CONTROL==2):
-            Xdata_train   = Xdata_trainc.copy()
-            ylabels_train = ylabels_trainc.copy() 
-        elif(CONTROL==0):          
-            Xdata_train   = np.append(Xdata_trainc, Xdata_traine, axis=0)
-            ylabels_train = np.append(ylabels_trainc, ylabels_traine, axis=0)
-
-        print("~~~~~~~~~~~~~~ shape of the training dataset:",np.shape(Xdata_train))
-        # fit model
-        # model.fit(X_train,y_train) i.e model.fit(train set, train label as it
-        # is a classifier)
-        lin_pact.fit(Xdata_train, np.squeeze(ylabels_train[:, 0]))
-        Xsup_vec_act[i]  = lin_pact.support_vectors_
-
-        lin_ctxt.fit(Xdata_train, np.squeeze(ylabels_train[:, 1]))
-        Xsup_vec_ctxt[i] = lin_ctxt.support_vectors_
-
-        lin_xor.fit(Xdata_train, np.squeeze(ylabels_train[:, 2]))
-        Xsup_vec_xor[i]  = lin_xor.support_vectors_
-        
-        ### ---- most common tr. bias -----------
-        ytr_bias = np.zeros(np.shape(ylabels_train)[0])
-        for iset in range(np.shape(ylabels_train)[0]):
-            bias_labels=Counter(ylabels_train[iset,3::6])
-            ytr_bias[iset]=(bias_labels.most_common(1)[0][0])
-        lin_bias.fit(Xdata_train, ytr_bias)
-        Xsup_vec_bias[i]  = lin_bias.support_vectors_
-
-        lin_cc.fit(Xdata_train, np.squeeze(ylabels_train[:, 4]))
-        Xsup_vec_cc[i]    = lin_cc.support_vectors_
-
-        ### --- percentage of right choices -----
-        ycchoice = np.zeros(np.shape(ylabels_train)[0])
-        for iset in range(np.shape(ylabels_train)[0]):
-            cchoice_labels = Counter(ylabels_train[iset,4::6])
-            ycchoice[iset] = (cchoice_labels.most_common(1)[0][0])
-        lin_cc.fit(Xdata_train, ycchoice)
-        Xsup_vec_cc[i]    = lin_cc.support_vectors_
-        fig,ax = plt.subplots(figsize=(5,5))
-
-        # get the separating hyperplane
-        w = lin_bias.coef_[0]
-        a = -w[0] / w[1]
-        xx = np.linspace(-5, 5)
-        yy = a * xx -(lin_bias.intercept_[0])/ w[1]
-        margin = 1/np.sqrt(np.sum(lin_bias.coef_**2))
-        yy_down = yy-np.sqrt(1 + a**2)*margin
-        yy_up = yy + np.sqrt(1 + a ** 2) * margin
-
-        ax.plot(xx,yy,'k-')
-        ax.plot(xx,yy_down,'k-')
-        ax.plot(xx,yy_up,'k-')
-
-        # get the separating hyperplane
-        w = lin_cc.coef_[0]
-        a = -w[0] / w[1]
-        xx = np.linspace(-5, 5)
-        yy = a*xx- (lin_cc.intercept_[0]) / w[1]
-        margin = 1 / np.sqrt(np.sum(lin_cc.coef_ ** 2))
-        yy_down = yy- np.sqrt(1 + a**2) * margin
-        yy_up = yy + np.sqrt(1 + a ** 2) * margin
-
-        ax.plot(xx,yy,'r-')
-        ax.plot(xx,yy_down,'r-')
-        ax.plot(xx,yy_up,'r-')
-        ax.scatter(Xdata_train[:,0],Xdata_train[:,1],c=ylabels_train[:,3],s=20)
-        ax.set_xlim([-10,10])
-        ax.set_ylim([-10,10])
-
-        if i == 0:
-            intercepts = np.zeros((1, 3 + 1 + 1))
-            intercepts[:, 0] = lin_pact.intercept_[:]
-            intercepts[:, 1] = lin_ctxt.intercept_[:]
-            intercepts[:, 2] = lin_xor.intercept_[:]
-            intercepts[:, 3] = lin_bias.intercept_[:]
-            intercepts[:, 4] = lin_cc.intercept_[:]
-
-            coeffs = np.zeros((REDUCED_PC_TO, 3 + 1 + 1))
-            coeffs[:, 0] = lin_pact.coef_[:]
-            coeffs[:, 1] = lin_ctxt.coef_[:]
-            coeffs[:, 2] = lin_xor.coef_[:]
-            coeffs[:, 3] = lin_bias.coef_[:]
-            coeffs[:, 4] = lin_cc.coef_[:]
-
-        else:
-            tintercepts = np.zeros((1, 3 + 1 + 1))
-            tintercepts[:, 0] = lin_pact.intercept_[:]
-            tintercepts[:, 1] = lin_ctxt.intercept_[:]
-            tintercepts[:, 2] = lin_xor.intercept_[:]
-            tintercepts[:, 3] = lin_bias.intercept_[:]
-            tintercepts[:, 4] = lin_cc.intercept_[:]
-            intercepts = np.append(intercepts, tintercepts, axis=1)
-
-            tcoeffs = np.zeros((REDUCED_PC_TO, 3 + 1 + 1))
-            tcoeffs[:, 0] = lin_pact.coef_[:]
-            tcoeffs[:, 1] = lin_ctxt.coef_[:]
-            tcoeffs[:, 2] = lin_xor.coef_[:]
-            tcoeffs[:, 3] = lin_bias.coef_[:]
-            tcoeffs[:, 4] = lin_cc.coef_[:]
-            coeffs = np.append(coeffs, tcoeffs, axis=1)
-
-        #### >>>>>>>> testing stage >>>>>>>>>>>>>>>>
-        #### -------- AC testing trials 
-        linw_pact, linb_pact = lin_pact.coef_[:], lin_pact.intercept_[:]
-        linw_ctxt, linb_ctxt = lin_ctxt.coef_[:], lin_ctxt.intercept_[:]
-        linw_xor, linb_xor   = lin_xor.coef_[:],  lin_xor.intercept_[:]
-        linw_bias, linb_bias = lin_bias.coef_[:], lin_bias.intercept_[:]
-        linw_cc, linb_cc     = lin_cc.coef_[:], lin_cc.intercept_[:]
-        # evaluate evidence model
-        evidences_c = np.zeros((ntest, 3 + 2))
-        evidences_c[:, 0] = np.squeeze(
-            Xdata_testc @ linw_pact.reshape(-1, 1) + linb_pact)
-        evidences_c[:, 1] = np.squeeze(
-            Xdata_testc @ linw_ctxt.reshape(-1, 1) + linb_ctxt)
-        evidences_c[:, 2] = np.squeeze(
-            Xdata_testc @ linw_xor.reshape(-1, 1) + linb_xor)
-        evidences_c[:, 3] = np.squeeze(
-            Xdata_testc @ linw_bias.reshape(-1, 1) + linb_bias)
-        evidences_c[:, 4] = np.squeeze(
-            Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
-
-        ### modifying ylabels_testc[:,3], upcoming stimulus category 
-        ytr_test_bias = np.zeros(np.shape(ylabels_testc)[0])
-        for iset in range(np.shape(ylabels_testc)[0]):
-            bias_labels=Counter(ylabels_testc[iset,3::6])
-            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
-        ylabels_testc[:,3] = ytr_test_bias[:]
-
-        ### --- percentage of right choices -----
-        ycchoice_test = np.zeros(np.shape(ylabels_testc)[0])
-        for iset in range(np.shape(ylabels_testc)[0]):
-            cchoice_labels = Counter(ylabels_testc[iset,4::6])
-            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
-        ylabels_testc[:,4] = ycchoice_test[:]
-
-        Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
-        
-        if i == 0:
-            yevi_set_correct[i, :, :] = evidences_c.copy()
-        else:
-            yevi_set_correct[i, :, :] = evidences_c.copy()
-
-        #### -------- AE testing trials --------------
-        # evaluate evidence model
-        evidences_e = np.zeros((ntest, 3 + 2))
-        evidences_e[:, 0] = np.squeeze(
-            Xdata_teste @ linw_pact.reshape(-1, 1) + linb_pact)
-        evidences_e[:, 1] = np.squeeze(
-            Xdata_teste @ linw_ctxt.reshape(-1, 1) + linb_ctxt)
-        evidences_e[:, 2] = np.squeeze(
-            Xdata_teste @ linw_xor.reshape(-1, 1) + linb_xor)
-        evidences_e[:, 3] = np.squeeze(
-            Xdata_teste @ linw_bias.reshape(-1, 1) + linb_bias)
-        evidences_e[:, 4] = np.squeeze(
-            Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
-
-        ### modifying ylabels_testc[:,3], upcoming stimulus category 
-        ytr_test_bias = np.zeros(np.shape(ylabels_teste)[0])
-        for iset in range(np.shape(ylabels_teste)[0]):
-            bias_labels=Counter(ylabels_teste[iset,3::6])
-            ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
-        ylabels_teste[:,3] = ytr_test_bias[:]
-
-        ### --- percentage of right choices -----
-        ycchoice_test = np.zeros(np.shape(ylabels_teste)[0])
-        for iset in range(np.shape(ylabels_teste)[0]):
-            cchoice_labels = Counter(ylabels_teste[iset,4::6])
-            ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
-        ylabels_teste[:,4] = ycchoice_test[:]
-
-        Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
-
-        if i == 0:
-            yevi_set_error[i, :, :] = evidences_e.copy()
-        else:
-            yevi_set_error[i, :, :] = evidences_e.copy()
-    return coeffs, intercepts,\
-        Xsup_vec_act, Xsup_vec_ctxt, Xsup_vec_bias, Xsup_vec_cc,\
-        Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-        Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET
-
 def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,unique_cohs,files,false_files, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[]):
 
     ### ac/ae ratio 
@@ -353,7 +55,7 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
     ntraine = int(ntraine)  
     print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
     
-    
+    stats_c,stats_e = list(), list()
 
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
@@ -463,8 +165,8 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         Xsup_vec_bias[i]  = lin_bias.support_vectors_
         # print("~~~~~~~bias:",np.shape(lin_bias.coef_),np.shape(lin_bias.intercept_))
 
-        lin_cc.fit(Xdata_train, np.squeeze(ylabels_train[:, 4]))
-        Xsup_vec_cc[i]    = lin_cc.support_vectors_
+        # lin_cc.fit(Xdata_train, np.squeeze(ylabels_train[:, 4]))
+        # Xsup_vec_cc[i]    = lin_cc.support_vectors_
 
         ### --- percentage of right choices -----
         ycchoice = np.zeros(np.shape(ylabels_train)[0])
@@ -526,6 +228,15 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         evidences_c[:, 4] = np.squeeze(
             Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
 
+        # evaluate model
+        predictions_c = np.zeros((np.shape(evidences_c)[0], 3 + 1 + 1))
+        predictions_c[:, 0] = lin_pact.predict(
+            Xdata_testc)  # model.predict(X_test)
+        predictions_c[:, 1] = lin_ctxt.predict(Xdata_testc)
+        predictions_c[:, 2] = lin_xor.predict(Xdata_testc)
+        predictions_c[:, 3] = lin_bias.predict(Xdata_testc)
+        predictions_c[:, 4] = lin_cc.predict(Xdata_testc)
+
         ### modifying ylabels_testc[:,3], upcoming stimulus category 
         ytr_test_bias = np.zeros(np.shape(ylabels_testc)[0])
         for iset in range(np.shape(ylabels_testc)[0]):
@@ -547,6 +258,11 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
         else:
             yevi_set_correct[i, :, :] = evidences_c.copy()
 
+        score_c = np.zeros((3 + 1 + 1, 1))
+        for j in range(np.shape(score_c)[0]):
+            score_c[j, 0] = accuracy_score(
+                ylabels_testc[:, j]-2, predictions_c[:, j])
+
         #### -------- AE testing trials --------------
         # evaluate evidence model
         evidences_e = np.zeros((ntest, 3 + 2))
@@ -560,6 +276,16 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
             Xdata_teste @ linw_bias.reshape(-1, 1) + linb_bias)
         evidences_e[:, 4] = np.squeeze(
             Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
+
+        # evaluate model
+        predictions_e = np.zeros((np.shape(evidences_e)[0], 3 + 1 + 1))
+        predictions_e[:, 0] = lin_pact.predict(
+            Xdata_teste)  # model.predict(X_test)
+        predictions_e[:, 1] = lin_ctxt.predict(Xdata_teste)
+        predictions_e[:, 2] = lin_xor.predict(Xdata_teste)
+        predictions_e[:, 3] = lin_bias.predict(Xdata_teste)
+        predictions_e[:, 4] = lin_cc.predict(Xdata_teste)
+
 
         ### modifying ylabels_testc[:,3], upcoming stimulus category 
         ytr_test_bias = np.zeros(np.shape(ylabels_teste)[0])
@@ -581,7 +307,23 @@ def bootstrap_linsvm_step(Xdata_hist_set,NN, ylabels_hist_set,unique_states,uniq
             yevi_set_error[i, :, :] = evidences_e.copy()
         else:
             yevi_set_error[i, :, :] = evidences_e.copy()
-    return coeffs, intercepts,\
+
+        score_e = np.zeros((3 + 1 + 1, 1))
+        for j in range(np.shape(score_e)[0]):
+            score_e[j, 0] = accuracy_score(
+                ylabels_teste[:, j], predictions_e[:, j])
+
+        # print(score)
+        if i == 0:
+            print('score e:',score_c, ' e:',score_e)
+            stats_c = score_c
+            stats_e = score_e
+        else:
+            stats_c = np.append(stats_c, score_c, axis=1)
+            stats_e = np.append(stats_e, score_e, axis=1)
+            print('score e:',score_c, ' e:',score_e)
+
+    return stats_c,stats_e,coeffs, intercepts,\
         Xsup_vec_act, Xsup_vec_ctxt, Xsup_vec_bias, Xsup_vec_cc,\
         Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
         Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET
@@ -603,7 +345,7 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
     yevi_set_correct = np.zeros((n_iterations, ntest, 3+2))
     yevi_set_error   = np.zeros((n_iterations, ntest, 3+2))
 
-
+    stats_c, stats_e = list(),list()
 
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
@@ -642,6 +384,12 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
         evidences_c[:, 4] = np.squeeze(
             Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
 
+        predictions_c = np.zeros((np.shape(evidences_c)[0], 3 + 2))
+        for j in range(3 + 2):
+            predictions_c[np.where(evidences_c[:, j] > 0)[0], j] = 1
+            predictions_c[np.where(evidences_c[:, j] <= 0)[0], j] = 0
+
+
         ### modifying ylabels_testc[:,3], upcoming stimulus category
         ytr_test_bias = np.zeros(np.shape(ylabels_testc)[0])
         for iset in range(np.shape(ylabels_testc)[0]):
@@ -655,6 +403,11 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
             cchoice_labels = Counter(ylabels_testc[iset,4::6])
             ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
         ylabels_testc[:,4] = ycchoice_test[:]
+
+        score_c = np.zeros((3 + 2, 1))
+        for j in range(3 + 2):
+            score_c[j, 0] = accuracy_score(
+                ylabels_testc[:, j], predictions_c[:, j])
 
         Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
 
@@ -677,6 +430,12 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
         evidences_e[:, 4] = np.squeeze(
             Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
 
+
+        predictions_e = np.zeros((np.shape(evidences_e)[0], 3 + 2))
+        for j in range(3 + 2):
+            predictions_e[np.where(evidences_e[:, j] > 0)[0], j] = 1
+            predictions_e[np.where(evidences_e[:, j] <= 0)[0], j] = 0
+
         ### modifying ylabels_testc[:,3], upcoming stimulus category
         ytr_test_bias = np.zeros(np.shape(ylabels_teste)[0])
         for iset in range(np.shape(ylabels_teste)[0]):
@@ -691,13 +450,26 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
             ycchoice_test[iset] = (cchoice_labels.most_common(1)[0][0])
         ylabels_teste[:,4] = ycchoice_test[:]
 
+
+        score_e = np.zeros((3 + 2, 1))
+        for j in range(3 + 2):
+            score_e[j, 0] = accuracy_score(
+                ylabels_teste[:, j], predictions_e[:, j])
+
         Xtest_set_error[i, :, :], ytest_set_error[i, :, :]=Xdata_teste[:, :].copy(), ylabels_teste[:, :].copy()
 
         if i == 0:
             yevi_set_error[i, :, :] = evidences_e.copy()
         else:
             yevi_set_error[i, :, :] = evidences_e.copy()
-    return coeffs_pool, intercepts_pool, \
+
+        if i == 0:
+            stats_c = score_c
+            stats_e = score_e
+        else:
+            stats_c = np.append(stats_c, score_c, axis=1)
+            stats_e = np.append(stats_e, score_e, axis=1)
+    return stats_c, stats_e, coeffs_pool, intercepts_pool, \
         Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
         Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET
 
@@ -949,7 +721,7 @@ def bootstrap_linsvm_step_fixationperiod(Xdata_set,NN, ylabels_set,unique_states
     ntraine = int(ntraine)  
     print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
     
-    
+    stats_c,stats_e = np.zeros(n_iterations),np.zeros(n_iterations)
     i_sucess = -1
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
@@ -1102,6 +874,7 @@ def bootstrap_linsvm_step_fixationperiod(Xdata_set,NN, ylabels_set,unique_states
         # prediction_correct = accuracy_score((ylabels_testc[:,4]).flatten(),ypredict_choice)
         rmse_correct = mean_squared_error(ypredict_choice,ylabels_testc[:,4])
         r2_correct   = r2_score(ypredict_choice,ylabels_testc[:,4])     
+        stats_c[i] = r2_correct
 
         Xtest_set_correct[i, :, :], ytest_set_correct[i, :, :]=Xdata_testc[:, :].copy(), ylabels_testc[:, :].copy()
         
@@ -1129,6 +902,7 @@ def bootstrap_linsvm_step_fixationperiod(Xdata_set,NN, ylabels_set,unique_states
         # prediction_error = accuracy_score((ylabels_teste[:,4]).flatten(),ypredict_choice)
         rmse_error = mean_squared_error(ypredict_choice,ylabels_teste[:,4])
         r2_error   = r2_score(ypredict_choice,ylabels_teste[:,4])  
+        stats_e[i] = r2_error
         
         # print('~~~~~~~~ performance:', prediction_correct,prediction_error)
         print('~~~~~~~~ performance:', rmse_correct, '  ', rmse_error)
@@ -1140,6 +914,6 @@ def bootstrap_linsvm_step_fixationperiod(Xdata_set,NN, ylabels_set,unique_states
             yevi_set_error[i, :, :] = evidences_e.copy()
         else:
             yevi_set_error[i, :, :] = evidences_e.copy()
-    return coeffs, intercepts,\
+    return stats_c, stats_e, coeffs, intercepts,\
         Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
         Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET

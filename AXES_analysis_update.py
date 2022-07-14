@@ -7,7 +7,7 @@ from statannot import add_stat_annotation
 
 
 def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
-    ### ----------- history axis ------------------- 
+    # ### ----------- history axis ------------------- 
     # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
     # IDX_RAT = 'Rat31_'
     # timep = '/-01-00s/'
@@ -56,11 +56,13 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
             if i2<=i1:
                 continue 
             ag_fix_set[pair1,pair2] = (decoders_fix_set[pair1].copy().T)@(decoders_fix_set[pair2])
-            ag_fix_set[pair1,pair2] = np.arccos(ag_fix_set[pair1,pair2])#/np.pi*180 
+            ag_fix_set[pair1,pair2] = np.arccos(ag_fix_set[pair1,pair2])/np.pi*180 
 
     for i, selfpair in enumerate(dec_names):
         ag_fix_set[selfpair,selfpair] = (decoders_fix_set[selfpair].copy().T)@(decoders_fix_set[selfpair])
         ag_fix_set[selfpair,selfpair] = np.arccos(ag_fix_set[selfpair,selfpair])/np.pi*180 
+        ag_fix_set[selfpair,selfpair]= ag_fix_set[selfpair,selfpair][~np.eye(ag_fix_set[selfpair,selfpair].shape[0],dtype=bool)].reshape(ag_fix_set[selfpair,selfpair].shape[0],-1)
+        # print(ag_fix_set[selfpair,selfpair])
 
     # figure ploting -- distribution of bootstrap results
     fig_fix,ax_fix = plt.subplots(4,4, figsize=(8,8),tight_layout=True,sharex=True,sharey=True)
@@ -73,63 +75,63 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
             df = pd.DataFrame(df)
             sns.set(style='whitegrid')
             sns.boxplot(data=df,ax=ax_fix[i1,i2])
-            ax_fix[i1,i2].set_ylim([50,130])
-            ax_fix[i1,i2].set_yticks([50,90,130])
+            ax_fix[i1,i2].set_ylim([30,150])
+            ax_fix[i1,i2].set_yticks([30,90,150])
     for i, pair in enumerate(dec_names):
         ax_fix[i,0].set_ylabel(pair)
         ax_fix[0,i].set_title(pair)
 
 
-    timep = '/00-01s/'
-    ### compute the angles between history encoding axises    
-    dataname  = dir+timep+IDX_RAT+'data_beh.npz'
-    data_dec  = np.load(dataname, allow_pickle=True)
-    wi_comp_dc = data_dec['coefs']
+    # timep = '/00-01s/'
+    # ### compute the angles between history encoding axises    
+    # dataname  = dir+timep+IDX_RAT+'data_beh.npz'
+    # data_dec  = np.load(dataname, allow_pickle=True)
+    # wi_comp_dc = data_dec['coefs']
 
-    wi_stim_stim = np.zeros((np.shape(wi_comp_dc)[0],NITERATIONS))
-    wi_stim_beh  = np.zeros((np.shape(wi_comp_dc)[0],NITERATIONS))
-    for i in range(NITERATIONS):
-        wi_stim_stim[:,i] = wi_comp_dc[:, i*2+0]
-        wi_stim_beh[:,i]  = wi_comp_dc[:, i*2+1]
+    # wi_stim_stim = np.zeros((np.shape(wi_comp_dc)[0],NITERATIONS))
+    # wi_stim_beh  = np.zeros((np.shape(wi_comp_dc)[0],NITERATIONS))
+    # for i in range(NITERATIONS):
+    #     wi_stim_stim[:,i] = wi_comp_dc[:, i*2+0]
+    #     wi_stim_beh[:,i]  = wi_comp_dc[:, i*2+1]
 
-    ### Encoding received stimulus and determining behaviour
-    for i in range(NITERATIONS):
-        wi_stim_stim[:,i] = wi_stim_stim[:,i]/np.linalg.norm(wi_stim_stim[:,i])
-        wi_stim_beh[:,i]  = wi_stim_beh[:,i]/np.linalg.norm(wi_stim_beh[:,i])
+    # ### Encoding received stimulus and determining behaviour
+    # for i in range(NITERATIONS):
+    #     wi_stim_stim[:,i] = wi_stim_stim[:,i]/np.linalg.norm(wi_stim_stim[:,i])
+    #     wi_stim_beh[:,i]  = wi_stim_beh[:,i]/np.linalg.norm(wi_stim_beh[:,i])
 
 
-    decoders_stim_set = {}
-    dec_names = ['stim-stim','stim-beh']
-    decoders_stim_set['stim-stim'],decoders_stim_set['stim-beh'] = wi_stim_stim.copy(),wi_stim_beh.copy()
+    # decoders_stim_set = {}
+    # dec_names = ['stim-stim','stim-beh']
+    # decoders_stim_set['stim-stim'],decoders_stim_set['stim-beh'] = wi_stim_stim.copy(),wi_stim_beh.copy()
 
-    ag_stim_set = {}
-    for i1, pair1 in enumerate (dec_names):
-        for i2, pair2 in enumerate (dec_names):
-            if i2<=i1:
-                continue 
-            ag_stim_set[pair1,pair2] = (decoders_stim_set[pair1].copy().T)@(decoders_stim_set[pair2])
-            ag_stim_set[pair1,pair2] = np.arccos(ag_stim_set[pair1,pair2])/np.pi*180 
+    # ag_stim_set = {}
+    # for i1, pair1 in enumerate (dec_names):
+    #     for i2, pair2 in enumerate (dec_names):
+    #         if i2<=i1:
+    #             continue 
+    #         ag_stim_set[pair1,pair2] = (decoders_stim_set[pair1].copy().T)@(decoders_stim_set[pair2])
+    #         ag_stim_set[pair1,pair2] = np.arccos(ag_stim_set[pair1,pair2])/np.pi*180 
 
-    for i, selfpair in enumerate(dec_names):
-        ag_stim_set[selfpair,selfpair] = (decoders_stim_set[selfpair].copy().T)@(decoders_stim_set[selfpair])
-        ag_stim_set[selfpair,selfpair] = np.arccos(ag_stim_set[selfpair,selfpair])/np.pi*180 
+    # for i, selfpair in enumerate(dec_names):
+    #     ag_stim_set[selfpair,selfpair] = (decoders_stim_set[selfpair].copy().T)@(decoders_stim_set[selfpair])
+    #     ag_stim_set[selfpair,selfpair] = np.arccos(ag_stim_set[selfpair,selfpair])/np.pi*180 
 
-    # figure ploting -- distribution of bootstrap results
-    fig_stim,ax_stim = plt.subplots(2,2, figsize=(4,4),tight_layout=True,sharex=True,sharey=True)
-    BOX_WDTH = 0.25
-    for i1, pair1 in enumerate (dec_names):
-        for i2, pair2 in enumerate (dec_names):
-            if i2<i1:
-                continue 
-            df = {pair1+' v.s. '+pair2: ag_stim_set[pair1,pair2].flatten()}
-            df = pd.DataFrame(df)
-            sns.set(style='whitegrid')
-            sns.boxplot(data=df,ax=ax_stim[i1,i2])
-            ax_stim[i1,i2].set_ylim([50,130])
-            ax_stim[i1,i2].set_yticks([50,90,130])
-    for i, pair in enumerate(dec_names):
-        ax_stim[i,0].set_ylabel(pair)
-        ax_stim[0,i].set_title(pair)
+    # # figure ploting -- distribution of bootstrap results
+    # fig_stim,ax_stim = plt.subplots(2,2, figsize=(4,4),tight_layout=True,sharex=True,sharey=True)
+    # BOX_WDTH = 0.25
+    # for i1, pair1 in enumerate (dec_names):
+    #     for i2, pair2 in enumerate (dec_names):
+    #         if i2<i1:
+    #             continue 
+    #         df = {pair1+' v.s. '+pair2: ag_stim_set[pair1,pair2].flatten()}
+    #         df = pd.DataFrame(df)
+    #         sns.set(style='whitegrid')
+    #         sns.boxplot(data=df,ax=ax_stim[i1,i2])
+    #         ax_stim[i1,i2].set_ylim([50,130])
+    #         ax_stim[i1,i2].set_yticks([50,90,130])
+    # for i, pair in enumerate(dec_names):
+    #     ax_stim[i,0].set_ylabel(pair)
+    #     ax_stim[0,i].set_title(pair)
 
 
 
@@ -179,6 +181,11 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
         wiac_fix_hist[:,i] = wiac_fix_hist[:,i]/np.linalg.norm(wiac_fix_hist[:,i]) 
         wiae_fix_hist[:,i] = wiae_fix_hist[:,i]/np.linalg.norm(wiae_fix_hist[:,i])
     
+    ref_wiac_fix_hist = np.mean(wiac_fix_hist,axis=1)
+    ref_wiac_fix_hist = ref_wiac_fix_hist/np.linalg.norm(ref_wiac_fix_hist) 
+    ref_wiac_fix_hist = np.reshape(ref_wiac_fix_hist,(-1,1))
+
+
     for i in range(NITERATIONS):
         wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i]) 
         wiae_fix_beh[:,i] = wiae_fix_beh[:,i]/np.linalg.norm(wiae_fix_beh[:,i])
@@ -194,7 +201,7 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     
     ag_fix_set = {}
     for i1, pair1 in enumerate (dec_names):
-        ag_fix_set[pair1] = (decoders_fix_set[pair1].copy().T)@(REF_UNI_VEC)
+        ag_fix_set[pair1] = (decoders_fix_set[pair1].copy().T)@ref_wiac_fix_hist #(REF_UNI_VEC)
         ag_fix_set[pair1] = np.arccos(ag_fix_set[pair1])#/np.pi*180 
     
     Nnbin       = 81
@@ -224,5 +231,5 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
         ax_fix = fig_fix.add_subplot(1,4,i1+1, projection='polar')
         ax_fix.bar((nbin_ang[:-1]+nbin_ang[1:])/2.0, acc_vs_ang[pair1],yerr = acc_vs_ang_ste[pair1], width=width, bottom=0,alpha=0.5)
         # ax_fix[i1].errorbar((nbin_ang[:-1]+nbin_ang[1:])/2.0,acc_vs_ang[pair1],acc_vs_ang_ste[pair1],mfc='red', mec='green')
-        ax_fix.set_ylim([-0.5,1.0])
-        ax_fix.set_yticks([-0.5,0,1.0])
+        ax_fix.set_ylim([0,1.0])
+        ax_fix.set_yticks([0,0.5,1.0])

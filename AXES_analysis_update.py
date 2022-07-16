@@ -4,6 +4,33 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns 
 from statannot import add_stat_annotation
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
+
+def gmm_fit(neurons_fs, n_components, algo='bayes', n_init=50, random_state=None, mean_precision_prior=None,
+            weight_concentration_prior_type='dirichlet_process', weight_concentration_prior=None):
+    """
+    fit a mixture of gaussians to a set of vectors
+    :param neurons_fs: list of numpy arrays of shape n or numpy array of shape n x d
+    :param n_components: int
+    :param algo: 'em' or 'bayes'
+    :param n_init: number of random seeds for the inference algorithm
+    :param random_state: random seed for the rng to eliminate randomness
+    :return: vector of population labels (of shape n), best fitted model
+    """
+    if isinstance(neurons_fs, list):
+        X = np.vstack(neurons_fs).transpose()
+    else:
+        X = neurons_fs
+    if algo == "em":
+        model = GaussianMixture(n_components=n_components, n_init=n_init, random_state=random_state)
+    else:
+        model = BayesianGaussianMixture(n_components=n_components, n_init=n_init, random_state=random_state,
+                                        init_params='random', mean_precision_prior=mean_precision_prior,
+                                        weight_concentration_prior_type=weight_concentration_prior_type,
+                                        weight_concentration_prior=weight_concentration_prior)
+    model.fit(X)
+    z = model.predict(X)
+    return z, model
 
 
 def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
@@ -134,6 +161,46 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     #     ax_stim[0,i].set_title(pair)
 
 
+def cluster_beh_acae(dir, IDX_RAT, timep, NITERATIONS, ncomps):
+    # ### ----------- history axis ------------------- 
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+    # IDX_RAT = 'Rat31_'
+    # timep = '/-01-00s/'
+    # NITERATIONS = 50
+
+
+
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_behae, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+
+    wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behae)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
+    for i in range(NITERATIONS):
+        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, i*5+4],wi_behae[:, i*5+4]
+
+    ### Predicting upcoming stimulus 
+
+    for i in range(NITERATIONS):
+        wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i]) 
+        wiae_fix_beh[:,i] = wiae_fix_beh[:,i]/np.linalg.norm(wiae_fix_beh[:,i])
+
+    decoders_fix_set = {}
+    decoders_fix_set['beh-ac'],decoders_fix_set['beh-ae']  = np.mean(wiac_fix_beh.copy(),axis=1), np.mean(wiae_fix_beh.copy(),axis=1) 
+    vec_pair = np.zeros((len(decoders_fix_set['beh-ac']),2))
+    vec_pair[:,0], vec_pair[:,1] = decoders_fix_set['beh-ac'], decoders_fix_set['beh-ae']
+    z_pop,model=gmm_fit(vec_pair, ncomps, algo='em', n_init=50)
+
+
+    # figure ploting -- distribution of bootstrap results
+    fig_fix,ax_fix = plt.subplots(1,2,figsize=(10,5),tight_layout=True,sharex=True,sharey=True)
+    idx1,idx2 = np.where(z_pop==0)[0],np.where(z_pop==1)[0]
+    
+    ax_fix[0].scatter(decoders_fix_set['beh-ac'][idx1],decoders_fix_set['beh-ae'][idx1],s=10,c='tab:blue',alpha=0.25)
+    ax_fix[1].scatter(decoders_fix_set['beh-ac'][idx2],decoders_fix_set['beh-ae'][idx2],s=10,c='tab:blue',alpha=0.25)
 
 
 

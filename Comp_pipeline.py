@@ -21,6 +21,9 @@ import general_util_ctxtgt as guc
 import generate_pseudo_trials as gpt
 import required_data_dec as rdd
 import bootstrap_linear as bl
+import gaincontrol as gc
+
+from scipy.stats import  mannwhitneyu as mwu
 
 import pickle as pk
 
@@ -196,6 +199,29 @@ def list_to_dict(lst, string):
     d = {s: v for s, v in zip(string, lst)}
     return d
 
+    # overall_ac_ae_ratio = np.mean(ac_ae_ratio_set)
+    # lst = [overall_ac_ae_ratio,Xdata_set, Xdata_hist_set,
+    #        ylabels_set, ylabels_hist_set,
+    #        Xcohs_0, files, metadata]
+    # stg = ["overall_ac_ae_ratio, Xdata_set, Xdata_hist_set,"
+    #        "ylabels_set, ylabels_hist_set,"
+    #        "Xcohs_0, files, metadata"]
+    # d = list_to_dict(lst=lst, string=stg)
+
+def unpack_dicts(data_tr):
+    
+    Xhistset,yhistlabelsset, Xset, ylabelsset = data_tr['Xdata_hist_set'].item(), data_tr['ylabels_hist_set'].item(),data_tr['Xdata_set'].item(), data_tr['ylabels_set'].item()
+    mdata,oratio =data_tr['metadata'],data_tr['overall_ac_ae_ratio'].item()
+    
+    lst = [oratio,Xset, Xhistset,
+           ylabelsset, yhistlabelsset,
+           data_tr['Xcohs_0'], data_tr['files'], mdata]
+    stg = ["overall_ac_ae_ratio, Xdata_set, Xdata_hist_set,"
+           "ylabels_set, ylabels_hist_set,"
+           "Xcohs_0, files, metadata"]
+    d = list_to_dict(lst=lst, string=stg)
+    return d
+    
 
 def get_all_quantities(files, numtrans=0, SKIPNAN=0):
     """
@@ -1570,6 +1596,70 @@ def hist_integration_balanced(data_tr,wc, bc, we, be, false_files, coh_ch_stater
     return d, Xtest_set_correct, Xtest_set_error
 
 
+
+def hist_integration_balanced_pop(data_tr,wc, bc, we, be, false_files, coh_ch_stateratio_correct,coh_ch_stateratio_eror, pop_correct, pop_error, mode='decoding',
+                 DOREVERSE=0, CONTROL=0, STIM_PERIOD=1, RECORD_TRIALS=1, REC_TRIALS_SET=[],PCA_only=0,mmodel=[]):
+    Xdata_set, ylabels_set, files = data_tr['Xdata_set'], \
+        data_tr['ylabels_set'], data_tr['files']
+
+    unique_states = np.arange(8)
+    unique_cohs   = [-1,0,1]
+    
+    Xmerge_trials_correct, ymerge_labels_correct, Xmerge_trials_error,\
+        ymerge_labels_error, _ =\
+        gpt.merge_pseudo_beh_trials(Xdata_set, ylabels_set, unique_states,
+                                    unique_cohs, files, false_files, [],
+                                    2, RECORD_TRIALS=1,
+                                    RECORDED_TRIALS_SET=[],STIM_BEH=1)
+    
+    # finding decoding axis
+    NN = np.shape(Xmerge_trials_correct[4,0])[1]
+    if(RECORD_TRIALS == 1):
+        REC_TRIALS_SET = {}
+        for itr in range(NITERATIONS):
+            REC_TRIALS_SET[itr] = {}
+    if(RECORD_TRIALS == 1):
+        ### ~~~~ *2 ~~~~~ each choice --- 2 states (4 states in total)
+        stats_correct, stats_error, coeffs, intercepts,Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
+            Xtest_set_error, ytest_set_error, yevi_set_error, REC_TRIALS_SET\
+            = bl.bootstrap_linsvm_step_fixationperiod_pop(Xdata_set, NN, ylabels_set,
+                                        unique_states, unique_cohs, files,
+                                        false_files, coh_ch_stateratio_correct,coh_ch_stateratio_eror, pop_correct,pop_error,type, DOREVERSE=DOREVERSE,
+                                        CONTROL=CONTROL, n_iterations=NITERATIONS,
+                                        N_pseudo_dec=NPSEUDODEC_BEH*4, ACE_RATIO = ACE_RATIO,
+                                        train_percent=PERCENTTRAIN,
+                                        RECORD_TRIALS=RECORD_TRIALS,
+                                        RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)
+    else:
+        coeffs, intercepts,Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
+            Xtest_set_error, ytest_set_error, yevi_set_error, REC_TRIALS_SET\
+            = bl.bootstrap_linsvm_step_fixationperiod_balanced(Xdata_set, NN, ylabels_set,
+                                        unique_states, unique_cohs, files,
+                                        false_files, coh_ch_stateratio_correct,coh_ch_stateratio_eror, type, DOREVERSE=DOREVERSE,
+                                        CONTROL=CONTROL, n_iterations=NITERATIONS,
+                                        N_pseudo_dec=NPSEUDODEC_BEH*4, ACE_RATIO = ACE_RATIO,
+                                        train_percent=PERCENTTRAIN,
+                                        RECORD_TRIALS=1,
+                                        RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)
+    
+    lst = [stats_correct, stats_error, 
+           coeffs, intercepts,
+           ytest_set_correct,
+           yevi_set_correct,
+           coeffs, intercepts,  # Xtest_set_error,
+           ytest_set_error,  yevi_set_error,
+           REC_TRIALS_SET]
+    stg = ["stats_correct, stats_error, "
+           "coefs_correct, intercepts_correct,"
+           "ytest_set_correct, "
+           "yevi_set_correct, "
+           "coefs_error, intercepts_error,"  # " Xtest_set_error,"
+           "ytest_set_error, yevi_set_error,"
+           "REC_TRIALS_SET"]
+    d = list_to_dict(lst=lst, string=stg)
+    return d, Xtest_set_correct, Xtest_set_error
+
+
 # def stim_VS_prob(data_dec,ax,NITERATIONS=50,NBINS=5):
     
 #     psychometric_trbias_correct = np.zeros(
@@ -1792,6 +1882,7 @@ def bias_VS_prob_balanced(data_tr, data_dec, unique_cohs, coh_ch_stateratio_corr
     FIX_TRBIAS_BINS = np.array([-1, 0, 1])
 
     NBINS = 5
+    unique_cohs = [0]
 
     # NTRBIAS = len(FIX_TRBIAS_BINS)
     psychometric_trbias_correct = np.zeros(
@@ -1814,7 +1905,7 @@ def bias_VS_prob_balanced(data_tr, data_dec, unique_cohs, coh_ch_stateratio_corr
                                         EACHSTATES, RECORD_TRIALS=RECORD_TRIALS,
                                         RECORDED_TRIALS_SET=REC_TRIALS_SET[idx],STIM_BEH=STIM_BEH)
 
-        unique_cohs = [0]#[-1, 0, 1]# [-0.6,-0.25,0,0.25,0.6]#
+        #[-1, 0, 1]# [-0.6,-0.25,0,0.25,0.6]#
         unique_states = np.arange(4, 8, 1)
         psychometric_trbias_correct[idx, :, :], trbias_range_correct[idx, :, :] =\
             gpt.behaviour_trbias_proj_balanced(coeffs, intercepts, Xmerge_trials_correct,
@@ -2037,11 +2128,18 @@ def PCA_projection(data_dec, data_dec_extra, Xhist_correct, Xhist_error, Xbeh_co
 
 def neural_activity_sort(Xdata_set,ylabels_set,unique_states,files,idx_delete):
     Xflat_trials_correct,Xflat_trials_error = {},{}
-
+    
+    df_correct, df_error = {},{}  
+    p_values = []
+    
+    ### counting overall neuron number 
+    NN_error = 0
+    Nstart, Nend = 0,0
     for idxf in range(len(files)):
         if(idxf in idx_delete):
             continue
-        Xflat_t = []
+        Nstart = Nend
+        X_t = []
         for state in unique_states:
             if state>=4:
                 break
@@ -2055,19 +2153,15 @@ def neural_activity_sort(Xdata_set,ylabels_set,unique_states,files,idx_delete):
                 continue
             #### generate sampled true trials for individual neurons in each pseudo trial
             NN, ntrials = np.shape(data_temp[state])[1], np.shape(data_temp[state])[0]
-            if(len(Xflat_t)==0):
-                Xflat_t = np.reshape(np.mean(data_temp[state],axis=0),(-1,1))
+            if(len(X_t)==0):
+                NN_error +=np.shape(data_temp[state])[1]
+                Nend +=np.shape(data_temp[state])[1]
+                X_t = data_temp[state].copy()
             else:
-                Xflat_t = np.hstack((Xflat_t,np.reshape(np.mean(data_temp[state],axis=0),(-1,1))))
-        try:    
-            Xflat_trials_error = np.vstack((Xflat_trials_error,Xflat_t))
-        except:
-            Xflat_trials_error = Xflat_t
+                X_t = np.vstack((X_t,data_temp[state].copy()))
+        df_error[idxf] = pd.DataFrame(X_t,columns = np.arange(Nstart,Nend))
 
-    for idxf in range(len(files)):
-        if(idxf in idx_delete):
-            continue
-        Xflat_t = []
+        X_t = []
         for state in unique_states:
             if state<4:
                 continue    
@@ -2082,26 +2176,33 @@ def neural_activity_sort(Xdata_set,ylabels_set,unique_states,files,idx_delete):
                 continue
             #### generate sampled true trials for individual neurons in each pseudo trial
             NN, ntrials = np.shape(data_temp[state])[1], np.shape(data_temp[state])[0]
-            if(len(Xflat_t)==0):
-                Xflat_t = np.reshape(np.mean(data_temp[state],axis=0),(-1,1))
+            if(len(X_t)==0):
+                X_t = data_temp[state].copy()
             else:
-                Xflat_t = np.hstack((Xflat_t,np.reshape(np.mean(data_temp[state],axis=0),(-1,1))))
-        try:    
-            Xflat_trials_correct = np.vstack((Xflat_trials_correct,Xflat_t))
-        except:
-            Xflat_trials_correct = Xflat_t
-    print('~~~~~~~',np.shape(Xflat_trials_correct),np.shape(Xflat_trials_error))
-    Xflat_trials_all = np.hstack((Xflat_trials_correct, Xflat_trials_error))
-    Xflat_trials_all = Xflat_trials_all - np.mean(Xflat_trials_all,axis=1,keepdims=1)
-    Xerror_relative = np.mean(Xflat_trials_all[:,:4],axis=1)-np.mean(Xflat_trials_all[:,4:],axis=1)
-    Xflat_trials_all[:,:4], Xflat_trials_all[:,4:] = np.mean(Xflat_trials_all[:,:4],axis=1,keepdims=1),np.mean(Xflat_trials_all[:,4:],axis=1,keepdims=1)
-    idx = np.argsort(Xerror_relative)
-    NNt = np.shape(Xerror_relative)[0]
-    fig,ax = plt.subplots(1,2,figsize=(10,10))
-    for i in range(0,50):#np.shape(Xflat_trials_all)[0]):
-        ax[0].plot(np.arange(8),Xflat_trials_all[idx[i],:]+0.5*i)
-        ax[1].plot(np.arange(8),Xflat_trials_all[idx[NNt-i-1],:]+0.5*i)
-    return Xflat_trials_correct, Xflat_trials_error
+                X_t = np.vstack((X_t,data_temp[state].copy()))
+                
+        df_correct[idxf] = pd.DataFrame(X_t,columns = np.arange(Nstart,Nend))
+        for icol in range(Nstart,Nend):
+            try:
+                _,pg=mwu(df_correct[idxf][icol],df_error[idxf][icol],alternative='greater')
+                _,pl=mwu(df_correct[idxf][icol],df_error[idxf][icol],alternative='less')
+            except:
+                pg,pl = 1,1
+            correct_mean, error_mean = np.mean(df_correct[idxf][icol]),np.mean(df_error[idxf][icol])
+            if (len(p_values)==0):
+                p_values=np.array([pg, pl, min(pg,pl),correct_mean,error_mean])
+            else:
+                p_values = np.vstack((p_values,np.array([pg, pl, min(pg,pl),correct_mean,error_mean])))
+    
+    larger = np.where(p_values[:,0]<0.05)[0]
+    less = np.where(p_values[:,1]<0.05)[0]   
+    pop_correct = less.copy()
+    pop_error   = larger.copy()
+    pop_use = np.union1d(pop_correct, pop_error)
+    pop_zero   = np.setdiff1d(np.arange(NN_error),pop_use)
+    print('************ Neuron number **********')
+    print(NN_error)
+    return pop_correct, pop_error,pop_zero, NN_error,p_values
         
         
         
@@ -2120,7 +2221,7 @@ if __name__ == '__main__':
     SVMAXIS = 3
     AX_PREV_CH_OUTC = {'c': [2, 3], 'e': [0, 1]}
     NITERATIONS, NPSEUDODEC, PERCENTTRAIN = 50, 20, 0.6
-    NPSEUDODEC_BEH = 20
+    NPSEUDODEC_BEH = 50
     ACE_RATIO = 0.5 #default
     '''
     training: 30 per state, 30*4*2=240 trials per train
@@ -2161,7 +2262,7 @@ if __name__ == '__main__':
 
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats =  ['Rat7'] #['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    rats =  ['Rat15'] #['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
         # plt.close('all')
         print('xxxxxxxxxxxxxxxx')
@@ -2173,16 +2274,21 @@ if __name__ == '__main__':
 
         # GET QUANTITIES
         print('Get quantities')
-        # Whether to skip the NaN at the beginning or not
-        SKIPNAN = 0
-        data_tr = get_all_quantities(files, numtrans=0, SKIPNAN=SKIPNAN)
         
+        # # Whether to skip the NaN at the beginning or not
+        # SKIPNAN = 0
+        # data_tr = get_all_quantities(files, numtrans=0, SKIPNAN=SKIPNAN) 
         # dataname = dir+IDX_RAT+'data_trials.npz'
-        # # np.savez(dataname, **data_tr)
-        # data_tr  = np.load(dataname, allow_pickle=True)
+        # np.savez(dataname, **data_tr)
+        
+        ## reloading
+        dataname = dir+IDX_RAT+'data_trials.npz'
+        data_trials = np.load(dataname, allow_pickle=True)
+        data_tr = unpack_dicts(data_trials) 
+        
 
         ACE_RATIO=data_tr['overall_ac_ae_ratio']
-
+        
         unique_states = np.arange(8)
         unique_cohs = [-1, 0, 1]# [-0.6,-0.25,0,0.25,0.6]#
   
@@ -2192,11 +2298,13 @@ if __name__ == '__main__':
             data_tr, unique_states, unique_cohs)
         print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:", MIN_TRIALS)
             
-        # ### compare single neuron activity       
-        # Xdata_hist_set, ylabels_hist_set, files = data_tr['Xdata_hist_set'], \
-        # data_tr['ylabels_hist_set'], data_tr['files']  
-        # unique_states = np.arange(8)
-        # Xflat_trials_correct, Xflat_trials_error = neural_activity_sort(Xdata_hist_set,ylabels_hist_set,unique_states,files,false_files)
+        ### compare single neuron activity       
+        Xdata_hist_set, ylabels_hist_set, files = data_tr['Xdata_hist_set'], \
+        data_tr['ylabels_hist_set'], data_tr['files']  
+        unique_states = np.arange(8)
+        pop_correct, pop_error, pop_zero, NNt, p_values = neural_activity_sort(Xdata_hist_set,ylabels_hist_set,unique_states,files,false_files)
+        print('******* three populations: correct, zero, error ***********')
+        print(len(pop_correct),'  ',len(pop_zero),'  ',len(pop_error))
 
         wc, bc = [], []
 
@@ -2296,46 +2404,61 @@ if __name__ == '__main__':
                       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
                                             REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
             else: 
-                data_int,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_tr,[], [], [], [], false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error, mode='decoding',
+                # data_int,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_tr,[], [], [], [], false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error, mode='decoding',
+                #       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
+                #                             REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
+                data_int,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced_pop(data_tr,[], [], [], [], false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error, pop_correct, pop_error, mode='decoding',
                       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
                                             REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
+                
+            # pop_e = np.union1d(pop_error, pop_zero)
+            # pop_c = np.union1d(pop_correct, pop_zero)
+            # gc.gaincontrol_test(data_tr,data_int,false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,pop_correct,pop_zero, pop_error, mode='decoding',
+            #           DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
+            #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
             
-            # PCA_projection(data_dec, data_int, Xhist_test_correct, Xhist_test_error, Xbeh_test_correct, Xbeh_test_error, pair_pcs=[0,1,2])
+            # gc.gaincontrol_test(data_tr,data_int,false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,pop_c,pop_zero, pop_e, mode='decoding',
+            #           DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
+            #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
             
-            if(RECORD_TRIALS == 1 and CONTROL==0):
-                dataname = dir+IDX_RAT+'data_beh.npz'
-                np.savez(dataname, **data_int)
-            if(RECORD_TRIALS == 1 and CONTROL==1):
-                dataname = dir+IDX_RAT+'data_beh_ae.npz'
-                np.savez(dataname, **data_int)
-            if(RECORD_TRIALS == 1  and CONTROL==2):
-                dataname = dir+IDX_RAT+'data_beh_ac.npz'
-                np.savez(dataname, **data_int)
+        
+        
+        #     # PCA_projection(data_dec, data_int, Xhist_test_correct, Xhist_test_error, Xbeh_test_correct, Xbeh_test_error, pair_pcs=[0,1,2])
+            
+        #     if(RECORD_TRIALS == 1 and CONTROL==0):
+        #         dataname = dir+IDX_RAT+'data_beh.npz'
+        #         np.savez(dataname, **data_int)
+        #     if(RECORD_TRIALS == 1 and CONTROL==1):
+        #         dataname = dir+IDX_RAT+'data_beh_ae.npz'
+        #         np.savez(dataname, **data_int)
+        #     if(RECORD_TRIALS == 1  and CONTROL==2):
+        #         dataname = dir+IDX_RAT+'data_beh_ac.npz'
+        #         np.savez(dataname, **data_int)
     
-            # # transition bias to behaviour
-            # print('Slopes -- Psychometric curves')
-            # # unique_cohs = [-1, 0, 1]
-            # EACHSTATES = 20
-            # if(RECORD_TRIALS == 0):
-            #     dataname = dir+IDX_RAT+'data_beh.npz'
-            #     data_beh = np.load(dataname, allow_pickle=True)
-            #     REC_TRIALS_SET = data_beh['REC_TRIALS_SET']
-            #     REC_TRIALS_SET = REC_TRIALS_SET.item()
-            # else:
-            #     REC_TRIALS_SET = np.zeros(EACHSTATES)
+        #     # # transition bias to behaviour
+        #     # print('Slopes -- Psychometric curves')
+        #     # # unique_cohs = [-1, 0, 1]
+        #     # EACHSTATES = 20
+        #     # if(RECORD_TRIALS == 0):
+        #     #     dataname = dir+IDX_RAT+'data_beh.npz'
+        #     #     data_beh = np.load(dataname, allow_pickle=True)
+        #     #     REC_TRIALS_SET = data_beh['REC_TRIALS_SET']
+        #     #     REC_TRIALS_SET = REC_TRIALS_SET.item()
+        #     # else:
+        #     #     REC_TRIALS_SET = np.zeros(EACHSTATES)
             
-            EACHSTATES=150 
-            fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
-            curveslopes_correct, curveintercept_correct, curveslopes_error,\
-                curveintercept_error, data_beh =\
-                bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES, #NPSEUDODEC_BEH,
-                              NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-                              REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
+        #     EACHSTATES=150 
+        #     fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
+        #     curveslopes_correct, curveintercept_correct, curveslopes_error,\
+        #         curveintercept_error, data_beh =\
+        #         bias_VS_prob(data_tr, data_dec, unique_cohs, num_beh_trials, EACHSTATES, #NPSEUDODEC_BEH,
+        #                       NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
+        #                       REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
             
-            # curveslopes_correct, curveintercept_correct, curveslopes_error,\
-            #     curveintercept_error, data_beh =\
-            #     bias_VS_prob_balanced(data_tr, data_dec, unique_cohs, coh_ch_stateratio_correct,coh_ch_stateratio_error, EACHSTATES,
-            #      NITERATIONS, ax, RECORD_TRIALS=1, REC_TRIALS_SET=[],STIM_BEH=1,PCA_only=0,mmodel=[])
+        #     # curveslopes_correct, curveintercept_correct, curveslopes_error,\
+        #     #     curveintercept_error, data_beh =\
+        #     #     bias_VS_prob_balanced(data_tr, data_dec, unique_cohs, coh_ch_stateratio_correct,coh_ch_stateratio_error, EACHSTATES,
+        #     #       NITERATIONS, ax, RECORD_TRIALS=1, REC_TRIALS_SET=[],STIM_BEH=1,PCA_only=0,mmodel=[])
 
 
             

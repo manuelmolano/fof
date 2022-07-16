@@ -78,7 +78,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                 for choice in unique_choices:
                     try:
                         totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
-                        if coh==0 and np.shape(data_temp[state,coh,choice])[0]==0:#>-1
+                        if coh>-2 and np.shape(data_temp[state,coh,choice])[0]==0:#>-1
                         #     # print('file-',idxf,'  choice-',choice,' trials-',np.shape(data_temp[state,coh,choice])[0])
                             error_false=np.append(error_false,idxf)
                         #     # print('error!!!!!!')
@@ -106,7 +106,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                 for choice in unique_choices:
                     try:
                         totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
-                        if coh==0 and np.shape(data_temp[state,coh,choice])[0]==0:#>-1
+                        if coh>-2 and np.shape(data_temp[state,coh,choice])[0]==0:#>-1
                         #     # print('file-',idxf,'  choice-',choice,' trials-',np.shape(data_temp[state,coh,choice])[0])
                             error_false=np.append(error_false,idxf)
                         #     # print('error!!!!!!')
@@ -992,7 +992,7 @@ def merge_pseudo_beh_trials_balanced(Xdata_set,ylabels_set,unique_states,unique_
                 Neach_state_error[coh,choice][i]   = max(int(EACHSTATES*coh_ch_stateratio_error[idxc,idxch,i]),1)
 
     #### only zero coherence
-    unique_cohs = [0]#[-1,0,1]#
+    unique_cohs = [-1,0,1]#
     for idxc, coh in enumerate(unique_cohs):
         for idxf in range(len(vfiles)):
             if(idxf in falsefiles):

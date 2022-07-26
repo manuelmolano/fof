@@ -33,7 +33,7 @@ def gmm_fit(neurons_fs, n_components, algo='bayes', n_init=50, random_state=None
     return z, model
 
 
-def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
+def beh_self_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # ### ----------- history axis ------------------- 
     # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
     # IDX_RAT = 'Rat31_'
@@ -57,7 +57,7 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
     wiac_fix_hist,wiae_fix_hist = np.zeros((np.shape(wi_ae)[0],NITERATIONS)),np.zeros((np.shape(wi_ae)[0],NITERATIONS))
-    wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_ae)[0],NITERATIONS)),np.zeros((np.shape(wi_ae)[0],NITERATIONS))
+    wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behac)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
     for i in range(NITERATIONS):
         wiac_fix_hist[:,i],wiae_fix_hist[:,i] = wi_ac[:, i*5+3],wi_ae[:, i*5+3]
         wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, i*5+4],wi_behae[:, i*5+4]
@@ -78,6 +78,78 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     decoders_fix_set['beh-ac'],decoders_fix_set['beh-ae']  = wiac_fix_beh.copy(), wiae_fix_beh.copy() 
 
     ag_fix_set = {}
+
+    for i, selfpair in enumerate(dec_names):
+        ag_fix_set[selfpair,selfpair] = (decoders_fix_set[selfpair].copy().T)@(decoders_fix_set[selfpair])
+        ag_fix_set[selfpair,selfpair] = np.arccos(ag_fix_set[selfpair,selfpair])/np.pi*180 
+        ag_fix_set[selfpair,selfpair]= ag_fix_set[selfpair,selfpair][~np.eye(ag_fix_set[selfpair,selfpair].shape[0],dtype=bool)].reshape(ag_fix_set[selfpair,selfpair].shape[0],-1)
+        # print(ag_fix_set[selfpair,selfpair])
+
+    # figure ploting -- distribution of bootstrap results
+    fig_fix,ax_fix = plt.subplots(4,4, figsize=(8,8),tight_layout=True,sharex=True,sharey=True)
+    BOX_WDTH = 0.25
+    for i1, pair1 in enumerate (dec_names):
+        df = {pair1+' v.s. '+pair1: ag_fix_set[pair1,pair1].flatten()}
+        df = pd.DataFrame(df)
+        sns.set(style='whitegrid')
+        sns.boxplot(data=df,ax=ax_fix[i1,i1])
+        ax_fix[i1,i1].set_ylim([30,150])
+        ax_fix[i1,i1].set_yticks([30,90,150])
+    for i, pair in enumerate(dec_names):
+        ax_fix[i,0].set_ylabel(pair)
+        ax_fix[0,i].set_title(pair)
+
+def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
+    # ### ----------- history axis ------------------- 
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+    # IDX_RAT = 'Rat31_'
+    # timep = '/'#'-01-00s/'
+    # NITERATIONS = 50
+    ### compute the angles between history encoding axises
+
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_histac, bi_histac = data_dec['coefs_correct'], data_dec['intercepts_correct']
+    
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_histae, bi_histae = data_dec['coefs_correct'], data_dec['intercepts_correct']
+
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_behae, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+
+    wiac_fix_hist,wiae_fix_hist= np.zeros((np.shape(wi_histac)[0],NITERATIONS)),np.zeros((np.shape(wi_histae)[0],NITERATIONS))
+    wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behac)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
+    print('--------------------',np.shape(wi_behac))
+    for i in range(NITERATIONS):
+        # wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*6+3]-wi_histac[:,i*6+4],wi_histae[:, i*6+3]-wi_histae[:,i*6+4]
+        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*5+3],wi_histae[:, i*5+3]
+        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, (i*5)*3+4],wi_behae[:, (i*5)*3+4]
+        for icoh in range(1,3):
+            wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]+wi_behac[:, (i*5)*3+5*icoh+4],wiae_fix_beh[:,i]  +wi_behae[:, (i*5)*3+5*icoh+4]
+        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]/3,wiae_fix_beh[:,i]/3 
+            
+    ### Predicting upcoming stimulus 
+    ### ~~~~~~~~~~~ individual iterations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    for i in range(NITERATIONS):
+        wiac_fix_hist[:,i] = wiac_fix_hist[:,i]/np.linalg.norm(wiac_fix_hist[:,i]) 
+        wiae_fix_hist[:,i] = wiae_fix_hist[:,i]/np.linalg.norm(wiae_fix_hist[:,i]) 
+
+    for i in range(NITERATIONS):
+        wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i]) 
+        wiae_fix_beh[:,i] = wiae_fix_beh[:,i]/np.linalg.norm(wiae_fix_beh[:,i])
+
+    decoders_fix_set = {}
+    dec_names = ['tr.bias-ac','tr.bias-ae','beh-ac','beh-ae']
+    decoders_fix_set['tr.bias-ac'],decoders_fix_set['tr.bias-ae'] = wiac_fix_hist.copy(),wiae_fix_hist.copy()
+    decoders_fix_set['beh-ac'],decoders_fix_set['beh-ae']  = wiac_fix_beh.copy(), wiae_fix_beh.copy() 
+
+    ag_fix_set = {}
     for i1, pair1 in enumerate (dec_names):
         for i2, pair2 in enumerate (dec_names):
             if i2<=i1:
@@ -92,21 +164,31 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
         # print(ag_fix_set[selfpair,selfpair])
 
     # figure ploting -- distribution of bootstrap results
-    fig_fix,ax_fix = plt.subplots(4,4, figsize=(8,8),tight_layout=True,sharex=True,sharey=True)
-    BOX_WDTH = 0.25
+    fig_fix,ax_fix = plt.subplots(4,4, figsize=(4,6),sharex=True,sharey=True)
+    BOX_WDTH = 0.6
     for i1, pair1 in enumerate (dec_names):
         for i2, pair2 in enumerate (dec_names):
             if i2<i1:
                 continue 
-            df = {pair1+' v.s. '+pair2: ag_fix_set[pair1,pair2].flatten()}
+            df = {pair1+' v.s. '+pair2: (ag_fix_set[pair1,pair2]).flatten()}
             df = pd.DataFrame(df)
-            sns.set(style='whitegrid')
-            sns.boxplot(data=df,ax=ax_fix[i1,i2])
+            sns.violinplot(data=df,ax=ax_fix[i1,i2],width=BOX_WDTH)
             ax_fix[i1,i2].set_ylim([30,150])
             ax_fix[i1,i2].set_yticks([30,90,150])
+
     for i, pair in enumerate(dec_names):
         ax_fix[i,0].set_ylabel(pair)
         ax_fix[0,i].set_title(pair)
+        
+        
+    fig_beh, ax_beh=plt.subplots(figsize=(3,4))    
+    df = {'beh-ac v.s. trbias': (ag_fix_set['tr.bias-ac','beh-ac']).flatten(), 'beh-ae v.s. trbias': (ag_fix_set['tr.bias-ae','beh-ae']).flatten()}
+    df = pd.DataFrame(df)
+    sns.set(style='whitegrid')
+    
+    ax_beh = sns.violinplot(data=df)
+    box_pairs = [('beh-ac v.s. trbias', 'beh-ae v.s. trbias')]
+    add_stat_annotation(ax_beh, data=df, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
 
 
     # timep = '/00-01s/'
@@ -169,41 +251,84 @@ def cluster_beh_acae(dir, IDX_RAT, timep, NITERATIONS, ncomps):
     # NITERATIONS = 50
 
 
+    dataname  = dir+timep+IDX_RAT+'data_dec.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    wi_hist, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
     dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    wi_behae, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
-
-    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
-    data_dec  = np.load(dataname, allow_pickle=True)
     wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+    print(np.shape(wi_hist),np.shape(wi_behac))
 
-    wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behae)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
+    wi_fix_hist,wiac_fix_beh   = np.zeros((np.shape(wi_hist)[0],NITERATIONS)),np.zeros((np.shape(wi_behac)[0],NITERATIONS))
     for i in range(NITERATIONS):
-        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, i*5+4],wi_behae[:, i*5+4]
+        wi_fix_hist[:,i],wiac_fix_beh[:,i]   = wi_hist[:, i*5+3],wi_behac[:, i*5+4]
 
     ### Predicting upcoming stimulus 
 
     for i in range(NITERATIONS):
-        wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i]) 
-        wiae_fix_beh[:,i] = wiae_fix_beh[:,i]/np.linalg.norm(wiae_fix_beh[:,i])
+        wi_fix_hist[:,i] = wi_fix_hist[:,i]/np.linalg.norm(wi_fix_hist[:,i]) 
+        wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i])
 
     decoders_fix_set = {}
-    decoders_fix_set['beh-ac'],decoders_fix_set['beh-ae']  = np.mean(wiac_fix_beh.copy(),axis=1), np.mean(wiae_fix_beh.copy(),axis=1) 
+    decoders_fix_set['hist'],decoders_fix_set['beh-ac']  = wi_fix_hist.flatten(), wiac_fix_beh.flatten()
     vec_pair = np.zeros((len(decoders_fix_set['beh-ac']),2))
-    vec_pair[:,0], vec_pair[:,1] = decoders_fix_set['beh-ac'], decoders_fix_set['beh-ae']
-    z_pop,model=gmm_fit(vec_pair, ncomps, algo='em', n_init=50)
+    vec_pair[:,0], vec_pair[:,1] = decoders_fix_set['hist'], decoders_fix_set['beh-ac']
+    z_pop,model=gmm_fit(vec_pair, ncomps, algo='Bayes', n_init=50)
 
 
     # figure ploting -- distribution of bootstrap results
-    fig_fix,ax_fix = plt.subplots(1,2,figsize=(10,5),tight_layout=True,sharex=True,sharey=True)
-    idx1,idx2 = np.where(z_pop==0)[0],np.where(z_pop==1)[0]
+    fig_fix,ax_fix = plt.subplots(figsize=(4,4),tight_layout=True,sharex=True,sharey=True)
+    for i in range(ncomps): 
+        idx = np.where(z_pop==i)[0]
+        ax_fix.scatter(decoders_fix_set['hist'][idx],decoders_fix_set['beh-ac'][idx],s=5,alpha=0.15)
+        
+    ax_fix.set_xlim([-0.2,0.2])
+    ax_fix.set_ylim([-0.5,0.5])
+
+
+
+def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
+    ## ----------- history axis ------------------- 
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+    # IDX_RAT = 'Rat7_'
+    # timep = '/-01-00s/'
+    # NITERATIONS = 50
+    ### compute the angles between history encoding axises
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_ctxt.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    score_fix_hist_ae = data_dec['stats_error'][:]
     
-    ax_fix[0].scatter(decoders_fix_set['beh-ac'][idx1],decoders_fix_set['beh-ae'][idx1],s=10,c='tab:blue',alpha=0.25)
-    ax_fix[1].scatter(decoders_fix_set['beh-ac'][idx2],decoders_fix_set['beh-ae'][idx2],s=10,c='tab:blue',alpha=0.25)
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_ctxt.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    score_fix_hist_ac = data_dec['stats_correct'][:]
+    
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    score_fix_beh_ae = data_dec['stats_error']
+    
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    score_fix_beh_ac = data_dec['stats_correct']
+    
+    
+    accuracy_fix_set = {}
+    accuracy_fix_set['hist-ac'], accuracy_fix_set['hist-ae']= score_fix_hist_ac.copy(), score_fix_hist_ae.copy() 
+    accuracy_fix_set['beh-ac'], accuracy_fix_set['beh-ae']  = score_fix_beh_ac.flatten(), score_fix_beh_ae.flatten() 
 
 
-
+    fig_score, ax_score=plt.subplots(1,2,figsize=(6,4),tight_layout=True, sharey=True)    
+    df_hist = {'hist-ac': (accuracy_fix_set['hist-ac']).flatten(), 'hist-ae': (accuracy_fix_set['hist-ae']).flatten()}
+    df_beh = {'beh-ac':accuracy_fix_set['beh-ac'],'beh-ae':accuracy_fix_set['beh-ae']}
+    df_hist = pd.DataFrame(df_hist)
+    df_beh = pd.DataFrame(df_beh)
+    
+    ax_score[0] = sns.violinplot(ax=ax_score[0],data=df_hist)
+    box_pairs = [('hist-ac', 'hist-ae')]
+    add_stat_annotation(ax_score[0], data=df_hist, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
+    ax_score[1] = sns.violinplot(ax=ax_score[1],data=df_beh)
+    box_pairs = [('beh-ac', 'beh-ae')]
+    add_stat_annotation(ax_score[1], data=df_beh, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
 
 def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     ## ----------- history axis ------------------- 
@@ -215,12 +340,12 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     dataname  = dir+timep+IDX_RAT+'data_dec_ae.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_ae, bi_ae = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    score_fix_hist_ae = data_dec['stats_error'][3,:]
+    score_fix_hist_ae = data_dec['stats_error'][:]
     
     dataname  = dir+timep+IDX_RAT+'data_dec_ac.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_ac, bi_ac = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    score_fix_hist_ac = data_dec['stats_correct'][3,:]
+    score_fix_hist_ac = data_dec['stats_correct'][:]
     
     dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
@@ -264,7 +389,7 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     
     accuracy_fix_set = {}
     accuracy_fix_set['hist-ac'], accuracy_fix_set['hist-ae']= score_fix_hist_ac.copy(), score_fix_hist_ae.copy() 
-    accuracy_fix_set['beh-ac'], accuracy_fix_set['beh-ae']  = score_fix_beh_ac.copy(), score_fix_beh_ae.copy() 
+    accuracy_fix_set['beh-ac'], accuracy_fix_set['beh-ae']  = score_fix_beh_ac.flatten(), score_fix_beh_ae.flatten() 
     
     ag_fix_set = {}
     for i1, pair1 in enumerate (dec_names):
@@ -300,3 +425,28 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
         # ax_fix[i1].errorbar((nbin_ang[:-1]+nbin_ang[1:])/2.0,acc_vs_ang[pair1],acc_vs_ang_ste[pair1],mfc='red', mec='green')
         ax_fix.set_ylim([0,1.0])
         ax_fix.set_yticks([0,0.5,1.0])
+
+
+# ######## ***************** Three populations **************
+# diff_act_values = p_values[:,3]-p_values[:,4]
+# fig,ax=plt.subplots(figsize=(4,4))
+# ax.hist(diff_act_values[pop_correct],facecolor='tab:blue',alpha=0.25)
+# ax.hist(diff_act_values[pop_error],facecolor='tab:red',alpha=0.25)
+# ax.hist(diff_act_values[pop_zero],facecolor='gray',alpha=0.25)
+# ax.set_xlim([-0.8,0.8])
+# ax.set_xticks([-0.8,0,0.8])
+
+# pop_left_corr = np.setdiff1d(pop_left_correct,pop_left_error)
+# print(len(pop_left_corr))
+# pop_left_corr = np.setdiff1d(pop_left_correct,pop_zero_error)
+# print(len(pop_left_corr))
+# pop_right_corr = np.setdiff1d(pop_right_correct,pop_right_error)
+# print(len(pop_right_corr))
+# pop_right_corr = np.setdiff1d(pop_right_correct,pop_zero_error)
+# print(len(pop_right_corr))
+
+# fig,ax = plt.subplots(figsize=(4,3))
+# ax.hist(p_values_correct[pop_correct,3]-p_values_correct[pop_correct,4],facecolor='tab:blue',alpha=0.25)
+# ax.hist(p_values_correct[pop_error,3]-p_values_correct[pop_error,4],facecolor='tab:red',alpha=0.25)
+# ax.hist(p_values_correct[pop_zero,3]-p_values_correct[pop_zero,4],facecolor='gray',alpha=0.25)
+

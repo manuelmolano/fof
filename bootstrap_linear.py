@@ -85,7 +85,7 @@ def bootstrap_linsvm_step_PCAonly(Xdata_hist_set,NN, ylabels_hist_set,unique_sta
 
     return mmodel
 
-def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,files,false_files, pop_correct, pop_zero, pop_error, CONDITION_CTXT, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
+def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nselect, files,false_files, pop_correct, pop_zero, pop_error, CONDITION_CTXT, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
 
     ### ac/ae ratio 
     CRATIO =ACE_RATIO/(1+ACE_RATIO)# according to theratio#0.5#share the same #  
@@ -147,9 +147,9 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,file
         Xdata_hist_trainset, Xdata_hist_testset = data_traintest_tr['Xdata_hist_trainset'],data_traintest_tr['Xdata_hist_testset']
         ylabels_hist_trainset,ylabels_hist_testset = data_traintest_tr['ylabels_hist_trainset'],data_traintest_tr['ylabels_hist_testset']
         ### training dataset 
-        Xdata_train_correct,ylabels_train_correct,Xdata_train_error,ylabels_train_error,merge_trials_hist_train=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_trainset,ylabels_hist_trainset,unique_states,unique_cohs,files,false_files,ntrain,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
+        Xdata_train_correct,ylabels_train_correct,Xdata_train_error,ylabels_train_error,merge_trials_hist_train=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_trainset,ylabels_hist_trainset,unique_states,unique_cohs,nselect, files,false_files,ntrain,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
         ### testing dataset
-        Xdata_test_correct,ylabels_test_correct,Xdata_test_error,ylabels_test_error,merge_trials_hist_test=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_testset,ylabels_hist_testset,unique_states,unique_cohs,files,false_files,itest,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
+        Xdata_test_correct,ylabels_test_correct,Xdata_test_error,ylabels_test_error,merge_trials_hist_test=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_testset,ylabels_hist_testset,unique_states,unique_cohs,nselect, files,false_files,itest,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
 
         if RECORD_TRIALS == 1:
             RECORDED_TRIALS_SET[i]=merge_trials_hist_train
@@ -206,6 +206,9 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,file
         # Xdata_testc[2*itest:3*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error] 
         # Xdata_testc[:itest,pop_correct]          = Xdata_teste[:itest,pop_correct]
         # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_teste[2*itest:3*itest,pop_correct] 
+
+        # Xdata_teste[:itest,pop_correct]          = 0#Xdata_teste[:itest,pop_error]*2
+        # Xdata_teste[2*itest:3*itest,pop_correct] = 0#Xdata_teste[2*itest:3*itest,pop_error]*2 
         '''
         ### in prev ch left, pop_correct has lower firing rate therefore doesn't gate; pop_error has higher firing rate therefore gates the interference
         '''
@@ -340,14 +343,22 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,file
             evidences_c[3*itest:4*itest, 3] = np.squeeze(
                     Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
         else:
+            # evidences_c[:itest, 3] = np.squeeze(
+            #         Xdata_testc[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            # evidences_c[itest:2*itest, 3] = np.squeeze(
+            #         Xdata_testc[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            # evidences_c[2*itest:3*itest, 3] = np.squeeze(
+            #         Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            # evidences_c[3*itest:4*itest, 3] = np.squeeze(
+            #         Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
             evidences_c[:itest, 3] = np.squeeze(
-                    Xdata_testc[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+                    Xdata_testc[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
             evidences_c[itest:2*itest, 3] = np.squeeze(
-                    Xdata_testc[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_testc[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_c[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+                    Xdata_testc[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
             evidences_c[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_testc[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
 
         evidences_c[:, 4] = np.squeeze(
             Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
@@ -431,14 +442,22 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,file
         else:
 
             #### gain control 
+            # evidences_e[:itest, 3] = np.squeeze(
+            #         Xdata_teste[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            # evidences_e[itest:2*itest, 3] = np.squeeze(
+            #         Xdata_teste[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            # evidences_e[2*itest:3*itest, 3] = np.squeeze(
+            #         Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            # evidences_e[3*itest:4*itest, 3] = np.squeeze(
+            #         Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
             evidences_e[:itest, 3] = np.squeeze(
-                    Xdata_teste[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+                    Xdata_teste[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
             evidences_e[itest:2*itest, 3] = np.squeeze(
-                    Xdata_teste[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_teste[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_e[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+                    Xdata_teste[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
             evidences_e[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_teste[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
 
         evidences_e[:, 4] = np.squeeze(
             Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
@@ -513,7 +532,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,file
 
 # def bootstrap_linsvm_step(Xdata_hist_trainset,Xdata_hist_testset,NN, ylabels_hist_trainset,ylabels_hist_testset, unique_states,unique_cohs,files,false_files, pop_correct, pop_zero, pop_error, USE_POP, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
 
-def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,files,false_files, pop_correct, pop_zero, pop_error, USE_POP, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
+def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,nselect, files,false_files, pop_correct, pop_zero, pop_error, USE_POP, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
 
     ### ac/ae ratio 
     CRATIO = ACE_RATIO/(1+ACE_RATIO)# according to theratio#0.5#share the same #  
@@ -570,9 +589,9 @@ def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,files,false_file
         Xdata_hist_trainset, Xdata_hist_testset = data_traintest_tr['Xdata_hist_trainset'],data_traintest_tr['Xdata_hist_testset']
         ylabels_hist_trainset,ylabels_hist_testset = data_traintest_tr['ylabels_hist_trainset'],data_traintest_tr['ylabels_hist_testset']
         ### training dataset 
-        Xdata_train_correct,ylabels_train_correct,Xdata_train_error,ylabels_train_error,merge_trials_hist_train=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_trainset,ylabels_hist_trainset,unique_states,unique_cohs,files,false_files,ntrain,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
+        Xdata_train_correct,ylabels_train_correct,Xdata_train_error,ylabels_train_error,merge_trials_hist_train=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_trainset,ylabels_hist_trainset,unique_states,unique_cohs,nselect, files,false_files,ntrain,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
         ### testing dataset
-        Xdata_test_correct,ylabels_test_correct,Xdata_test_error,ylabels_test_error,merge_trials_hist_test=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_testset,ylabels_hist_testset,unique_states,unique_cohs,files,false_files,itest,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
+        Xdata_test_correct,ylabels_test_correct,Xdata_test_error,ylabels_test_error,merge_trials_hist_test=gpt.merge_pseudo_hist_trials_individual(Xdata_hist_testset,ylabels_hist_testset,unique_states,unique_cohs,nselect, files,false_files,itest,RECORD_TRIALS, RECORDED_TRIALS_SET[i]) #individual
 
         if RECORD_TRIALS == 1:
             RECORDED_TRIALS_SET[i]=merge_trials_hist_train
@@ -997,7 +1016,7 @@ def bootstrap_linsvm_proj_step(coeffs_pool, intercepts_pool, Xdata_hist_set,NN, 
 
     
 
-def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,unique_cohs,files,false_files, coh_ch_stateratio_correct,coh_ch_stateratio_error, pop_correct,pop_error, USE_POP, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=5, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[],mmodel=[],PCA_n_components=0):
+def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,unique_cohs,nselect, files,false_files, coh_ch_stateratio_correct,coh_ch_stateratio_error, pop_correct,pop_error, USE_POP, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=5, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[],mmodel=[],PCA_n_components=0):
     ### ac/ae ratio 
     CRATIO   = ACE_RATIO/(1+ACE_RATIO)#0.5#
     ERATIO   = 1-CRATIO
@@ -1050,12 +1069,12 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             data_traintest_tr['ylabels_beh_trainset'], data_traintest_tr['Xdata_beh_testset'], data_traintest_tr['ylabels_beh_testset']
 
         if (CONTROL==0):
-            Xdata_train_correct,ylabels_train_correct,_,_,merge_trials_train=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_trainset,ylabels_beh_trainset,unique_states,COHAXISS,files, false_files,EACHSTATES=ntrainc, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to COHAXISS
-            _,_,Xdata_train_error,ylabels_train_error,merge_trials_train=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_trainset,ylabels_beh_trainset,unique_states,COHAXISS,files, false_files,EACHSTATES=ntraine, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to  
+            Xdata_train_correct,ylabels_train_correct,_,_,merge_trials_train=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_trainset,ylabels_beh_trainset,unique_states,COHAXISS,nselect, files, false_files,EACHSTATES=ntrainc, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to COHAXISS
+            _,_,Xdata_train_error,ylabels_train_error,merge_trials_train=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_trainset,ylabels_beh_trainset,unique_states,COHAXISS,nselect,files, false_files,EACHSTATES=ntraine, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to  
         else:           
-            Xdata_train_correct,ylabels_train_correct,Xdata_train_error,ylabels_train_error,merge_trials_train=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_trainset,ylabels_beh_trainset,unique_states,COHAXISS,files, false_files,EACHSTATES=ntrain, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to COHAXISS
+            Xdata_train_correct,ylabels_train_correct,Xdata_train_error,ylabels_train_error,merge_trials_train=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_trainset,ylabels_beh_trainset,unique_states,COHAXISS,nselect,files, false_files,EACHSTATES=ntrain, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to COHAXISS
 
-        Xdata_test_correct,ylabels_test_correct,Xdata_test_error,ylabels_test_error,merge_trials_test=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_testset,ylabels_beh_testset,unique_states,COHAXISS,files, false_files,EACHSTATES=itest, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to COHAXISS
+        Xdata_test_correct,ylabels_test_correct,Xdata_test_error,ylabels_test_error,merge_trials_test=gpt.merge_pseudo_beh_trials_individual(Xdata_beh_testset,ylabels_beh_testset,unique_states,COHAXISS,nselect,files, false_files,EACHSTATES=itest, RECORD_TRIALS=RECORD_TRIALS, RECORDED_TRIALS_SET=RECORDED_TRIALS_SET[i],STIM_BEH=1)#### from unique_cohs to COHAXISS
 
         if RECORD_TRIALS == 1:
             RECORDED_TRIALS_SET[i]=merge_trials_train

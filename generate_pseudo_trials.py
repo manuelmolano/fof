@@ -327,7 +327,7 @@ def merge_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,fil
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
 
-def merge_pseudo_hist_trials_individual(Xdata_set,ylabels_set,unique_states,unique_cohs,files,idx_delete,EACHSTATES=20,RECORD_TRIALS=0, RECORDED_TRIALS=[]):
+def merge_pseudo_hist_trials_individual(Xdata_set,ylabels_set,unique_states,unique_cohs,nselect, files,idx_delete,EACHSTATES=20,RECORD_TRIALS=0, RECORDED_TRIALS=[]):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     Xmerge_trials_error,ymerge_labels_error = {},{}
@@ -339,7 +339,7 @@ def merge_pseudo_hist_trials_individual(Xdata_set,ylabels_set,unique_states,uniq
         for idxf in range(len(files)):
             if(idxf in idx_delete):
                 continue
-            temp_trials  = Xdata_set[idxf,'error'][state].copy()
+            temp_trials  = (Xdata_set[idxf,'error'][state].copy())
             temp_labels  = ylabels_set[idxf,'error'][state].copy()
 
             #### generate sampled true trials for individual neurons in each pseudo trial
@@ -372,6 +372,7 @@ def merge_pseudo_hist_trials_individual(Xdata_set,ylabels_set,unique_states,uniq
                 except:
                     ymerge_labels_error[state] = ymerge_trials_t
                     Xmerge_trials_error[state] = Xmerge_trials_t
+        Xmerge_trials_error[state] = Xmerge_trials_error[state][:,nselect]
     
     for state in unique_states:
         if state<4:
@@ -379,7 +380,7 @@ def merge_pseudo_hist_trials_individual(Xdata_set,ylabels_set,unique_states,uniq
         for idxf in range(len(files)):
             if(idxf in idx_delete):
                 continue
-            temp_trials  = Xdata_set[idxf,'correct'][state].copy()
+            temp_trials  = (Xdata_set[idxf,'correct'][state].copy())
             temp_labels  = ylabels_set[idxf,'correct'][state].copy()
             #### generate sampled true trials for individual neurons in each pseudo trial
             NN = np.shape(temp_trials)[1]
@@ -408,6 +409,7 @@ def merge_pseudo_hist_trials_individual(Xdata_set,ylabels_set,unique_states,uniq
                 except:
                     ymerge_labels_correct[state] = ymerge_trials_t
                     Xmerge_trials_correct[state] = Xmerge_trials_t
+        Xmerge_trials_correct[state] = Xmerge_trials_correct[state][:,nselect]
 
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
@@ -504,7 +506,7 @@ def shuffle_pseudo_hist_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,f
                 Xmerge_trials_correct[state] = data_shuffle
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials_hist
 
-def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
+def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,nselect, vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     yright_ratio_correct = {}
@@ -544,6 +546,7 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 except:
                     ymerge_labels_correct[state,coh] = temp_beh[idxsample]#[np.sum(temp_beh[idxsample])/len(idxsample)]
                     Xmerge_trials_correct[state,coh] = temp_trials[idxsample,:]
+            Xmerge_trials_correct[state,coh]=Xmerge_trials_correct[state,coh][:,nselect]
 
     for state in unique_states:
         if state>=4:
@@ -576,9 +579,10 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,vfil
                 except:
                     ymerge_labels_error[state,coh] = temp_beh[idxsample]#[np.sum(temp_beh[idxsample])/len(idxsample)]
                     Xmerge_trials_error[state,coh] = temp_trials[idxsample,:]
+            Xmerge_trials_error[state,coh] = Xmerge_trials_error[state,coh][:,nselect]
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials
 
-def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,unique_cohs,vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
+def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,unique_cohs,nselect,vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
     unique_choices = [0,1]
     Xmerge_trials_correct,ymerge_labels_correct = {},{}
     yright_ratio_correct = {}
@@ -615,6 +619,7 @@ def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,uniqu
                 except:
                     ymerge_labels_correct[coh,choice]     = ymerge_trials_t
                     Xmerge_trials_correct[coh,choice] = Xmerge_trials_t
+            Xmerge_trials_correct[coh,choice] = Xmerge_trials_correct[coh,choice][:,nselect]
 
     for coh in unique_cohs:
         for choice in unique_choices:
@@ -645,6 +650,7 @@ def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,uniqu
                 except:
                     ymerge_labels_error[coh,choice]     = ymerge_trials_t
                     Xmerge_trials_error[coh,choice]     = Xmerge_trials_t
+            Xmerge_trials_error[coh,choice] = Xmerge_trials_error[coh,choice][:,nselect]
 
 
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials

@@ -107,11 +107,11 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
 
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_prevch.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histac, bi_histac = data_dec['coefs_correct'], data_dec['intercepts_correct']
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_prevch.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histae, bi_histae = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
@@ -127,8 +127,8 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behac)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
     print('--------------------',np.shape(wi_behac))
     for i in range(NITERATIONS):
-        # wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*6+3]-wi_histac[:,i*6+4],wi_histae[:, i*6+3]-wi_histae[:,i*6+4]
-        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*5+3],wi_histae[:, i*5+3]
+        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*6+3]-wi_histac[:,i*6+4],wi_histae[:, i*6+3]-wi_histae[:,i*6+4]
+        # wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*5+3],wi_histae[:, i*5+3]
         wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, (i*5)*3+4],wi_behae[:, (i*5)*3+4]
         for icoh in range(1,3):
             wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]+wi_behac[:, (i*5)*3+5*icoh+4],wiae_fix_beh[:,i]  +wi_behae[:, (i*5)*3+5*icoh+4]
@@ -295,11 +295,11 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_ctxt.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_prevch.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ae = data_dec['stats_error'][:]
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_ctxt.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_prevch.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ac = data_dec['stats_correct'][:]
     
@@ -329,6 +329,9 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     ax_score[1] = sns.violinplot(ax=ax_score[1],data=df_beh)
     box_pairs = [('beh-ac', 'beh-ae')]
     add_stat_annotation(ax_score[1], data=df_beh, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
+    
+    ax_score[0].set_ylim([0,1])
+    ax_score[0].set_yticks([0,0.5,1.0])
 
 def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     ## ----------- history axis ------------------- 

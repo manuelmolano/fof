@@ -127,7 +127,7 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behac)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
     print('--------------------',np.shape(wi_behac))
     for i in range(NITERATIONS):
-        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*6+3]-wi_histac[:,i*6+4],wi_histae[:, i*6+3]-wi_histae[:,i*6+4]
+        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*6+3],wi_histac[:,i*6+4]#,wi_histae[:, i*6+3]-wi_histae[:,i*6+4]
         # wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*5+3],wi_histae[:, i*5+3]
         wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, (i*5)*3+4],wi_behae[:, (i*5)*3+4]
         for icoh in range(1,3):
@@ -243,48 +243,48 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
     #     ax_stim[0,i].set_title(pair)
 
 
-def cluster_beh_acae(dir, IDX_RAT, timep, NITERATIONS, ncomps):
-    # ### ----------- history axis ------------------- 
-    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
-    # IDX_RAT = 'Rat31_'
-    # timep = '/-01-00s/'
-    # NITERATIONS = 50
+# def output_gating(dir, IDX_RAT, timep, NITERATIONS, ncomps):
+#     # ### ----------- history axis ------------------- 
+#     # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+#     # IDX_RAT = 'Rat31_'
+#     # timep = '/-01-00s/'
+#     # NITERATIONS = 50
 
 
-    dataname  = dir+timep+IDX_RAT+'data_dec.npz'
-    data_dec  = np.load(dataname, allow_pickle=True)
-    wi_hist, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+#     dataname  = dir+timep+IDX_RAT+'data_flt_prevch.npz'
+#     data_flt  = np.load(dataname, allow_pickle=True)
+#     AUCs_lc,AUCs_rc,AUCs_le,AUCs_re = data_flt['coefs_correct'], data_dec['intercepts_correct']
 
-    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
-    data_dec  = np.load(dataname, allow_pickle=True)
-    wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
-    print(np.shape(wi_hist),np.shape(wi_behac))
+#     dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+#     data_dec  = np.load(dataname, allow_pickle=True)
+#     wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
+#     print(np.shape(wi_hist),np.shape(wi_behac))
 
-    wi_fix_hist,wiac_fix_beh   = np.zeros((np.shape(wi_hist)[0],NITERATIONS)),np.zeros((np.shape(wi_behac)[0],NITERATIONS))
-    for i in range(NITERATIONS):
-        wi_fix_hist[:,i],wiac_fix_beh[:,i]   = wi_hist[:, i*5+3],wi_behac[:, i*5+4]
+#     wi_fix_hist,wiac_fix_beh   = np.zeros((np.shape(wi_hist)[0],NITERATIONS)),np.zeros((np.shape(wi_behac)[0],NITERATIONS))
+#     for i in range(NITERATIONS):
+#         wi_fix_hist[:,i],wiac_fix_beh[:,i]   = wi_hist[:, i*5+3],wi_behac[:, i*5+4]
 
-    ### Predicting upcoming stimulus 
+#     ### Predicting upcoming stimulus 
 
-    for i in range(NITERATIONS):
-        wi_fix_hist[:,i] = wi_fix_hist[:,i]/np.linalg.norm(wi_fix_hist[:,i]) 
-        wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i])
+#     for i in range(NITERATIONS):
+#         wi_fix_hist[:,i] = wi_fix_hist[:,i]/np.linalg.norm(wi_fix_hist[:,i]) 
+#         wiac_fix_beh[:,i] = wiac_fix_beh[:,i]/np.linalg.norm(wiac_fix_beh[:,i])
 
-    decoders_fix_set = {}
-    decoders_fix_set['hist'],decoders_fix_set['beh-ac']  = wi_fix_hist.flatten(), wiac_fix_beh.flatten()
-    vec_pair = np.zeros((len(decoders_fix_set['beh-ac']),2))
-    vec_pair[:,0], vec_pair[:,1] = decoders_fix_set['hist'], decoders_fix_set['beh-ac']
-    z_pop,model=gmm_fit(vec_pair, ncomps, algo='Bayes', n_init=50)
+#     decoders_fix_set = {}
+#     decoders_fix_set['hist'],decoders_fix_set['beh-ac']  = wi_fix_hist.flatten(), wiac_fix_beh.flatten()
+#     vec_pair = np.zeros((len(decoders_fix_set['beh-ac']),2))
+#     vec_pair[:,0], vec_pair[:,1] = decoders_fix_set['hist'], decoders_fix_set['beh-ac']
+#     z_pop,model=gmm_fit(vec_pair, ncomps, algo='Bayes', n_init=50)
 
 
-    # figure ploting -- distribution of bootstrap results
-    fig_fix,ax_fix = plt.subplots(figsize=(4,4),tight_layout=True,sharex=True,sharey=True)
-    for i in range(ncomps): 
-        idx = np.where(z_pop==i)[0]
-        ax_fix.scatter(decoders_fix_set['hist'][idx],decoders_fix_set['beh-ac'][idx],s=5,alpha=0.15)
+#     # figure ploting -- distribution of bootstrap results
+#     fig_fix,ax_fix = plt.subplots(figsize=(4,4),tight_layout=True,sharex=True,sharey=True)
+#     for i in range(ncomps): 
+#         idx = np.where(z_pop==i)[0]
+#         ax_fix.scatter(decoders_fix_set['hist'][idx],decoders_fix_set['beh-ac'][idx],s=5,alpha=0.15)
         
-    ax_fix.set_xlim([-0.2,0.2])
-    ax_fix.set_ylim([-0.5,0.5])
+#     ax_fix.set_xlim([-0.2,0.2])
+#     ax_fix.set_ylim([-0.5,0.5])
 
 
 
@@ -295,11 +295,11 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_prevch.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_ctxt.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ae = data_dec['stats_error'][:]
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_prevch.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_ctxt.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ac = data_dec['stats_correct'][:]
     
@@ -330,8 +330,92 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     box_pairs = [('beh-ac', 'beh-ae')]
     add_stat_annotation(ax_score[1], data=df_beh, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
     
-    ax_score[0].set_ylim([0,1])
-    ax_score[0].set_yticks([0,0.5,1.0])
+    ax_score[0].set_ylim([0.5,1.2])
+    ax_score[0].set_yticks([0,0.5,1])
+    
+def cross_projection(dir, IDX_RAT, timep, NITERATIONS):
+    # # ----------- history axis ------------------- 
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+    # IDX_RAT = 'Rat7_'
+    # timep = '/-01-00s/'
+    # NITERATIONS = 50
+    ### compute the angles between history encoding axises
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch.npz'
+    data_dprime  = np.load(dataname, allow_pickle=True)
+    dprime_left_org,dprime_right_org = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
+    
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch_R0crosspop.npz'
+    data_dprime_rcross  = np.load(dataname, allow_pickle=True)
+    dprime_left_rcross,dprime_right_rcross = data_dprime_rcross['dprimes_lc'],data_dprime_rcross['dprimes_rc']
+
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch_L0crosspop.npz'
+    data_dprime_lcross  = np.load(dataname, allow_pickle=True)
+    dprime_left_lcross,dprime_right_lcross = data_dprime_lcross['dprimes_lc'],data_dprime_lcross['dprimes_rc']
+    
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch_crosspop.npz'
+    data_dprime_cross  = np.load(dataname, allow_pickle=True)
+    dprime_left_cross,dprime_right_cross = data_dprime_cross['dprimes_lc'],data_dprime_cross['dprimes_rc']
+    
+
+    fig_dprime, ax_dprime=plt.subplots(2,1,figsize=(6,4),tight_layout=True, sharey=True)    
+    df_left = {'org': (dprime_left_org).flatten(), 'pop-left cross': (dprime_left_lcross).flatten(),
+    	'pop-right cross':dprime_left_rcross.flatten(),
+    	'pop-l/r cross':dprime_left_cross.flatten()}
+    df_right = {'org': (dprime_right_org).flatten(), 'pop-left cross': (dprime_right_lcross).flatten(),
+    	'pop-right cross':dprime_right_rcross.flatten(),
+    	'pop-l/r cross':dprime_right_cross.flatten()}
+    df_left  = pd.DataFrame(df_left)
+    df_right = pd.DataFrame(df_right)
+    
+    ax_dprime[0] = sns.violinplot(ax=ax_dprime[0],data=df_left)
+    box_pairs_left = [('org', 'pop-left cross'),('org', 'pop-right cross'),('org','pop-l/r cross')]
+    add_stat_annotation(ax_dprime[0], data=df_left, box_pairs=box_pairs_left,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
+
+    ax_dprime[1] = sns.violinplot(ax=ax_dprime[1],data=df_right)
+    box_pairs_right = [('org', 'pop-left cross'),('org', 'pop-right cross'),('org','pop-l/r cross')]
+    add_stat_annotation(ax_dprime[1], data=df_right, box_pairs=box_pairs_right,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
+    
+def cross_projection_ctxt(dir, IDX_RAT, timep, NITERATIONS):
+    # # ----------- history axis ------------------- 
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+    # IDX_RAT = 'Rat7_'
+    # timep = '/-01-00s/'
+    # NITERATIONS = 50
+    ### compute the angles between history encoding axises
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_ctxt.npz'
+    data_dprime  = np.load(dataname, allow_pickle=True)
+    dprime_left_org,dprime_right_org = data_dprime['dprimes_repc'],data_dprime['dprimes_altc']
+    
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_ctxt_altcrosspop.npz'
+    data_dprime_rcross  = np.load(dataname, allow_pickle=True)
+    dprime_left_rcross,dprime_right_rcross = data_dprime_rcross['dprimes_repc'],data_dprime_rcross['dprimes_altc']
+
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_ctxt_repcrosspop.npz'
+    data_dprime_lcross  = np.load(dataname, allow_pickle=True)
+    dprime_left_lcross,dprime_right_lcross = data_dprime_lcross['dprimes_repc'],data_dprime_lcross['dprimes_altc']
+    
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_ctxt_crosspop.npz'
+    data_dprime_cross  = np.load(dataname, allow_pickle=True)
+    dprime_left_cross,dprime_right_cross = data_dprime_cross['dprimes_repc'],data_dprime_cross['dprimes_altc']
+    
+
+    fig_dprime, ax_dprime=plt.subplots(2,1,figsize=(6,4),tight_layout=True, sharey=True)    
+    df_left = {'org': (dprime_left_org).flatten(), 'pop-rep cross': (dprime_left_lcross).flatten(),
+    	'pop-alt cross':dprime_left_rcross.flatten(),
+    	'pop-rep/alt cross':dprime_left_cross.flatten()}
+    df_right = {'org': (dprime_right_org).flatten(), 'pop-rep cross': (dprime_right_lcross).flatten(),
+    	'pop-alt cross':dprime_right_rcross.flatten(),
+    	'pop-rep/alt cross':dprime_right_cross.flatten()}
+    df_left  = pd.DataFrame(df_left)
+    df_right = pd.DataFrame(df_right)
+    
+    ax_dprime[0] = sns.violinplot(ax=ax_dprime[0],data=df_left)
+    box_pairs_left = [('org', 'pop-rep cross'),('org', 'pop-alt cross'),('org','pop-rep/alt cross')]
+    add_stat_annotation(ax_dprime[0], data=df_left, box_pairs=box_pairs_left,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
+
+    ax_dprime[1] = sns.violinplot(ax=ax_dprime[1],data=df_right)
+    box_pairs_right = [('org', 'pop-rep cross'),('org', 'pop-alt cross'),('org','pop-rep/alt cross')]
+    add_stat_annotation(ax_dprime[1], data=df_right, box_pairs=box_pairs_right,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
 
 def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     ## ----------- history axis ------------------- 

@@ -196,19 +196,34 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         # pop_error   = np.union1d(pop_error,pop_zero)
         pop = np.union1d(pop_correct,pop_error)
 
-        ##### >>>>>>> Prev.CH Right cancelled  
-        # Xdata_testc[itest:2*itest,pop_error]   = Xdata_teste[itest:2*itest,pop_error]*1
-        # Xdata_testc[3*itest:4*itest,pop_error] = Xdata_teste[3*itest:4*itest,pop_error]*1
-        # Xdata_testc[itest:2*itest,pop_correct]   = Xdata_teste[itest:2*itest,pop_correct]*1
-        # Xdata_testc[3*itest:4*itest,pop_correct] = Xdata_teste[3*itest:4*itest,pop_correct]*1
-        #### >>>>>>>> Prev.CH Left cancelled 
-        # Xdata_testc[:itest,pop_error]          = Xdata_teste[:itest,pop_error]
-        # Xdata_testc[2*itest:3*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error] 
-        # Xdata_testc[:itest,pop_correct]          = Xdata_teste[:itest,pop_correct]
-        # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_teste[2*itest:3*itest,pop_correct] 
+        
+        # ###  ******************** conditioned on previous choice
+        # # #### mislabel tr.bias ### left change
+        # # Xdata_teste[:itest,pop_correct]          = Xdata_teste[1*itest:2*itest,pop_correct]
+        # # Xdata_teste[2*itest:3*itest,pop_correct] = Xdata_teste[3*itest:4*itest,pop_correct] 
+        # # Xdata_testc[:itest,pop_correct]          = Xdata_testc[1*itest:2*itest,pop_correct]
+        # # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_testc[3*itest:4*itest,pop_correct] 
 
-        # Xdata_teste[:itest,pop_correct]          = 0#Xdata_teste[:itest,pop_error]*2
-        # Xdata_teste[2*itest:3*itest,pop_correct] = 0#Xdata_teste[2*itest:3*itest,pop_error]*2 
+        # #### mislabel tr.bias ### right change
+        # Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error]         
+        # Xdata_teste[1*itest:2*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
+        # Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[2*itest:3*itest,pop_error]        
+        # Xdata_testc[1*itest:2*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
+
+
+        # ##  ******************** conditioned on context
+        # #### mislabel tr.bias ### repeating changed
+        # Xdata_teste[0*itest:1*itest,pop_correct] = Xdata_teste[2*itest:3*itest,pop_correct]
+        # Xdata_teste[1*itest:2*itest,pop_correct] = Xdata_teste[3*itest:4*itest,pop_correct] 
+        # Xdata_testc[0*itest:1*itest,pop_correct] = Xdata_testc[2*itest:3*itest,pop_correct]
+        # Xdata_testc[1*itest:2*itest,pop_correct] = Xdata_testc[3*itest:4*itest,pop_correct] 
+
+        # #### mislabel tr.bias ### alternating change
+        # Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[1*itest:2*itest,pop_error]         
+        # Xdata_teste[2*itest:3*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
+        # Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[1*itest:2*itest,pop_error]        
+        # Xdata_testc[2*itest:3*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
+
         '''
         ### in prev ch left, pop_correct has lower firing rate therefore doesn't gate; pop_error has higher firing rate therefore gates the interference
         '''
@@ -230,7 +245,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         for iset in range(np.shape(ylabels_train)[0]): 
             bias_labels=Counter(ylabels_train[iset,3::6]) 
             ytr_bias[iset]=(bias_labels.most_common(1)[0][0]) 
-            # ytr_bias[iset]=ylabels_train[iset,2] ### congruent
+            ytr_bias[iset]=ylabels_train[iset,2] ### congruent
         if(CONDITION_CTXT):
             lin_bias_r.fit(np.vstack((Xdata_train[:ntrain,:],Xdata_train[1*ntrain:2*ntrain,:])), np.hstack((ytr_bias[:ntrain],ytr_bias[ntrain*1:ntrain*2])))
             lin_bias_a.fit(np.vstack((Xdata_train[2*ntrain:3*ntrain,:],Xdata_train[3*ntrain:4*ntrain,:])), np.hstack((ytr_bias[ntrain*2:ntrain*3],ytr_bias[ntrain*3:ntrain*4])))
@@ -238,6 +253,26 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
 
             lin_bias_l.fit(np.vstack((Xdata_train[:ntrain,:],Xdata_train[2*ntrain:3*ntrain,:])), np.hstack((ytr_bias[:ntrain],ytr_bias[ntrain*2:ntrain*3])))
             lin_bias_r.fit(np.vstack((Xdata_train[1*ntrain:2*ntrain,:],Xdata_train[3*ntrain:4*ntrain,:])), np.hstack((ytr_bias[ntrain*1:ntrain*2],ytr_bias[ntrain*3:ntrain*4])))
+
+
+            # ytr_bias_h1 = ytr_bias.copy()
+            # ytr_bias_h1[0*ntrain:1*ntrain] = 1- ytr_bias_h1[0*ntrain:1*ntrain]
+            # lin_bias_l.fit(Xdata_train, ytr_bias_h1)
+            # # print('h1 labels>>>>>>>>>>>>>>',np.unique(ytr_bias_h1[0*ntrain:1*ntrain]),np.unique(ytr_bias_h1[1*ntrain:2*ntrain]),np.unique(ytr_bias_h1[2*ntrain:3*ntrain]),np.unique(ytr_bias_h1[3*ntrain:4*ntrain]))
+
+
+            # ytr_bias_h2 = ytr_bias.copy()
+            # ytr_bias_h2[3*ntrain:4*ntrain] = 1- ytr_bias_h2[3*ntrain:4*ntrain]
+            # lin_bias_r.fit(Xdata_train, ytr_bias_h2)
+            # # print('h2 labels>>>>>>>>>>>>>>',np.unique(ytr_bias_h2[0*ntrain:1*ntrain]),np.unique(ytr_bias_h2[1*ntrain:2*ntrain]),np.unique(ytr_bias_h2[2*ntrain:3*ntrain]),np.unique(ytr_bias_h2[3*ntrain:4*ntrain]))
+
+            # xdataleft,ylabelleft = np.vstack((Xdata_train[0*ntrain:1*ntrain,:],-Xdata_train[3*ntrain:4*ntrain,:])), np.hstack((ytr_bias[0*ntrain:1*ntrain],ytr_bias[ntrain*3:ntrain*4]))
+            # xdataright,ylabelright=np.vstack((Xdata_train[1*ntrain:2*ntrain,:],-Xdata_train[2*ntrain:3*ntrain,:])), np.hstack((ytr_bias[ntrain*1:ntrain*2],ytr_bias[ntrain*2:ntrain*3]))
+            # # print('ylabel lefty>>>>>>>>>>>>>>>>>>>>>',np.unique(ylabelleft[:]))
+            # # print('ylabel right >>>>>>>>>>>>>>>>>>',np.unique(ylabelright[:]))
+            # lin_bias_l= np.mean(xdataleft,axis=0)-np.mean(xdataright,axis=0)
+            # lin_bias_r = lin_bias_l.copy()
+    
             # lin_bias.fit(Xdata_train,ytr_bias)
 
 
@@ -319,8 +354,8 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             linw_bias_r, linb_bias_r = lin_bias_r.coef_[:], lin_bias_r.intercept_[:]
             linw_bias_a, linb_bias_a = lin_bias_a.coef_[:], lin_bias_a.intercept_[:]
         else:
-            linw_bias_l, linb_bias_l = lin_bias_l.coef_[:], lin_bias_l.intercept_[:]
-            linw_bias_r, linb_bias_r = lin_bias_r.coef_[:], lin_bias_r.intercept_[:]
+            linw_bias_l, linb_bias_l =  lin_bias_l.coef_[:], lin_bias_l.intercept_[:]
+            linw_bias_r, linb_bias_r =  lin_bias_r.coef_[:], lin_bias_r.intercept_[:]
         
         linw_cc, linb_cc     =  lin_cc.coef_[:], lin_cc.intercept_[:]
         # evaluate evidence model
@@ -334,14 +369,14 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
 
         #### gain control 
         if(CONDITION_CTXT):
-            evidences_c[:itest, 3] = np.squeeze(
-                    Xdata_testc[:itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_c[itest:2*itest, 3] = np.squeeze(
-                    Xdata_testc[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_testc[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_c[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+                    Xdata_testc[2*itest:3*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
             evidences_c[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+                    Xdata_testc[3*itest:4*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
         else:
             # evidences_c[:itest, 3] = np.squeeze(
             #         Xdata_testc[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
@@ -351,14 +386,30 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             #         Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
             # evidences_c[3*itest:4*itest, 3] = np.squeeze(
             #         Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            
+            # evidences_c[:itest, 3] = np.squeeze(
+            #         Xdata_testc[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+            # evidences_c[itest:2*itest, 3] = np.squeeze(
+            #         Xdata_testc[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+            # evidences_c[2*itest:3*itest, 3] = np.squeeze(
+            #         Xdata_testc[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+            # evidences_c[3*itest:4*itest, 3] = np.squeeze(
+            #         Xdata_testc[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_c[:itest, 3] = np.squeeze(
-                    Xdata_testc[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+                    Xdata_testc[:itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
             evidences_c[itest:2*itest, 3] = np.squeeze(
-                    Xdata_testc[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+                    Xdata_testc[itest:2*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
             evidences_c[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_testc[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+                    Xdata_testc[2*itest:3*itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
             evidences_c[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_testc[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+                    Xdata_testc[3*itest:4*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
+
+            # evidences_c[:, 3] = np.squeeze(
+            #         Xdata_testc[:,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)# right significant
+            # evidences_c[:, 3] = np.squeeze(
+            #         Xdata_testc[:,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)# left significant
+
+
 
         evidences_c[:, 4] = np.squeeze(
             Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
@@ -388,7 +439,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         for iset in range(np.shape(ylabels_testc)[0]):
             bias_labels=Counter(ylabels_testc[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
-        ylabels_testc[:,3] =  ytr_test_bias[:]#ylabels_testc[:,2]# congruent#
+        ylabels_testc[:,3] =  ylabels_testc[:,2]# congruent#ytr_test_bias[:]#
         # print('~~~~~~ correct match:',ylabels_testc[:,3])
         # print('~~~~~~~~~~~~~~~:',ylabels_testc[:,2])
 
@@ -432,16 +483,16 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         #### gain control 
         if(CONDITION_CTXT):
             evidences_e[:itest, 3] = np.squeeze(
-                    Xdata_teste[:itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_teste[:itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_e[itest:2*itest, 3] = np.squeeze(
-                    Xdata_teste[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+                    Xdata_teste[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
             evidences_e[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+                    Xdata_teste[2*itest:3*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
             evidences_e[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+                    Xdata_teste[3*itest:4*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
         else:
 
-            #### gain control 
+            ### gain control 
             # evidences_e[:itest, 3] = np.squeeze(
             #         Xdata_teste[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
             # evidences_e[itest:2*itest, 3] = np.squeeze(
@@ -450,14 +501,29 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             #         Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
             # evidences_e[3*itest:4*itest, 3] = np.squeeze(
             #         Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            
+            # evidences_e[:itest, 3] = np.squeeze(
+            #         Xdata_teste[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+            # evidences_e[itest:2*itest, 3] = np.squeeze(
+            #         Xdata_teste[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+            # evidences_e[2*itest:3*itest, 3] = np.squeeze(
+            #         Xdata_teste[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+            # evidences_e[3*itest:4*itest, 3] = np.squeeze(
+            #         Xdata_teste[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+
             evidences_e[:itest, 3] = np.squeeze(
-                    Xdata_teste[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+                    Xdata_teste[:itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
             evidences_e[itest:2*itest, 3] = np.squeeze(
-                    Xdata_teste[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+                    Xdata_teste[itest:2*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
             evidences_e[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_teste[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+                    Xdata_teste[2*itest:3*itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
             evidences_e[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_teste[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+                    Xdata_teste[3*itest:4*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
+
+            # evidences_e[0*itest:3*itest, 3] = np.squeeze(
+            #         Xdata_teste[0*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
+            # evidences_e[3*itest:4*itest, 3] = np.squeeze(
+            #         Xdata_teste[3*itest:4*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
 
         evidences_e[:, 4] = np.squeeze(
             Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
@@ -470,8 +536,8 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         predictions_e[:, 2] = lin_xor.predict(Xdata_teste)
         
         if(CONDITION_CTXT):
-            predictions_e[:itest, 3] = lin_bias_r.predict(Xdata_teste[:itest,:])
-            predictions_e[itest:2*itest, 3] = lin_bias_r.predict(Xdata_teste[itest:2*itest,:])
+            predictions_e[:itest, 3]          = lin_bias_r.predict(Xdata_teste[:itest,:])
+            predictions_e[itest:2*itest, 3]   = lin_bias_r.predict(Xdata_teste[itest:2*itest,:])
             predictions_e[2*itest:3*itest, 3] = lin_bias_a.predict(Xdata_teste[2*itest:3*itest,:])
             predictions_e[3*itest:4*itest, 3] = lin_bias_a.predict(Xdata_teste[3*itest:4*itest,:])
         else:
@@ -660,8 +726,17 @@ def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,nselect, files,f
         # Xdata_testc[:itest,pop_correct]          = Xdata_teste[:itest,pop_correct]
         # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_teste[2*itest:3*itest,pop_correct] 
 
-        # Xdata_testc[:,pop_correct]   = Xdata_teste[:,pop_correct]
-        # Xdata_testc[:,pop_error]     = Xdata_teste[:,pop_error]
+        # #### mislabel tr.bias 
+        # Xdata_teste[:itest,pop_correct]          = Xdata_teste[1*itest:2*itest,pop_correct]
+        # Xdata_teste[2*itest:3*itest,pop_correct] = Xdata_teste[3*itest:4*itest,pop_correct] 
+        # Xdata_testc[:itest,pop_correct]          = Xdata_testc[1*itest:2*itest,pop_correct]
+        # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_testc[3*itest:4*itest,pop_correct] 
+
+        #### mislabel tr.bias 
+        Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error]         
+        Xdata_teste[1*itest:2*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
+        Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[2*itest:3*itest,pop_error]        
+        Xdata_testc[1*itest:2*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
 
 
 

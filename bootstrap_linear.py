@@ -85,7 +85,7 @@ def bootstrap_linsvm_step_PCAonly(Xdata_hist_set,NN, ylabels_hist_set,unique_sta
 
     return mmodel
 
-def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nselect, files,false_files, pop_correct, pop_zero, pop_error, CONDITION_CTXT, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
+def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nselect, files,false_files, pop_correct, pop_zero, pop_error, single_pop, CONDITION_CTXT, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
 
     ### ac/ae ratio 
     CRATIO =ACE_RATIO/(1+ACE_RATIO)# according to theratio#0.5#share the same #  
@@ -113,6 +113,9 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
     yevi_set_correct = np.zeros((n_iterations, ntest, 3+2))
     yevi_set_error   = np.zeros((n_iterations, ntest, 3+2))
 
+    yevi_set_correct_supp = np.zeros((n_iterations, ntest, 2+2))
+    yevi_set_error_supp   = np.zeros((n_iterations, ntest, 2+2))### 3 Sept 
+
     stats = list()
     lin_pact = svm.SVC(C=1, kernel='linear', decision_function_shape='ovr',
                        shrinking=False, tol=1e-6)
@@ -138,6 +141,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
     # print("ntrainc ---",ntrainc,'ntraine ----',ntraine)
 
     stats_c,stats_e = list(), list()
+    stats_c_pop, stats_e_pop = list(),list()
     for i in range(n_iterations):
         if (i+1) % PRINT_PER == 0:
             print(i)
@@ -196,34 +200,9 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         # pop_error   = np.union1d(pop_error,pop_zero)
         pop = np.union1d(pop_correct,pop_error)
 
-        
-        # ###  ******************** conditioned on previous choice
-        # # #### mislabel tr.bias ### left change
-        # # Xdata_teste[:itest,pop_correct]          = Xdata_teste[1*itest:2*itest,pop_correct]
-        # # Xdata_teste[2*itest:3*itest,pop_correct] = Xdata_teste[3*itest:4*itest,pop_correct] 
-        # # Xdata_testc[:itest,pop_correct]          = Xdata_testc[1*itest:2*itest,pop_correct]
-        # # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_testc[3*itest:4*itest,pop_correct] 
 
-        # #### mislabel tr.bias ### right change
-        # Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error]         
-        # Xdata_teste[1*itest:2*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
-        # Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[2*itest:3*itest,pop_error]        
-        # Xdata_testc[1*itest:2*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
-
-
-        # ##  ******************** conditioned on context
-        # #### mislabel tr.bias ### repeating changed
-        # Xdata_teste[0*itest:1*itest,pop_correct] = Xdata_teste[2*itest:3*itest,pop_correct]
-        # Xdata_teste[1*itest:2*itest,pop_correct] = Xdata_teste[3*itest:4*itest,pop_correct] 
-        # Xdata_testc[0*itest:1*itest,pop_correct] = Xdata_testc[2*itest:3*itest,pop_correct]
-        # Xdata_testc[1*itest:2*itest,pop_correct] = Xdata_testc[3*itest:4*itest,pop_correct] 
-
-        # #### mislabel tr.bias ### alternating change
-        # Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[1*itest:2*itest,pop_error]         
-        # Xdata_teste[2*itest:3*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
-        # Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[1*itest:2*itest,pop_error]        
-        # Xdata_testc[2*itest:3*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
-
+        ### identical conditions v.s. opposite conditions 
+        Xdata_testc_cross = Xdata_testc.copy() 
         '''
         ### in prev ch left, pop_correct has lower firing rate therefore doesn't gate; pop_error has higher firing rate therefore gates the interference
         '''
@@ -288,10 +267,10 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         lin_cc.fit(Xdata_train, ycchoice)
 
         if i == 0:
-            intercepts = np.zeros((1, 3 + 1 + 1+1))
+            intercepts = np.zeros((1, 3 + 1 + 1+1)) ## conditional decoders
             intercepts[:, 0] = lin_pact.intercept_[:]
             intercepts[:, 1] = lin_ctxt.intercept_[:]
-            intercepts[:, 2] =  lin_xor.intercept_[:]#lin_bias_.intercept_[:]#
+            intercepts[:, 2] = lin_xor.intercept_[:]#lin_bias_.intercept_[:]#
             if(CONDITION_CTXT):
                 intercepts[:, 3] = (lin_bias_r.intercept_[:])#lin_bias_l.intercept_[:]#
                 intercepts[:, 4] = (lin_bias_a.intercept_[:])#lin_bias_r.intercept_[:]#
@@ -304,7 +283,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             coeffs = np.zeros((NN, 3 + 1 + 1+1))
             coeffs[:, 0] = lin_pact.coef_[:]
             coeffs[:, 1] = lin_ctxt.coef_[:]
-            coeffs[:, 2] =  lin_xor.coef_[:]#lin_bias_.coef_[:]#
+            coeffs[:, 2] = lin_xor.coef_[:]#lin_bias_.coef_[:]#
             if (CONDITION_CTXT):
                 coeffs[:, 3] = (lin_bias_r.coef_[:])#lin_bias_l.coef_[:]#
                 coeffs[:, 4] = (lin_bias_a.coef_[:])#lin_bias_r.coef_[:]#
@@ -331,7 +310,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             tcoeffs = np.zeros((NN, 3 + 1 + 1+1))
             tcoeffs[:, 0] = lin_pact.coef_[:]
             tcoeffs[:, 1] = lin_ctxt.coef_[:]
-            tcoeffs[:, 2] =  lin_xor.coef_[:]#lin_bias_.coef_[:]#
+            tcoeffs[:, 2] = lin_xor.coef_[:]#lin_bias_.coef_[:]#
             if (CONDITION_CTXT):
                 tcoeffs[:, 3] = (lin_bias_r.coef_[:])#lin_bias_l.coef_[:]#
                 tcoeffs[:, 4] = (lin_bias_a.coef_[:])#lin_bias_r.coef_[:]#
@@ -349,7 +328,7 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         #### -------- AC testing trials 
         linw_pact, linb_pact = lin_pact.coef_[:], lin_pact.intercept_[:]
         linw_ctxt, linb_ctxt = lin_ctxt.coef_[:], lin_ctxt.intercept_[:]
-        linw_xor, linb_xor   =lin_xor.coef_[:],  lin_xor.intercept_[:]
+        linw_xor, linb_xor   = lin_xor.coef_[:],  lin_xor.intercept_[:]
         if(CONDITION_CTXT):
             linw_bias_r, linb_bias_r = lin_bias_r.coef_[:], lin_bias_r.intercept_[:]
             linw_bias_a, linb_bias_a = lin_bias_a.coef_[:], lin_bias_a.intercept_[:]
@@ -360,54 +339,133 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         linw_cc, linb_cc     =  lin_cc.coef_[:], lin_cc.intercept_[:]
         # evaluate evidence model
         evidences_c = np.zeros((ntest, 3 + 2))
-        evidences_c[:, 0] = np.squeeze(
-            Xdata_testc[:,pop] @ linw_pact.reshape(-1, 1)[pop] + linb_pact)
-        evidences_c[:, 1] = np.squeeze(
-            Xdata_testc[:,pop] @ linw_ctxt.reshape(-1, 1)[pop] + linb_ctxt)
-        evidences_c[:, 2] = np.squeeze(
-            Xdata_testc[:,pop] @ linw_xor.reshape(-1, 1)[pop] + linb_xor)
+    
+        evidences_c_supp = np.zeros((ntest, 2+2)) ### 3 Sept @YX 
 
+        evidences_c[:, 0] = np.squeeze(
+            Xdata_testc[:,:] @ linw_pact.reshape(-1, 1)[:] + linb_pact) #pop
+        evidences_c[:, 1] = np.squeeze(
+            Xdata_testc[:,:] @ linw_ctxt.reshape(-1, 1)[:] + linb_ctxt) # pop
+
+        # evidences_c[:, 2] = np.squeeze(
+        #     Xdata_testc[:,pop] @ linw_xor.reshape(-1, 1)[pop] + linb_xor)
+        ##### instead -------------------Cross-projections---------------
         #### gain control 
         if(CONDITION_CTXT):
-            evidences_c[0*itest:1*itest, 3] = np.squeeze(
-                    Xdata_testc[0*itest:1*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-            evidences_c[itest:2*itest, 3] = np.squeeze(
-                    Xdata_testc[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-            evidences_c[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_testc[2*itest:3*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
-            evidences_c[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_testc[3*itest:4*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
-        else:
-            # evidences_c[:itest, 3] = np.squeeze(
-            #         Xdata_testc[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
-            # evidences_c[itest:2*itest, 3] = np.squeeze(
-            #         Xdata_testc[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
-            # evidences_c[2*itest:3*itest, 3] = np.squeeze(
-            #         Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
-            # evidences_c[3*itest:4*itest, 3] = np.squeeze(
-            #         Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
-            
-            # evidences_c[:itest, 3] = np.squeeze(
-            #         Xdata_testc[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
-            # evidences_c[itest:2*itest, 3] = np.squeeze(
-            #         Xdata_testc[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-            # evidences_c[2*itest:3*itest, 3] = np.squeeze(
-            #         Xdata_testc[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
-            # evidences_c[3*itest:4*itest, 3] = np.squeeze(
-            #         Xdata_testc[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-            evidences_c[:itest, 3] = np.squeeze(
-                    Xdata_testc[:itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
-            evidences_c[itest:2*itest, 3] = np.squeeze(
-                    Xdata_testc[itest:2*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
-            evidences_c[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_testc[2*itest:3*itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
-            evidences_c[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_testc[3*itest:4*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
+            evidences_c[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+            evidences_c[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+            evidences_c[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
 
-            # evidences_c[:, 3] = np.squeeze(
-            #         Xdata_testc[:,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)# right significant
-            # evidences_c[:, 3] = np.squeeze(
-            #         Xdata_testc[:,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)# left significant
+            ### supplementary -- single selectivity 
+            evidences_c_supp[0*itest:1*itest, 0] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            evidences_c_supp[1*itest:2*itest, 0] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            evidences_c_supp[2*itest:3*itest, 0] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_c_supp[3*itest:4*itest, 0] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            ### supplementary -- all neurons
+            evidences_c_supp[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+            evidences_c_supp[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+            evidences_c_supp[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+        else:
+            evidences_c[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            evidences_c[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+
+            ### supplementary -- single selectivity 
+            evidences_c_supp[0*itest:1*itest, 0] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_c_supp[1*itest:2*itest, 0] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+            evidences_c_supp[2*itest:3*itest, 0] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_c_supp[3*itest:4*itest, 0] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+
+            ### supplementary -- all neurons
+            evidences_c_supp[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+            evidences_c_supp[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+
+        if(CONDITION_CTXT):
+            evidences_c[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[2*itest:3*itest, 3] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+            evidences_c[3*itest:4*itest, 3] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+
+            ### supplementary -- single selectivity 
+            evidences_c_supp[0*itest:1*itest, 1] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_c_supp[1*itest:2*itest, 1] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_c_supp[2*itest:3*itest, 1] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            evidences_c_supp[3*itest:4*itest, 1] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            ### supplementary -- all neurons
+            evidences_c_supp[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[2*itest:3*itest, 3] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+            evidences_c_supp[3*itest:4*itest, 3] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+        else:
+            evidences_c[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            evidences_c[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_c[2*itest:3*itest, 3] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            evidences_c[3*itest:4*itest, 3] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+
+            ### supplementary -- single selectivity 
+            evidences_c_supp[0*itest:1*itest, 1] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+            evidences_c_supp[1*itest:2*itest, 1] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_c_supp[2*itest:3*itest, 1] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+            evidences_c_supp[3*itest:4*itest, 1] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+
+            ### supplementary -- all neurons
+            evidences_c_supp[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_testc[0*itest:1*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+            evidences_c_supp[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_testc[1*itest:2*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[2*itest:3*itest, 3] = np.squeeze(
+                    Xdata_testc[2*itest:3*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+            evidences_c_supp[3*itest:4*itest, 3] = np.squeeze(
+                    Xdata_testc[3*itest:4*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
 
 
 
@@ -415,31 +473,48 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
 
         # evaluate model
-        predictions_c = np.zeros((np.shape(evidences_c)[0], 3 + 1 + 1))
+        predictions_c     = np.zeros((np.shape(evidences_c)[0], 3 + 1 + 1))
+        predictions_c_pop = np.zeros((np.shape(evidences_c)[0], 1 + 1))
         predictions_c[:, 0] = lin_pact.predict(
             Xdata_testc)  # model.predict(X_test)
         predictions_c[:, 1] = lin_ctxt.predict(Xdata_testc)
         predictions_c[:, 2] = lin_xor.predict(Xdata_testc)
 
         if(CONDITION_CTXT):
-            predictions_c[:itest, 3] = lin_bias_r.predict(Xdata_testc[:itest,:])
-            predictions_c[itest:2*itest, 3] = lin_bias_r.predict(Xdata_testc[itest:2*itest,:])
+            predictions_c[0*itest:1*itest, 3] = lin_bias_r.predict(Xdata_testc[0*itest:1*itest,:])
+            predictions_c[1*itest:2*itest, 3] = lin_bias_r.predict(Xdata_testc[1*itest:2*itest,:])
             predictions_c[2*itest:3*itest, 3] = lin_bias_a.predict(Xdata_testc[2*itest:3*itest,:])
             predictions_c[3*itest:4*itest, 3] = lin_bias_a.predict(Xdata_testc[3*itest:4*itest,:])
         else:
-            predictions_c[:itest, 3] = lin_bias_l.predict(Xdata_testc[:itest,:])
-            predictions_c[itest:2*itest, 3] = lin_bias_r.predict(Xdata_testc[itest:2*itest,:])
+            predictions_c[0*itest:1*itest, 3] = lin_bias_l.predict(Xdata_testc[0*itest:1*itest,:])
+            predictions_c[1*itest:2*itest, 3] = lin_bias_r.predict(Xdata_testc[1*itest:2*itest,:])
             predictions_c[2*itest:3*itest, 3] = lin_bias_l.predict(Xdata_testc[2*itest:3*itest,:])
             predictions_c[3*itest:4*itest, 3] = lin_bias_r.predict(Xdata_testc[3*itest:4*itest,:])
         
         predictions_c[:, 4] = lin_cc.predict(Xdata_testc)
+
+        if(CONDITION_CTXT):
+
+            predictions_c_pop[np.where(evidences_c[:,3]>=0)[0],0] = 1
+            predictions_c_pop[np.where(evidences_c[:,3]<0)[0],0]  = 0
+
+            predictions_c_pop[np.where(evidences_c[:,2]>=0)[0],1] = 1
+            predictions_c_pop[np.where(evidences_c[:,2]<0)[0],1]  = 0
+        else:
+
+            predictions_c_pop[np.where(evidences_c[:,3]>=0)[0],0] = 1
+            predictions_c_pop[np.where(evidences_c[:,3]<0)[0],0]  = 0
+
+            predictions_c_pop[np.where(evidences_c[:,2]>=0)[0],1] = 1
+            predictions_c_pop[np.where(evidences_c[:,2]<0)[0],1]  = 0
+
 
         ### modifying ylabels_testc[:,3], upcoming stimulus category 
         ytr_test_bias = np.zeros(np.shape(ylabels_testc)[0])
         for iset in range(np.shape(ylabels_testc)[0]):
             bias_labels=Counter(ylabels_testc[iset,3::6])
             ytr_test_bias[iset]=(bias_labels.most_common(1)[0][0])
-        ylabels_testc[:,3] =  ylabels_testc[:,2]# congruent#ytr_test_bias[:]#
+        ylabels_testc[:,3] =  ytr_test_bias[:]#ylabels_testc[:,2]# congruent#
         # print('~~~~~~ correct match:',ylabels_testc[:,3])
         # print('~~~~~~~~~~~~~~~:',ylabels_testc[:,2])
 
@@ -459,66 +534,156 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
         
         if i == 0:
             yevi_set_correct[i, :, :] = evidences_c.copy()
+            yevi_set_correct_supp[i, :, :] = evidences_c_supp.copy()
         else:
             yevi_set_correct[i, :, :] = evidences_c.copy()
+            yevi_set_correct_supp[i, :, :] = evidences_c_supp.copy()
 
-        score_c = np.zeros((3 + 1 + 1, 1))
+        score_c     = np.zeros((3 + 1 + 1, 1))
+        score_c_pop = np.zeros((1 + 1, 1))
         for j in range(np.shape(score_c)[0]):
             score_c[j, 0] = accuracy_score(
                 ylabels_testc[:, j]-2, predictions_c[:, j])
 
+        for j in range(2):
+            score_c_pop[j,0] = accuracy_score(ylabels_testc[:,3]-2,  predictions_c_pop[:,j])
+
         #### -------- AE testing trials --------------
         # evaluate evidence model
         evidences_e = np.zeros((ntest, 3 + 2))
-        evidences_e[:, 0] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_pact.reshape(-1, 1)[pop] + linb_pact)
-        evidences_e[:, 1] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_ctxt.reshape(-1, 1)[pop] + linb_ctxt)
-        evidences_e[:, 2] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_xor.reshape(-1, 1)[pop] + linb_xor)
 
+        evidences_e_supp = np.zeros((ntest, 2+2)) ### 3 Sept @YX 
+
+
+        evidences_e[:, 0] = np.squeeze(
+            Xdata_teste[:,:] @ linw_pact.reshape(-1, 1)[:] + linb_pact) # pop
+        evidences_e[:, 1] = np.squeeze(
+            Xdata_teste[:,:] @ linw_ctxt.reshape(-1, 1)[:] + linb_ctxt) # pop
+        
+        # evidences_e[:, 2] = np.squeeze(
+        #     Xdata_teste[:,pop] @ linw_xor.reshape(-1, 1)[pop] + linb_xor)
+        #### gain control   ------ cross projections
+        if(CONDITION_CTXT):
+            evidences_e[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+            evidences_e[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+            evidences_e[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_e[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+
+            ### supplementary -- single selectivity 
+            evidences_e_supp[0*itest:1*itest, 0] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            evidences_e_supp[1*itest:2*itest, 0] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            evidences_e_supp[2*itest:3*itest, 0] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_e_supp[3*itest:4*itest, 0] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            ### supplementary -- all neurons
+            evidences_e_supp[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+            evidences_e_supp[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+            evidences_e_supp[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_e_supp[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+
+        else:
+            evidences_e[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_e[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            evidences_e[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_e[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+
+            ### supplementary -- single selectivity 
+            evidences_e_supp[0*itest:1*itest, 0] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_e_supp[1*itest:2*itest, 0] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+            evidences_e_supp[2*itest:3*itest, 0] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_e_supp[3*itest:4*itest, 0] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+
+            ### supplementary -- all neurons
+            evidences_e_supp[0*itest:1*itest, 2] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_e_supp[1*itest:2*itest, 2] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+            evidences_e_supp[2*itest:3*itest, 2] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_c_supp[3*itest:4*itest, 2] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
 
         # evidences_e[:, 3] = np.squeeze(
         #         Xdata_teste[:,:] @ linw_bias.reshape(-1, 1) + linb_bias)
         #### gain control 
         if(CONDITION_CTXT):
-            evidences_e[:itest, 3] = np.squeeze(
-                    Xdata_teste[:itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-            evidences_e[itest:2*itest, 3] = np.squeeze(
-                    Xdata_teste[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
+            evidences_e[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+            evidences_e[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
             evidences_e[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_teste[2*itest:3*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
+                    Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
             evidences_e[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_teste[3*itest:4*itest,pop_error] @ (linw_bias_a.reshape(-1, 1))[pop_error] + linb_bias_a)
+                    Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_a.reshape(-1, 1))[pop] + linb_bias_a)
+
+            ### supplementary -- single selectivity 
+            evidences_e_supp[0*itest:1*itest, 1] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_e_supp[1*itest:2*itest, 1] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_e_supp[2*itest:3*itest, 1] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            evidences_e_supp[3*itest:4*itest, 1] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,single_pop] @ (linw_bias_a.reshape(-1, 1))[single_pop] + linb_bias_a)
+            ### supplementary -- all neurons
+            evidences_e_supp[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_e_supp[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_e_supp[2*itest:3*itest, 3] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
+            evidences_e_supp[3*itest:4*itest, 3] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,:] @ (linw_bias_a.reshape(-1, 1))[:] + linb_bias_a)
         else:
 
             ### gain control 
-            # evidences_e[:itest, 3] = np.squeeze(
-            #         Xdata_teste[:itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
-            # evidences_e[itest:2*itest, 3] = np.squeeze(
-            #         Xdata_teste[itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
-            # evidences_e[2*itest:3*itest, 3] = np.squeeze(
-            #         Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
-            # evidences_e[3*itest:4*itest, 3] = np.squeeze(
-            #         Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
-            
-            # evidences_e[:itest, 3] = np.squeeze(
-            #         Xdata_teste[:itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
-            # evidences_e[itest:2*itest, 3] = np.squeeze(
-            #         Xdata_teste[itest:2*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-            # evidences_e[2*itest:3*itest, 3] = np.squeeze(
-            #         Xdata_teste[2*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
-            # evidences_e[3*itest:4*itest, 3] = np.squeeze(
-            #         Xdata_teste[3*itest:4*itest,pop_correct] @ (linw_bias_r.reshape(-1, 1))[pop_correct] + linb_bias_r)
-
-            evidences_e[:itest, 3] = np.squeeze(
-                    Xdata_teste[:itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
-            evidences_e[itest:2*itest, 3] = np.squeeze(
-                    Xdata_teste[itest:2*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
+            evidences_e[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
+            evidences_e[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
             evidences_e[2*itest:3*itest, 3] = np.squeeze(
-                    Xdata_teste[2*itest:3*itest,pop_correct] @ (linw_bias_l.reshape(-1, 1))[pop_correct] + linb_bias_l)
+                    Xdata_teste[2*itest:3*itest,pop] @ (linw_bias_l.reshape(-1, 1))[pop] + linb_bias_l)
             evidences_e[3*itest:4*itest, 3] = np.squeeze(
-                    Xdata_teste[3*itest:4*itest,pop_error] @ (linw_bias_r.reshape(-1, 1))[pop_error] + linb_bias_r)
+                    Xdata_teste[3*itest:4*itest,pop] @ (linw_bias_r.reshape(-1, 1))[pop] + linb_bias_r)
+
+            ### supplementary -- single selectivity 
+            evidences_e_supp[0*itest:1*itest, 1] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+            evidences_e_supp[1*itest:2*itest, 1] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+            evidences_e_supp[2*itest:3*itest, 1] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,single_pop] @ (linw_bias_l.reshape(-1, 1))[single_pop] + linb_bias_l)
+            evidences_e_supp[3*itest:4*itest, 1] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,single_pop] @ (linw_bias_r.reshape(-1, 1))[single_pop] + linb_bias_r)
+
+            ### supplementary -- all neurons
+            evidences_e_supp[0*itest:1*itest, 3] = np.squeeze(
+                    Xdata_teste[0*itest:1*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+            evidences_e_supp[1*itest:2*itest, 3] = np.squeeze(
+                    Xdata_teste[1*itest:2*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
+            evidences_e_supp[2*itest:3*itest, 3] = np.squeeze(
+                    Xdata_teste[2*itest:3*itest,:] @ (linw_bias_l.reshape(-1, 1))[:] + linb_bias_l)
+            evidences_e_supp[3*itest:4*itest, 3] = np.squeeze(
+                    Xdata_teste[3*itest:4*itest,:] @ (linw_bias_r.reshape(-1, 1))[:] + linb_bias_r)
 
             # evidences_e[0*itest:3*itest, 3] = np.squeeze(
             #         Xdata_teste[0*itest:3*itest,pop_error] @ (linw_bias_l.reshape(-1, 1))[pop_error] + linb_bias_l)
@@ -529,22 +694,39 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
             Xdata_teste @ linw_cc.reshape(-1, 1) + linb_cc)
 
         # evaluate model
-        predictions_e = np.zeros((np.shape(evidences_e)[0], 3 + 1 + 1))
+        predictions_e     = np.zeros((np.shape(evidences_e)[0], 3 + 1 + 1))
+        predictions_e_pop = np.zeros((np.shape(evidences_e)[0], 1 + 1))
         predictions_e[:, 0] = lin_pact.predict(
             Xdata_teste)  # model.predict(X_test)
         predictions_e[:, 1] = lin_ctxt.predict(Xdata_teste)
         predictions_e[:, 2] = lin_xor.predict(Xdata_teste)
         
         if(CONDITION_CTXT):
-            predictions_e[:itest, 3]          = lin_bias_r.predict(Xdata_teste[:itest,:])
-            predictions_e[itest:2*itest, 3]   = lin_bias_r.predict(Xdata_teste[itest:2*itest,:])
+            predictions_e[0*itest:1*itest, 3] = lin_bias_r.predict(Xdata_teste[0*itest:1*itest,:])
+            predictions_e[1*itest:2*itest, 3] = lin_bias_r.predict(Xdata_teste[1*itest:2*itest,:])
             predictions_e[2*itest:3*itest, 3] = lin_bias_a.predict(Xdata_teste[2*itest:3*itest,:])
             predictions_e[3*itest:4*itest, 3] = lin_bias_a.predict(Xdata_teste[3*itest:4*itest,:])
         else:
-            predictions_e[:itest, 3] = lin_bias_l.predict(Xdata_teste[:itest,:])
-            predictions_e[itest:2*itest, 3] = lin_bias_r.predict(Xdata_teste[itest:2*itest,:])
+            predictions_e[0*itest:1*itest, 3] = lin_bias_l.predict(Xdata_teste[0*itest:1*itest,:])
+            predictions_e[1*itest:2*itest, 3] = lin_bias_r.predict(Xdata_teste[1*itest:2*itest,:])
             predictions_e[2*itest:3*itest, 3] = lin_bias_l.predict(Xdata_teste[2*itest:3*itest,:])
             predictions_e[3*itest:4*itest, 3] = lin_bias_r.predict(Xdata_teste[3*itest:4*itest,:])
+
+
+        if(CONDITION_CTXT):
+
+            predictions_e_pop[np.where(evidences_e[:,3]>=0)[0],0]=1
+            predictions_e_pop[np.where(evidences_e[:,3]<0)[0],0] =0
+
+            predictions_e_pop[np.where(evidences_e[:,2]>=0)[0],1]=1
+            predictions_e_pop[np.where(evidences_e[:,2]<0)[0],1] =0
+        else:
+
+            predictions_e_pop[np.where(evidences_e[:,3]>=0)[0],0]=1
+            predictions_e_pop[np.where(evidences_e[:,3]<0)[0],0] =0
+
+            predictions_e_pop[np.where(evidences_e[:,2]>=0)[0],1]=1
+            predictions_e_pop[np.where(evidences_e[:,2]<0)[0],1] =0
 
         predictions_e[:, 4] = lin_cc.predict(Xdata_teste)
 
@@ -574,27 +756,37 @@ def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nsel
 
         if i == 0:
             yevi_set_error[i, :, :] = evidences_e.copy()
+            yevi_set_error_supp[i, :, :] = evidences_e_supp.copy()
         else:
             yevi_set_error[i, :, :] = evidences_e.copy()
+            yevi_set_error_supp[i, :, :] = evidences_e_supp.copy()
 
-        score_e = np.zeros((3 + 1 + 1, 1))
+        score_e             = np.zeros((3 + 1 + 1, 1))
+        score_e_pop = np.zeros((1+1,1))
         for j in range(np.shape(score_e)[0]):
             score_e[j, 0] = accuracy_score(
                 ylabels_teste[:, j], predictions_e[:, j])
 
+        for j in range(2):
+            score_e_pop[j,0] = accuracy_score(ylabels_teste[:,3],  predictions_e_pop[:,j])
+
         # print(score)
         if i == 0:
-            stats_c = [score_c[SVMAXIS,0]]
-            stats_e = [score_e[SVMAXIS,0]]
+            stats_c = score_c
+            stats_e = score_e
+            stats_c_pop = score_c_pop 
+            stats_e_pop = score_e_pop
             # print('score e:',score_c[SVMAXIS,0], ' e:',score_e[SVMAXIS,0])
         else:
-            stats_c = np.append(stats_c, score_c[SVMAXIS,0])
-            stats_e = np.append(stats_e, score_e[SVMAXIS,0])
+            stats_c = np.hstack((stats_c, score_c))
+            stats_e = np.hstack((stats_e, score_e))
+            stats_c_pop = np.hstack((stats_c_pop,score_c_pop))
+            stats_e_pop = np.hstack((stats_e_pop,score_e_pop))
             # print('score e:',score_c[SVMAXIS,0], ' e:',score_e[SVMAXIS,0])
 
-    return mmodel,stats_c,stats_e,coeffs, intercepts,\
-        Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-        Xtest_set_error, ytest_set_error, yevi_set_error, RECORDED_TRIALS_SET
+    return mmodel,stats_c,stats_e, stats_c_pop, stats_e_pop, coeffs, intercepts,\
+        Xtest_set_correct, ytest_set_correct, yevi_set_correct,yevi_set_correct_supp,\
+        Xtest_set_error, ytest_set_error, yevi_set_error, yevi_set_error_supp, RECORDED_TRIALS_SET
 
 # def bootstrap_linsvm_step(Xdata_hist_trainset,Xdata_hist_testset,NN, ylabels_hist_trainset,ylabels_hist_testset, unique_states,unique_cohs,files,false_files, pop_correct, pop_zero, pop_error, USE_POP, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
 
@@ -732,11 +924,11 @@ def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,nselect, files,f
         # Xdata_testc[:itest,pop_correct]          = Xdata_testc[1*itest:2*itest,pop_correct]
         # Xdata_testc[2*itest:3*itest,pop_correct] = Xdata_testc[3*itest:4*itest,pop_correct] 
 
-        #### mislabel tr.bias 
-        Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error]         
-        Xdata_teste[1*itest:2*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
-        Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[2*itest:3*itest,pop_error]        
-        Xdata_testc[1*itest:2*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
+        # #### mislabel tr.bias 
+        # Xdata_teste[3*itest:4*itest,pop_error] = Xdata_teste[2*itest:3*itest,pop_error]         
+        # Xdata_teste[1*itest:2*itest,pop_error] = Xdata_teste[0*itest:1*itest,pop_error] 
+        # Xdata_testc[3*itest:4*itest,pop_error] = Xdata_testc[2*itest:3*itest,pop_error]        
+        # Xdata_testc[1*itest:2*itest,pop_error] = Xdata_testc[0*itest:1*itest,pop_error]
 
 
 
@@ -814,16 +1006,16 @@ def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,nselect, files,f
         # evaluate evidence model
         evidences_c = np.zeros((ntest, 3 + 2))
         evidences_c[:, 0] = np.squeeze(
-            Xdata_testc[:,pop] @ linw_pact.reshape(-1, 1)[pop] + linb_pact)
+            Xdata_testc[:,:] @ linw_pact.reshape(-1, 1)[:] + linb_pact) #pop
         evidences_c[:, 1] = np.squeeze(
-            Xdata_testc[:,pop] @ linw_ctxt.reshape(-1, 1)[pop] + linb_ctxt)
+            Xdata_testc[:,:] @ linw_ctxt.reshape(-1, 1)[:] + linb_ctxt) #pop
         evidences_c[:, 2] = np.squeeze(
-            Xdata_testc[:,pop] @ linw_xor.reshape(-1, 1)[pop] + linb_xor)
+            Xdata_testc[:,:] @ linw_xor.reshape(-1, 1)[:] + linb_xor) #pop
         evidences_c[:, 3] = np.squeeze(
-                Xdata_testc[:,pop] @ linw_bias.reshape(-1, 1)[pop] + linb_bias)
+                Xdata_testc[:,:] @ linw_bias.reshape(-1, 1)[:] + linb_bias) #pop
 
         evidences_c[:, 4] = np.squeeze(
-            Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc)
+            Xdata_testc @ linw_cc.reshape(-1, 1) + linb_cc) #pop
 
         # evaluate model
         predictions_c = np.zeros((np.shape(evidences_c)[0], 3 + 1 + 1))
@@ -871,16 +1063,16 @@ def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,nselect, files,f
         # evaluate evidence model
         evidences_e = np.zeros((ntest, 3 + 2))
         evidences_e[:, 0] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_pact.reshape(-1, 1)[pop] + linb_pact)
+            Xdata_teste[:,:] @ linw_pact.reshape(-1, 1)[:] + linb_pact) #pop
         evidences_e[:, 1] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_ctxt.reshape(-1, 1)[pop] + linb_ctxt)
+            Xdata_teste[:,:] @ linw_ctxt.reshape(-1, 1)[:] + linb_ctxt)# pop
         evidences_e[:, 2] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_xor.reshape(-1, 1)[pop] + linb_xor)
+            Xdata_teste[:,:] @ linw_xor.reshape(-1, 1)[:] + linb_xor)# pop
         evidences_e[:, 3] = np.squeeze(
-                Xdata_teste[:,pop] @ linw_bias.reshape(-1, 1)[pop] + linb_bias)
+                Xdata_teste[:,:] @ linw_bias.reshape(-1, 1)[:] + linb_bias) #pop
             
         evidences_e[:, 4] = np.squeeze(
-            Xdata_teste[:,pop] @ linw_cc.reshape(-1, 1)[pop] + linb_cc)
+            Xdata_teste[:,:] @ linw_cc.reshape(-1, 1)[:] + linb_cc) #pop
 
         # evaluate model
         predictions_e = np.zeros((np.shape(evidences_e)[0], 3 + 1 + 1))
@@ -924,12 +1116,12 @@ def bootstrap_linsvm_step(data_tr,NN, unique_states,unique_cohs,nselect, files,f
 
         # print(score)
         if i == 0:
-            stats_c = [score_c[SVMAXIS,0]]
-            stats_e = [score_e[SVMAXIS,0]]
+            stats_c = score_c#[score_c[SVMAXIS,0]]
+            stats_e = score_e#[score_e[SVMAXIS,0]]
             # print('score e:',score_c[SVMAXIS,0], ' e:',score_e[SVMAXIS,0])
         else:
-            stats_c = np.append(stats_c, score_c[SVMAXIS,0])
-            stats_e = np.append(stats_e, score_e[SVMAXIS,0])
+            stats_c = np.hstack((stats_c,score_c))#np.append(stats_c, score_c[SVMAXIS,0])
+            stats_e = np.hstack((stats_e,score_e))#np.append(stats_e, score_e[SVMAXIS,0])
             # print('score e:',score_c[SVMAXIS,0], ' e:',score_e[SVMAXIS,0])
 
     return mmodel,stats_c,stats_e,coeffs, intercepts,\

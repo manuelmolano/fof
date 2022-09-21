@@ -238,3 +238,74 @@ def cross_gaincontrol(stats_correct,stats_error, coeffs, intercepts, ytest_set_c
     # add_stat_annotation(ax_ae, data=df, order=order, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
     ax_score.set_ylim ([0.0,1.0])
     ax_score.set_yticks([0.0,0.5,1.0])
+
+
+
+def mixed_selectivity_pop(d_selectivity):
+    single_params,single_p_values,nnonselect,nselect, pop_left_correct,\
+        pop_right_correct,pop_zero_correct,pop_left_error, pop_right_error, pop_zero_error,pop_rep_correct,\
+            pop_alt_correct,pop_b_correct, pop_rep_error, pop_alt_error, pop_b_error, NN_error  =\
+                d_selectivity['single_params'],d_selectivity['single_p_values'],d_selectivity['nnonselect'],\
+                    d_selectivity['nselect'],d_selectivity['pop_left_correct'],\
+                        d_selectivity['pop_right_correct'],d_selectivity['pop_zero_correct'],\
+                            d_selectivity['pop_left_error'],d_selectivity['pop_right_error'],\
+                                d_selectivity['pop_zero_error'],d_selectivity['pop_rep_correct'],\
+                                    d_selectivity['pop_alt_correct'],d_selectivity['pop_b_correct'],\
+                                        d_selectivity['pop_rep_error'],d_selectivity['pop_alt_error'],\
+                                            d_selectivity['pop_b_error'],d_selectivity['NN_error']
+    ### populations by ac conditions
+    ### mixed-selectivity
+    rep_left_correct  = np.intersect1d(pop_left_correct,pop_rep_correct)
+    rep_right_correct = np.intersect1d(pop_right_correct,pop_rep_correct)
+    alt_left_correct  = np.intersect1d(pop_left_correct,pop_alt_correct)
+    alt_right_correct = np.intersect1d(pop_right_correct,pop_alt_correct)
+    
+    ### context -- mental state
+    rep_only_correct = np.intersect1d(pop_rep_correct,pop_zero_correct)
+    alt_only_correct = np.intersect1d(pop_alt_correct,pop_zero_correct)
+    ### previous choice -- external signal
+    left_only_correct  = np.intersect1d(pop_left_correct,pop_b_correct)
+    right_only_correct = np.intersect1d(pop_right_correct,pop_b_correct)
+    ### non-selectivity 
+    correct_zero = np.intersect1d(pop_zero_correct,pop_b_correct)
+    
+    # pop_left_correct  = (left_only).copy()
+    # pop_right_correct = (right_only).copy()
+    
+    # pop_left_correct  = pop_rep_correct.copy()# pop_left_correct.copy()#np.union1d(rep_left, alt_left)
+    # pop_right_correct = pop_alt_correct.copy()#pop_right_correct.copy()#np.union1d(rep_right, alt_right)
+    
+    # pop_left_correct   = np.union1d(rep_left_correct, alt_left_correct)
+    # pop_right_correct  = np.union1d(rep_right_correct, alt_right_correct)
+             
+    single_pop_correct = np.union1d(left_only_correct, right_only_correct)
+
+    ### populations by ae conditions
+    ### mixed-selectivity
+    rep_left_error  = np.intersect1d(pop_left_error,pop_rep_error)
+    rep_right_error = np.intersect1d(pop_right_error,pop_rep_error)
+    alt_left_error  = np.intersect1d(pop_left_error,pop_alt_error)
+    alt_right_error = np.intersect1d(pop_right_error,pop_alt_error)
+    
+    ### context -- mental state
+    rep_only_error = np.intersect1d(pop_rep_error,pop_zero_error)
+    alt_only_error = np.intersect1d(pop_alt_error,pop_zero_error)
+    ### previous choice -- external signal
+    left_only_error  = np.intersect1d(pop_left_error,pop_b_error)
+    right_only_error = np.intersect1d(pop_right_error,pop_b_error)
+    ### non-selectivity 
+    error_zero = np.intersect1d(pop_zero_error,pop_b_error)
+    
+    # pop_left_error  = (left_only).copy()
+    # pop_right_error = (right_only).copy()
+    
+    # pop_left_error  = pop_rep_error.copy()# pop_left_error.copy()#np.union1d(rep_left, alt_left)
+    # pop_right_error = pop_alt_error.copy()#pop_right_error.copy()#np.union1d(rep_right, alt_right)
+    
+    # pop_left_error   = np.union1d(rep_left_error, alt_left_error)
+    # pop_right_error  = np.union1d(rep_right_error, alt_right_error)
+    
+    single_pop_error = np.union1d(left_only_error, right_only_error)
+
+    return nselect,nnonselect, pop_left_correct, pop_right_correct, single_pop_correct, correct_zero, pop_left_error, pop_right_error, single_pop_error, error_zero
+            

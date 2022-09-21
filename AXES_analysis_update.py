@@ -597,29 +597,62 @@ def accuracy_mtx_pop(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_prevch.npz'
-    data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_hist_ac_c  = data_dec['stats_correct_pop'][0,:]
-    score_fix_hist_ac_cc = data_dec['stats_correct_pop'][1,:]
-    score_fix_hist_ac = data_dec['stats_correct'][3,:]
+    # dataname  = dir+timep+IDX_RAT+'data_dec_ac_prevch.npz'
+    # data_dec  = np.load(dataname, allow_pickle=True)
+    # score_fix_hist_ac_c  = data_dec['stats_correct_pop'][0,:]
+    # score_fix_hist_ac_cc = data_dec['stats_correct_pop'][1,:]
+    # score_fix_hist_ac = data_dec['stats_correct'][3,:]
     
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_prevch.npz'
+    # dataname  = dir+timep+IDX_RAT+'data_dec_ae_prevch.npz'
+    # data_dec  = np.load(dataname, allow_pickle=True)
+    # score_fix_hist_ae_e  = data_dec['stats_error_pop'][0,:]
+    # score_fix_hist_ae_ec = data_dec['stats_error_pop'][1,:]
+    # score_fix_hist_ae = data_dec['stats_error'][3,:]
+    
+    
+    # accuracy_fix_set = {}
+    # accuracy_fix_set['ac-pop-dec'], accuracy_fix_set['ac-all-dec']= score_fix_hist_ac_c.copy(), score_fix_hist_ac.copy() 
+    # accuracy_fix_set['ae-pop-dec'], accuracy_fix_set['ae-all-dec']= score_fix_hist_ae_e.copy(), score_fix_hist_ae.copy()  
+    
+    # accuracy_fix_set['ac-pop-dec(cross)'], accuracy_fix_set['ae-pop-dec(cross)']= score_fix_hist_ac_cc.copy(), score_fix_hist_ae_ec.copy() 
+
+
+    # fig_score, ax_score=plt.subplots(figsize=(4,2),tight_layout=True, sharey=True)    
+    # df_hist = {'ac-pop-dec': (accuracy_fix_set['ac-pop-dec']).flatten(), 'ac-pop-dec(cross)': 1-(accuracy_fix_set['ac-pop-dec(cross)']).flatten(), 'ac-all-dec': (accuracy_fix_set['ac-all-dec']).flatten(),'ae-pop-dec': (accuracy_fix_set['ae-pop-dec']).flatten(), 'ae-pop-dec(cross)': 1-(accuracy_fix_set['ae-pop-dec(cross)']).flatten(), 'ae-all-dec': (accuracy_fix_set['ae-all-dec']).flatten()}
+    # df_hist = pd.DataFrame(df_hist)
+    
+    # ax_score = sns.boxplot(ax=ax_score,data=df_hist,width=0.35)
+    # # box_pairs = [('ac-trials_ac-dec', 'ae-trials_ac-dec')]
+    # # add_stat_annotation(ax_score, data=df_hist, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
+    
+    # ax_score.set_ylim([0.3,1.2])
+    # ax_score.set_yticks([0.5,1])
+    
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_hist_ae_e  = data_dec['stats_error_pop'][0,:]
-    score_fix_hist_ae_ec = data_dec['stats_error_pop'][1,:]
-    score_fix_hist_ae = data_dec['stats_error'][3,:]
+    score_fix_hist_ac_single  = data_dec['stats_correct_pop'][0,:]
+    score_fix_hist_ac_pop     = data_dec['stats_correct_pop'][1,:]
+    score_fix_hist_ac_overall = data_dec['stats_correct'][3,:]
+
+    
+    
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_mixs_.npz'
+    data_dec  = np.load(dataname, allow_pickle=True)
+    score_fix_hist_ae_single  = data_dec['stats_error_pop'][0,:]
+    score_fix_hist_ae_pop     = data_dec['stats_error_pop'][1,:]
+    score_fix_hist_ae_overall = data_dec['stats_error'][3,:]
     
     
     accuracy_fix_set = {}
-    accuracy_fix_set['ac-pop-dec'], accuracy_fix_set['ac-all-dec']= score_fix_hist_ac_c.copy(), score_fix_hist_ac.copy() 
-    accuracy_fix_set['ae-pop-dec'], accuracy_fix_set['ae-all-dec']= score_fix_hist_ae_e.copy(), score_fix_hist_ae.copy()  
+    accuracy_fix_set['ac-mixed-dec'], accuracy_fix_set['ac-overall-dec']= score_fix_hist_ac_pop.copy(), score_fix_hist_ac_overall.copy() 
+    accuracy_fix_set['ae-mixed-dec'], accuracy_fix_set['ae-overall-dec']= score_fix_hist_ae_pop.copy(), score_fix_hist_ae_overall.copy()  
     
-    accuracy_fix_set['ac-pop-dec(cross)'], accuracy_fix_set['ae-pop-dec(cross)']= score_fix_hist_ac_cc.copy(), score_fix_hist_ae_ec.copy() 
+    accuracy_fix_set['ac-single-dec'], accuracy_fix_set['ae-single-dec']= score_fix_hist_ac_single.copy(), score_fix_hist_ae_single.copy()
 
 
     fig_score, ax_score=plt.subplots(figsize=(4,2),tight_layout=True, sharey=True)    
-    df_hist = {'ac-pop-dec': (accuracy_fix_set['ac-pop-dec']).flatten(), 'ac-pop-dec(cross)': 1-(accuracy_fix_set['ac-pop-dec(cross)']).flatten(), 'ac-all-dec': (accuracy_fix_set['ac-all-dec']).flatten(),'ae-pop-dec': (accuracy_fix_set['ae-pop-dec']).flatten(), 'ae-pop-dec(cross)': 1-(accuracy_fix_set['ae-pop-dec(cross)']).flatten(), 'ae-all-dec': (accuracy_fix_set['ae-all-dec']).flatten()}
+    df_hist = {'ac-overall-dec': (accuracy_fix_set['ac-overall-dec']).flatten(), 'ac-mixed-dec': (accuracy_fix_set['ac-mixed-dec']).flatten(), 'ac-single-dec': (accuracy_fix_set['ac-single-dec']).flatten(),'ae-overall-dec': (accuracy_fix_set['ae-overall-dec']).flatten(), 'ae-mixed-dec': 1-(accuracy_fix_set['ae-mixed-dec']).flatten(), 'ae-single-dec': (accuracy_fix_set['ae-single-dec']).flatten()}
     df_hist = pd.DataFrame(df_hist)
     
     ax_score = sns.boxplot(ax=ax_score,data=df_hist,width=0.35)
@@ -739,35 +772,43 @@ def subpop_projection(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch_mixx.npz'
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_overall_mixs.npz'
     data_dprime  = np.load(dataname, allow_pickle=True)
-    dprime_left_mixed,dprime_right_mixed = data_dprime['AUCs_lc'],data_dprime['AUCs_rc']
+    dprime_left_overall,dprime_right_overall = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
     #data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
     
-    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch_overall_mixx.npz'
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_mixed_mixs.npz'
     data_dprime  = np.load(dataname, allow_pickle=True)
-    dprime_left_overall,dprime_right_overall = data_dprime['AUCs_lc'],data_dprime['AUCs_rc']
+    dprime_left_mixed,dprime_right_mixed = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
     #data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
 
-    dataname  = dir+timep+IDX_RAT+'data_flt_ac_prevch_single_mixx.npz'
+    dataname  = dir+timep+IDX_RAT+'data_flt_ac_single_mixs.npz'
     data_dprime  = np.load(dataname, allow_pickle=True)
-    dprime_left_single,dprime_right_single = data_dprime['AUCs_lc'],data_dprime['AUCs_rc']
+    dprime_left_single,dprime_right_single = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
     #data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
 
     fig_dprime, ax_dprime=plt.subplots(1,2,figsize=(4,2),tight_layout=True,sharey=True,sharex=True)    
     df_left = {'overall': (dprime_left_overall).flatten(), 'mixed': (dprime_left_mixed).flatten(),'single': (dprime_left_single).flatten(),}
     df_left  = pd.DataFrame(df_left)   
     ax_dprime[0] = sns.boxplot(ax=ax_dprime[0],data=df_left,width=0.35)
-    ax_dprime[0].set_ylim([0.2,1.2])
-    ax_dprime[1].set_ylim([0.2,1.2])
+    
     plt.xticks(rotation=45)
     
     df_right = {'overall': (dprime_right_overall).flatten(), 'mixed': (dprime_right_mixed).flatten(),'single-': (dprime_right_single).flatten(),}
     df_right  = pd.DataFrame(df_right)   
     ax_dprime[1] = sns.boxplot(ax=ax_dprime[1],data=df_right,width=0.35)
     plt.xticks(rotation=45)
-    ax_dprime[0].set_yticks([0.5,1.0])
-    ax_dprime[1].set_yticks([0.5,1.0])
+    
+    # ax_dprime[0].set_ylim([0.2,1.2])
+    # ax_dprime[1].set_ylim([0.2,1.2])
+    # ax_dprime[0].set_yticks([0.5,1.0])
+    # ax_dprime[1].set_yticks([0.5,1.0])
+    
+    ax_dprime[0].set_ylim([-0.2,1.2])
+    ax_dprime[1].set_ylim([-0.2,1.2])
+    ax_dprime[0].set_yticks([0,4.5])
+    ax_dprime[1].set_yticks([0,4.5])
+    
     # box_pairs = [('left org', 'left cross-projection'),('right org', 'right cross-projection')]
     # add_stat_annotation(ax_dprime, data=df, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
     
@@ -981,24 +1022,38 @@ def mixed_selectivity_acae(dir, IDX_RAT, timep, NITERATIONS):
         pop_left_error, pop_right_error, pop_zero_error =  d_selectivity['pop_left_error'],d_selectivity['pop_right_error'],d_selectivity['pop_zero_error']
         pop_rep_correct, pop_alt_correct, pop_b_correct = d_selectivity['pop_rep_correct'],d_selectivity['pop_alt_correct'],d_selectivity['pop_b_correct']
         
+        pop_rep_error, pop_alt_error, pop_b_error = d_selectivity['pop_rep_error'],d_selectivity['pop_alt_error'],d_selectivity['pop_b_error']
+        
         nnonselect, nselect = d_selectivity['nnonselect'], d_selectivity['nselect']
         selectivity_select = single_p_values[nselect,1:]
         
         if len(number_non)==0:
-            number_non,number_left, number_right= [len(pop_zero_correct)],[len(pop_left_correct)],[len(pop_right_correct)]
-            number_non_ae,number_left_ae, number_right_ae = [len(pop_zero_error)],[len(pop_left_error)],[len(pop_right_error)]
+            # number_non,number_left, number_right= [len(pop_zero_correct)],[len(pop_left_correct)],[len(pop_right_correct)]
+            # number_non_ae,number_left_ae, number_right_ae = [len(pop_zero_error)],[len(pop_left_error)],[len(pop_right_error)]
+            
+            number_non,number_rep, number_alt= [len(pop_b_correct)],[len(pop_rep_correct)],[len(pop_alt_correct)]
+            number_non_ae,number_rep_ae, number_alt_ae = [len(pop_b_error)],[len(pop_rep_error)],[len(pop_alt_error)]
         else:
-            number_non, number_left, number_right = np.append(number_non,len(pop_zero_correct)),np.append(number_left,len(pop_left_correct)),np.append(number_right,len(pop_right_correct))
-            number_non_ae, number_left_ae, number_right_ae = np.append(number_non_ae,len(pop_zero_error)), np.append(number_left_ae, len(pop_left_error)), np.append(number_right_ae,len(pop_right_error))
+            # number_non, number_left, number_right = np.append(number_non,len(pop_zero_correct)),np.append(number_left,len(pop_left_correct)),np.append(number_right,len(pop_right_correct))
+            # number_non_ae, number_left_ae, number_right_ae = np.append(number_non_ae,len(pop_zero_error)), np.append(number_left_ae, len(pop_left_error)), np.append(number_right_ae,len(pop_right_error))
+            
+            number_non, number_rep, number_alt = np.append(number_non,len(pop_b_correct)),np.append(number_rep,len(pop_rep_correct)),np.append(number_alt,len(pop_alt_correct))
+            number_non_ae, number_rep_ae, number_alt_ae = np.append(number_non_ae,len(pop_b_error)), np.append(number_rep_ae, len(pop_rep_error)), np.append(number_alt_ae,len(pop_alt_error))
 
     rects1 = ax.bar(x - width/2, number_non, width, label='non',facecolor='black')
     rects2 = ax.bar(x + width/2, number_non_ae, width, label='non(ae)',facecolor='gray')
     
-    rects1 = ax.bar(x - width/2, number_left, width,bottom=number_non,label='left',facecolor='green')
-    rects2 = ax.bar(x + width/2, number_left_ae, width, bottom=number_non_ae,label='left(ae)',facecolor='tab:green')
+    # rects1 = ax.bar(x - width/2, number_left, width,bottom=number_non,label='left',facecolor='green')
+    # rects2 = ax.bar(x + width/2, number_left_ae, width, bottom=number_non_ae,label='left(ae)',facecolor='tab:green')
     
-    rects1 = ax.bar(x - width/2, number_right, width,bottom=number_left+number_non,label='right',facecolor='purple')
-    rects2 = ax.bar(x + width/2, number_right_ae, width, bottom=number_left_ae+number_non_ae,label='right(ae)',facecolor='tab:purple')
+    # rects1 = ax.bar(x - width/2, number_right, width,bottom=number_left+number_non,label='right',facecolor='purple')
+    # rects2 = ax.bar(x + width/2, number_right_ae, width, bottom=number_left_ae+number_non_ae,label='right(ae)',facecolor='tab:purple')
+    
+    rects1 = ax.bar(x - width/2, number_rep, width,bottom=number_non,label='left',facecolor='green')
+    rects2 = ax.bar(x + width/2, number_rep_ae, width, bottom=number_non_ae,label='left(ae)',facecolor='tab:green')
+    
+    rects1 = ax.bar(x - width/2, number_alt, width,bottom=number_rep+number_non,label='right',facecolor='purple')
+    rects2 = ax.bar(x + width/2, number_alt_ae, width, bottom=number_rep_ae+number_non_ae,label='right(ae)',facecolor='tab:purple')
     
     ax.set_ylabel('Number')
     ax.set_title('Neuron number by pop and rw')

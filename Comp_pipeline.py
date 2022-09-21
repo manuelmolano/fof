@@ -532,27 +532,31 @@ def get_dec_axes(data_tr, wc, bc, we, be,nselect, false_files,pop_correct, pop_z
             
         
     if(RECORD_TRIALS == 1):
+        
         # mmodel, stats_correct, stats_error,coeffs, intercepts, Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
         #     Xtest_set_error, ytest_set_error, yevi_set_error, REC_TRIALS_SET\
-        #     = bl.bootstrap_linsvm_step(data_tr, NN,
-        #                                 unique_states, unique_cohs, nselect, files,
-        #                                 false_files, pop_correct, pop_zero, pop_error, USE_POP, type, DOREVERSE=DOREVERSE,
-        #                                 CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, n_iterations=NITERATIONS,
-        #                                 N_pseudo_dec=NPSEUDODEC, ACE_RATIO = ACE_RATIO,
-        #                                 train_percent=PERCENTTRAIN,
-        #                                 RECORD_TRIALS=RECORD_TRIALS,
-        #                                 RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)
-            
-        mmodel, stats_correct, stats_error, stats_correct_pop, stats_error_pop, coeffs, intercepts, Xtest_set_correct, ytest_set_correct, yevi_set_correct, yevi_set_correct_supp,\
-            Xtest_set_error, ytest_set_error, yevi_set_error,  yevi_set_error_supp, REC_TRIALS_SET\
-            = bl.bootstrap_linsvm_step_gaincontrol(data_tr, NN, 
+        mmodel,stats_correct,stats_error,stats_correct_pop, stats_error_pop, coeffs, intercepts,\
+        Xtest_set_correct, ytest_set_correct, yevi_set_correct, yevi_set_correct_supp, \
+        Xtest_set_error, ytest_set_error, yevi_set_error, yevi_set_error_supp, REC_TRIALS_SET\
+            = bl.bootstrap_linsvm_step(data_tr, NN,
                                         unique_states, unique_cohs, nselect, files,
-                                        false_files, pop_correct, pop_zero, pop_error, single_pop, 0, type, DOREVERSE=DOREVERSE,
+                                        false_files, pop_correct, pop_zero, pop_error, single_pop, USE_POP, type, DOREVERSE=DOREVERSE,
                                         CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, n_iterations=NITERATIONS,
                                         N_pseudo_dec=NPSEUDODEC, ACE_RATIO = ACE_RATIO,
                                         train_percent=PERCENTTRAIN,
                                         RECORD_TRIALS=RECORD_TRIALS,
-                                        RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)# CONDITION_CTXT
+                                        RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)
+            
+        # mmodel, stats_correct, stats_error, stats_correct_pop, stats_error_pop, coeffs, intercepts, Xtest_set_correct, ytest_set_correct, yevi_set_correct, yevi_set_correct_supp,\
+        #     Xtest_set_error, ytest_set_error, yevi_set_error,  yevi_set_error_supp, REC_TRIALS_SET\
+        #     = bl.bootstrap_linsvm_step_gaincontrol(data_tr, NN, 
+        #                                 unique_states, unique_cohs, nselect, files,
+        #                                 false_files, pop_correct, pop_zero, pop_error, single_pop, 1, type, DOREVERSE=DOREVERSE,
+        #                                 CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, n_iterations=NITERATIONS,
+        #                                 N_pseudo_dec=NPSEUDODEC, ACE_RATIO = ACE_RATIO,
+        #                                 train_percent=PERCENTTRAIN,
+        #                                 RECORD_TRIALS=RECORD_TRIALS,
+        #                                 RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)# CONDITION_CTXT
             
     else:
         mmodel, stats_correct, stats_error, coeffs, intercepts, Xtest_set_correct, ytest_set_correct,\
@@ -979,7 +983,7 @@ def flatten_data(data_tr, data_dec):
     return d
 
 
-def flatten_data_supp(data_tr, data_dec, pop_type='s_pop'):
+def flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop'):
     """
     Flatten the encoding of history information (session-by-session) -- supplementary
 
@@ -1363,7 +1367,276 @@ def flatten_data_supp(data_tr, data_dec, pop_type='s_pop'):
     d = list_to_dict(lst=lst, string=stg)
     return d
 
+def flatten_data_supp(data_tr, data_dec, pop_type='s_pop'):
+    """
+    Flatten the encoding of history information (session-by-session) -- supplementary
 
+    Parameters
+    ----------
+    data_tr: dict
+        dataset for generating pseudo-trials
+
+    data_dec: dict
+        dataset containing the encodings of history information and labels
+
+
+    Returns
+    -------
+    d : dict
+        flatten data
+
+    """
+    if pop_type=='s_pop':
+        supi = 0
+    else:
+        supi = 1
+    yevi_set_correct  = data_dec['yevi_set_correct_supp'] # 3 Sept 
+    yevi_set_correct_select  = data_dec['yevi_set_correct']
+    ytest_set_correct = data_dec['ytest_set_correct']
+    IPOOLS = NITERATIONS ## should be consistent with the number of iterations used in bootstrap
+    
+    ### flatten data --- after correct
+    nlabels = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
+    ytruthlabels_c = np.zeros((nlabels, 1))
+    yevi_c         = np.zeros((3 +1+1, 1))
+    ### Gaussian assumption
+    dprimes_c    = np.zeros(IPOOLS)
+    dprimes_repc = np.zeros(IPOOLS)
+    dprimes_altc = np.zeros(IPOOLS) # overall
+
+    
+    dprimes_lc = np.zeros(IPOOLS)
+    dprimes_rc = np.zeros(IPOOLS) # overall
+
+
+    AUCs_c    = np.zeros(IPOOLS)
+    AUCs_repc = np.zeros(IPOOLS)
+    AUCs_altc = np.zeros(IPOOLS)
+    
+    AUCs_lc = np.zeros(IPOOLS)
+    AUCs_rc = np.zeros(IPOOLS)
+
+    for i in range(IPOOLS):
+        hist_evi    = yevi_set_correct[i, :, :]
+        idx = np.arange(np.shape(hist_evi)[0])
+        test_labels = ytest_set_correct[i, :, :]
+        ytruthlabels_c = np.append(
+            ytruthlabels_c, test_labels[idx, :].T, axis=1)
+        
+        yevi_set_correct_select[i, idx, SVMAXIS]   = yevi_set_correct[i,idx,supi].copy()
+        yevi_c = np.append(yevi_c, (yevi_set_correct_select[i, idx, :]).T, axis=1) # 3 Sept
+        
+        # dprimes_c[i] =\
+        #     guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),
+        #                           np.squeeze(ytest_set_correct[i, :, SVMAXIS])) # aligned direction
+        dprimes_c[i] =\
+            guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, supi]),
+                                  np.squeeze(ytest_set_correct[i, :, SVMAXIS]))
+
+        ### calculate AUC
+        yauc_c_org = np.squeeze(ytest_set_correct[i, :, SVMAXIS])
+        yauc_c     = np.zeros_like(yauc_c_org)
+        yauc_c[np.where(yauc_c_org == 0+2)[0]] = 1
+        yauc_c[np.where(yauc_c_org == 1+2)[0]] = 2
+        assert (yauc_c != 0).all()
+        # fpr, tpr, thresholds = metrics.roc_curve(
+        #     yauc_c, np.squeeze(yevi_set_correct[i, :, SVMAXIS]), pos_label=2)
+        fpr, tpr, thresholds = metrics.roc_curve(
+            yauc_c, np.squeeze(yevi_set_correct[i, :, supi]), pos_label=2)
+        auc_ac = metrics.auc(fpr, tpr)
+        AUCs_c[i] = auc_ac
+
+        ### calculate AUC conditioned on Block contexts --- overall
+        ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
+            np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
+        yauc_c_ctxtrep, yauc_c_ctxtalt =\
+            np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
+        yauc_c_evirep, yauc_c_evialt =\
+            np.squeeze(yevi_set_correct[i, ctxtrep, supi]),\
+            np.squeeze(yevi_set_correct[i, ctxtalt, supi]) # mental states coexist
+        dprimes_repc[i] = guc.calculate_dprime(yauc_c_evirep, yauc_c_ctxtrep)
+        dprimes_altc[i] = guc.calculate_dprime(yauc_c_evialt, yauc_c_ctxtalt)
+
+        yauc_c_ctxtrep, yauc_c_ctxtalt = yauc_c_ctxtrep-1, yauc_c_ctxtalt-1
+
+        fpr_rep, tpr_rep, thresholds = metrics.roc_curve(
+            yauc_c_ctxtrep, yauc_c_evirep, pos_label=2)
+        auc_ac_rep = metrics.auc(fpr_rep, tpr_rep)
+        AUCs_repc[i] = auc_ac_rep
+
+        fpr_alt, tpr_alt, thresholds = metrics.roc_curve(
+            yauc_c_ctxtalt, yauc_c_evialt, pos_label=2)
+        auc_ac_alt = metrics.auc(fpr_alt, tpr_alt)
+        AUCs_altc[i] = auc_ac_alt
+        
+        
+        
+        
+        ### calculate AUC conditioned on Previous choice --- overall
+        prevchl, prevchr = np.where(ytest_set_correct[i, :, 0] == 0+2)[0],\
+            np.where(ytest_set_correct[i, :, 0] == 1+2)[0]
+        yauc_c_prevchl, yauc_c_prevchr =\
+            np.squeeze(ytest_set_correct[i, prevchl, SVMAXIS]),\
+            np.squeeze(ytest_set_correct[i, prevchr, SVMAXIS])
+        yauc_c_evil, yauc_c_evir =\
+            np.squeeze(yevi_set_correct[i, prevchl, supi]),\
+            np.squeeze(yevi_set_correct[i, prevchr, supi])
+        dprimes_lc[i] = guc.calculate_dprime(yauc_c_evil, yauc_c_prevchl)
+        dprimes_rc[i] = guc.calculate_dprime(yauc_c_evir, yauc_c_prevchr)
+
+        yauc_c_prevchl, yauc_c_prevchr = yauc_c_prevchl-1, yauc_c_prevchr-1
+        
+        
+        fpr_l, tpr_l, thresholds = metrics.roc_curve(
+            yauc_c_prevchl, yauc_c_evil, pos_label=2)
+        auc_ac_prevchl = metrics.auc(fpr_l, tpr_l)
+        AUCs_lc[i] = auc_ac_prevchl
+
+        fpr_r, tpr_r, thresholds = metrics.roc_curve(
+            yauc_c_prevchr, yauc_c_evir, pos_label=2)
+        auc_ac_prevchr = metrics.auc(fpr_r, tpr_r)
+        AUCs_rc[i] = auc_ac_prevchr       
+        
+
+    ytruthlabels_c, yevi_c = ytruthlabels_c[:, 1:], yevi_c[:, 1:]
+    # f, ax_temp = plt.subplots(ncols=2)
+    # ax_temp[0].hist(AUCs_c, bins=20, alpha=0.9, facecolor='yellow')
+
+    '''
+    After Error Trials
+    '''
+    yevi_set_error  = data_dec['yevi_set_error_supp']
+    yevi_set_error_select = data_dec['yevi_set_error']
+    ytest_set_error = data_dec['ytest_set_error']
+
+    nlabels = np.shape(np.squeeze(ytest_set_error[0, :, :]))[1]
+    ytruthlabels_e = np.zeros((nlabels, 1))
+    yevi_e         = np.zeros((3+1+1, 1))
+
+    dprimes_e    = np.zeros(IPOOLS)
+    dprimes_repe = np.zeros(IPOOLS)
+    dprimes_alte = np.zeros(IPOOLS)
+
+    
+    dprimes_le = np.zeros(IPOOLS)
+    dprimes_re = np.zeros(IPOOLS)
+
+
+    AUCs_e    = np.zeros(IPOOLS)
+    AUCs_repe = np.zeros(IPOOLS)
+    AUCs_alte = np.zeros(IPOOLS)
+    
+    AUCs_le = np.zeros(IPOOLS)
+    AUCs_re = np.zeros(IPOOLS)
+    for i in range(IPOOLS):
+        hist_evi = yevi_set_error[i, :, :]
+        test_labels = ytest_set_error[i, :, :]
+        idx = np.arange(np.shape(hist_evi)[0])
+        ytruthlabels_e = np.append(
+            ytruthlabels_e, test_labels[idx, :].T, axis=1)
+        # yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)
+        
+        yevi_set_error_select[i, idx, SVMAXIS]   = yevi_set_error[i,idx,supi]
+        yevi_set_error_select[i, idx, SVMAXIS-1] = yevi_set_error[i,idx,supi-1]
+        yevi_e = np.append(yevi_e, (yevi_set_error_select[i, idx, :]).T, axis=1) # 3 Sept
+        
+        # dprimes_e[i] =\
+        #     guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),
+        #                           np.squeeze(ytest_set_error[i, :, SVMAXIS]))
+        dprimes_e[i] =\
+            guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, supi]),
+                                  np.squeeze(ytest_set_error[i, :, SVMAXIS])) # overal
+        
+
+        yauc_e_org = np.squeeze(ytest_set_error[i, :, SVMAXIS])
+        yauc_e = np.zeros_like(yauc_e_org)
+        yauc_e[np.where(yauc_e_org == 0)[0]] = 1
+        yauc_e[np.where(yauc_e_org == 1)[0]] = 2
+        assert (yauc_e != 0).all()
+        # fpr, tpr, thresholds = metrics.roc_curve(
+        #     yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]), pos_label=2)
+        fpr, tpr, thresholds = metrics.roc_curve(
+            yauc_e, np.squeeze(yevi_set_error[i, :, supi]), pos_label=2)
+        auc_ae = metrics.auc(fpr, tpr)
+        AUCs_e[i] = auc_ae
+
+        # SEPARATE REP AND ALT CONTEXTS
+        ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
+            0], np.where(ytest_set_error[i, :, 1] == 1)[0]
+        yauc_e_ctxtrep, yauc_e_ctxtalt =\
+            np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
+        # yauc_e_evirep, yauc_e_evialt =\
+        #     np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
+        yauc_e_evirep, yauc_e_evialt =\
+            np.squeeze(yevi_set_error[i, ctxtrep, supi]),\
+            np.squeeze(yevi_set_error[i, ctxtalt, supi]) # overall
+        dprimes_repe[i] = guc.calculate_dprime(yauc_e_evirep, yauc_e_ctxtrep)
+        dprimes_alte[i] = guc.calculate_dprime(yauc_e_evialt, yauc_e_ctxtalt)
+
+        yauc_e_ctxtrep, yauc_e_ctxtalt = yauc_e_ctxtrep+1, yauc_e_ctxtalt+1
+
+        fpr_rep, tpr_rep, thresholds = metrics.roc_curve(
+            yauc_e_ctxtrep, yauc_e_evirep, pos_label=2)
+        auc_ae_rep = metrics.auc(fpr_rep, tpr_rep)
+        AUCs_repe[i] = auc_ae_rep
+
+        fpr_alt, tpr_alt, thresholds = metrics.roc_curve(
+            yauc_e_ctxtalt, yauc_e_evialt, pos_label=2)
+        auc_ae_alt = metrics.auc(fpr_alt, tpr_alt)
+        AUCs_alte[i] = auc_ae_alt
+        
+
+        
+        # SEPARATE previous left and previous right CONTEXTS
+        prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
+            0], np.where(ytest_set_error[i, :, 0] == 1)[0]
+        yauc_e_prevchl, yauc_e_prevchr =\
+            np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
+            np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
+        yauc_e_evil, yauc_e_evir =\
+            np.squeeze(yevi_set_error[i, prevchl, supi]),\
+            np.squeeze(yevi_set_error[i, prevchr, supi])
+        dprimes_le[i] = guc.calculate_dprime(yauc_e_evil, yauc_e_prevchl)
+        dprimes_re[i] = guc.calculate_dprime(yauc_e_evir, yauc_e_prevchr)
+        
+        
+        ### AUC should be larger than 0.5 
+        # yauc_e_prevchl, yauc_e_prevchr = 1-yauc_e_prevchl, 1-yauc_e_prevchr
+        yauc_e_prevchl, yauc_e_prevchr = yauc_e_prevchl+1, yauc_e_prevchr+1
+        
+        fpr_l, tpr_l, thresholds = metrics.roc_curve(
+            yauc_e_prevchl, yauc_e_evil, pos_label=2)
+        auc_ae_prevchl = metrics.auc(fpr_l, tpr_l)
+        AUCs_le[i] = auc_ae_prevchl
+
+        fpr_r, tpr_r, thresholds = metrics.roc_curve(
+            yauc_e_prevchr, yauc_e_evir, pos_label=2)
+        auc_ae_prevchr = metrics.auc(fpr_r, tpr_r)
+        AUCs_re[i] = auc_ae_prevchr
+        
+        
+
+    # ax_temp[1].hist(AUCs_e, bins=20, alpha=0.9, facecolor='black')
+
+    ytruthlabels_e, yevi_e = ytruthlabels_e[:, 1:], yevi_e[:, 1:]
+    
+    lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
+           dprimes_c, dprimes_e, AUCs_c, AUCs_e,
+           dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte,
+           AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte, 
+           dprimes_lc, dprimes_rc, dprimes_le, dprimes_re,
+           AUCs_lc, AUCs_rc, AUCs_le, AUCs_re]
+    stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
+           "dprimes_c, dprimes_e, AUCs_c, AUCs_e, "
+           "dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, "
+           "AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte, "
+           "dprimes_lc, dprimes_rc, dprimes_le, dprimes_re, "
+           "AUCs_lc, AUCs_rc, AUCs_le, AUCs_re"]
+    d = list_to_dict(lst=lst, string=stg)
+    return d
 
 '''
 Results Visualizations
@@ -1490,23 +1763,23 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
     # previous left
     # figs = []
     
-    fighist,axhist=plt.subplots(2,1,figsize=(4,6),tight_layout=True, sharex=True)
-    # axhist[0].hist(yevi[SVMAXIS,idxsample[0,:]],bins=20,facecolor='tab:green',alpha=0.75)
-    # axhist[0].hist(yevi[SVMAXIS,idxsample[1,:]],bins=20,facecolor='tab:purple',alpha=0.75)
+    # fighist,axhist=plt.subplots(2,1,figsize=(4,6),tight_layout=True, sharex=True)
+    # # axhist[0].hist(yevi[SVMAXIS,idxsample[0,:]],bins=20,facecolor='tab:green',alpha=0.75)
+    # # axhist[0].hist(yevi[SVMAXIS,idxsample[1,:]],bins=20,facecolor='tab:purple',alpha=0.75)
     
-    # axhist[1].hist(yevi[SVMAXIS,idxsample[2,:]],bins=20,facecolor='tab:purple',alpha=0.75)
-    # axhist[1].hist(yevi[SVMAXIS,idxsample[3,:]],bins=20,facecolor='tab:green',alpha=0.75)
+    # # axhist[1].hist(yevi[SVMAXIS,idxsample[2,:]],bins=20,facecolor='tab:purple',alpha=0.75)
+    # # axhist[1].hist(yevi[SVMAXIS,idxsample[3,:]],bins=20,facecolor='tab:green',alpha=0.75)
     
-    axhist[0].hist(yevi[SVMAXIS,idxsample[0,:]]+yevi[SVMAXIS-1,idxsample[0,:]],bins=20,facecolor='tab:green',alpha=0.75)
-    axhist[0].hist(yevi[SVMAXIS,idxsample[1,:]]+yevi[SVMAXIS-1,idxsample[1,:]],bins=20,facecolor='tab:purple',alpha=0.75)
+    # axhist[0].hist(yevi[SVMAXIS,idxsample[0,:]]+yevi[SVMAXIS-1,idxsample[0,:]],bins=20,facecolor='tab:green',alpha=0.75)
+    # axhist[0].hist(yevi[SVMAXIS,idxsample[1,:]]+yevi[SVMAXIS-1,idxsample[1,:]],bins=20,facecolor='tab:purple',alpha=0.75)
     
-    axhist[1].hist(yevi[SVMAXIS,idxsample[2,:]]+yevi[SVMAXIS-1,idxsample[2,:]],bins=20,facecolor='tab:purple',alpha=0.75)
-    axhist[1].hist(yevi[SVMAXIS,idxsample[3,:]]+yevi[SVMAXIS-1,idxsample[3,:]],bins=20,facecolor='tab:green',alpha=0.75)
+    # axhist[1].hist(yevi[SVMAXIS,idxsample[2,:]]+yevi[SVMAXIS-1,idxsample[2,:]],bins=20,facecolor='tab:purple',alpha=0.75)
+    # axhist[1].hist(yevi[SVMAXIS,idxsample[3,:]]+yevi[SVMAXIS-1,idxsample[3,:]],bins=20,facecolor='tab:green',alpha=0.75)
         
     
     for idx, prev_ch in zip([idxpreal, idxprear], ['Left', 'Right']):
         ctxt    = np.squeeze(yevi[1, idx])
-        tr_bias = np.squeeze(yevi[SVMAXIS, idx]+yevi[SVMAXIS-1, idx])
+        tr_bias = np.squeeze(yevi[SVMAXIS, idx])#+yevi[SVMAXIS-1, idx])
         df = {'Context encoding': ctxt, 'Transition bias encoding': tr_bias,
               'Upcoming Stimulus Category': ytruthlabels[SVMAXIS, idx]}
         df  = pd.DataFrame(df)
@@ -3009,7 +3282,7 @@ if __name__ == '__main__':
 
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats =  ['Rat7','Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    rats =['Rat31']#  ['Rat7','Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
         # plt.close('all')
         print('xxxxxxxxxxxxxxxx')
@@ -3092,39 +3365,22 @@ if __name__ == '__main__':
         else:
             dataname  = dir+IDX_RAT+'neuron_selectivity.npz'
             d_selectivity  = np.load(dataname, allow_pickle=True) 
-            single_params,single_p_values,nnonselect,nselect, pop_left_correct,\
-                pop_right_correct,pop_zero_correct,pop_left_error, pop_right_error, pop_zero_error,pop_rep_correct,\
-                    pop_alt_correct,pop_b_correct, pop_rep_error, pop_alt_error, pop_b_error, NN_error  =\
-                        d_selectivity['single_params'],d_selectivity['single_p_values'],d_selectivity['nnonselect'],\
-                            d_selectivity['nselect'],d_selectivity['pop_left_correct'],\
-                                d_selectivity['pop_right_correct'],d_selectivity['pop_zero_correct'],\
-                                    d_selectivity['pop_left_error'],d_selectivity['pop_right_error'],\
-                                        d_selectivity['pop_zero_error'],d_selectivity['pop_rep_correct'],\
-                                            d_selectivity['pop_alt_correct'],d_selectivity['pop_b_correct'],\
-                                                d_selectivity['pop_rep_error'],d_selectivity['pop_alt_error'],\
-                                                    d_selectivity['pop_b_error'],d_selectivity['NN_error']
-            ### mixed-selectivity
-            rep_left  = np.intersect1d(pop_left_correct,pop_rep_correct)
-            rep_right = np.intersect1d(pop_right_correct,pop_rep_correct)
-            alt_left  = np.intersect1d(pop_left_correct,pop_alt_correct)
-            alt_right = np.intersect1d(pop_right_correct,pop_alt_correct)
+            # single_params,single_p_values,nnonselect,nselect, pop_left_correct,\
+            #     pop_right_correct,pop_zero_correct,pop_left_error, pop_right_error, pop_zero_error,pop_rep_correct,\
+            #         pop_alt_correct,pop_b_correct, pop_rep_error, pop_alt_error, pop_b_error, NN_error  =\
+            #             d_selectivity['single_params'],d_selectivity['single_p_values'],d_selectivity['nnonselect'],\
+            #                 d_selectivity['nselect'],d_selectivity['pop_left_correct'],\
+            #                     d_selectivity['pop_right_correct'],d_selectivity['pop_zero_correct'],\
+            #                         d_selectivity['pop_left_error'],d_selectivity['pop_right_error'],\
+            #                             d_selectivity['pop_zero_error'],d_selectivity['pop_rep_correct'],\
+            #                                 d_selectivity['pop_alt_correct'],d_selectivity['pop_b_correct'],\
+            #                                     d_selectivity['pop_rep_error'],d_selectivity['pop_alt_error'],\
+            #                                         d_selectivity['pop_b_error'],d_selectivity['NN_error']
             
-            ### context -- mental state
-            rep_only = np.intersect1d(pop_rep_correct,pop_zero_correct)
-            alt_only = np.intersect1d(pop_alt_correct,pop_zero_correct)
-            ### previous choice -- external signal
-            left_only  = np.intersect1d(pop_left_correct,pop_b_correct)
-            right_only = np.intersect1d(pop_right_correct,pop_b_correct)
-            ### non-selectivity 
-            correct_zero = np.intersect1d(pop_zero_correct,pop_b_correct)
             
-            # pop_left_correct  = (left_only).copy()
-            # pop_right_correct = (right_only).copy()
+            nselect, nnonselect, pop_left_correct, pop_right_correct, single_pop_correct, correct_zero, pop_left_error, pop_right_error, single_pop_error, error_zero =guc.mixed_selectivity_pop(d_selectivity)
             
-            pop_left_correct  = np.union1d(rep_left, alt_left)
-            pop_right_correct = np.union1d(rep_right, alt_right)
             
-            single_pop = np.union1d(left_only, right_only)
             
         
         
@@ -3152,66 +3408,96 @@ if __name__ == '__main__':
             mmodel = []
             
         
-        # # ------------- populations -- obtained using activity in ae trials--------------
-        # pop_correct = pop_left_error
-        # pop_error   = pop_right_error
-        # pop_zero    = pop_zero_error#np.setdiff1d(nselect,pop_correct)
+        # ------------- populations -- obtained using activity in ae trials--------------
+        pop_correct = pop_left_error
+        pop_error   = pop_right_error
+        pop_zero    = error_zero
                      
-        # ## 11 July
-        # CONTROL =1
-        # if(CONTROL > 0):#==1):
-        #     data_dec, mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect,false_files,pop_correct, pop_zero, pop_error, USE_POP,
-        #                             mode='decoding', DOREVERSE=0,
-        #                             CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        #                             REC_TRIALS_SET=np.zeros(NITERATIONS), PCA_only=PCA_only, mmodel=mmodel)
-        #     wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
-        # else:
-        #     data_dec,mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect,false_files,pop_correct, pop_zero, pop_error, USE_POP,
-        #                             mode='decoding', DOREVERSE=0,
-        #                             CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=RECORD_TRIALS,
-        #                             REC_TRIALS_SET=REC_TRIALS_SET, PCA_only=PCA_only, mmodel=mmodel)
+        ## 11 July
+        CONTROL =1
+        data_dec, mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect,false_files,pop_correct, pop_zero, pop_error, single_pop_error, USE_POP,
+                                mode='decoding', DOREVERSE=0,
+                                CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
+                                REC_TRIALS_SET=np.zeros(NITERATIONS), PCA_only=PCA_only, mmodel=mmodel)
+        wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
+
             
-        # if(RECORD_TRIALS == 1 and CONTROL==1):
-        #     dataname = dir+IDX_RAT+'data_dec_ae_prevch.npz'
-        #     np.savez(dataname, **data_dec)
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_dec_ae_mixs_.npz'
+            np.savez(dataname, **data_dec)
         
-        # print('Get AUCs (and d-primes)')
-        # data_flt  = flatten_data(data_tr, data_dec)
+        print('Get AUCs (and d-primes)')
+        data_flt  = flatten_data(data_tr, data_dec)
+
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_flt_ae_overall_mixs_.npz'
+            np.savez(dataname, **data_flt)
         
-        # # print('3D projections ac and ae')
-        # # projection_3D(data_flt, data_flt, 'c')
-        # # projection_3D(data_flt, data_flt, 'e')
+        # print('3D projections ac and ae')
+        # projection_3D(data_flt, data_flt, 'c')
+        projection_3D(data_flt, data_flt, 'e')
         
-        # print('2D projections')
-        # # projections_2D(data_flt, prev_outc='c', fit=False, name='')
-        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        print('2D projections')
+        # projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
-        # if(RECORD_TRIALS == 1 and CONTROL==1):
-        #     dataname = dir+IDX_RAT+'data_flt_ae_prevch.npz'
-        #     np.savez(dataname, **data_flt)
+        
+        
+        if(PCA_only ==1):
+            data_name = dir+IDX_RAT +'pca_mmodel.pkl'
+            pk.dump(mmodel, open(data_name,"wb"))
+            continue
+
+        
+        print('Get AUCs (and d-primes, mixed)')
+        data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='mixed')       
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='overall') ### for conditional decoders
+          
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_flt_ae_mixed_mixs_.npz'
+            np.savez(dataname, **data_flt)
+        
+
+        # print('3D projections ac and ae (overall)')
+        # projection_3D(data_flt, data_flt, 'e')
+        print('2D projections')
+        projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        
+        print('Get AUCs (and d-primes, single_pop)')
+        data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='s_pop')
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
+          
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_flt_ae_single_mixs_.npz'
+            np.savez(dataname, **data_flt)   
+
+        # print('3D projections ac and ae (single_pop)')
+        # projection_3D(data_flt, data_flt, 'c')
+        print('2D projections')
+        projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
         
         # -------------- change populations -- using ac trials ---------------- 
         pop_correct = pop_left_correct
         pop_error   = pop_right_correct
-        pop_zero    = pop_zero_correct#np.setdiff1d(nselect,pop_correct)
+        pop_zero    = correct_zero#pop_zero_correct#np.setdiff1d(nselect,pop_correct)
             
         CONTROL =2
         if(CONTROL > 0):#==1):
-            data_dec, mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect, false_files,pop_correct, pop_zero, pop_error, single_pop, USE_POP,
+            data_dec, mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect, false_files,pop_correct, pop_zero, pop_error, single_pop_correct, USE_POP,
                                     mode='decoding', DOREVERSE=0,
                                     CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
                                     REC_TRIALS_SET=np.zeros(NITERATIONS), PCA_only=PCA_only, mmodel=mmodel)
             wc, bc = data_dec['coefs_correct'], data_dec['intercepts_correct']
         else:
-            data_dec,mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect, false_files,pop_correct, pop_zero, pop_error, single_pop, USE_POP,
+            data_dec,mmodel, Xhist_test_correct, Xhist_test_error = get_dec_axes(data_tr, wc, bc, [], [], nselect, false_files,pop_correct, pop_zero, pop_error, single_pop_correct, USE_POP,
                                     mode='decoding', DOREVERSE=0,
                                     CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=RECORD_TRIALS,
                                     REC_TRIALS_SET=REC_TRIALS_SET, PCA_only=PCA_only, mmodel=mmodel)
 
         
         if(RECORD_TRIALS == 1 and CONTROL==2):
-            dataname = dir+IDX_RAT+'data_dec_ac_prevch_mixx.npz'
+            dataname = dir+IDX_RAT+'data_dec_ac_mixs_.npz'
             np.savez(dataname, **data_dec)
         
             
@@ -3232,7 +3518,7 @@ if __name__ == '__main__':
         
         
         if(RECORD_TRIALS == 1 and CONTROL==2):
-            dataname = dir+IDX_RAT+'data_flt_ac_prevch_mixx.npz'
+            dataname = dir+IDX_RAT+'data_flt_ac_overall_mixs_.npz'
             np.savez(dataname, **data_flt)
         
 
@@ -3244,11 +3530,12 @@ if __name__ == '__main__':
         projections_2D(data_flt, prev_outc='c', fit=False, name='')
         # projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
-        print('Get AUCs (and d-primes, overall)')
-        data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='overall')
+        print('Get AUCs (and d-primes, mixed)')
+        data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='mixed')       
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='overall') ### for conditional decoders
           
         if(RECORD_TRIALS == 1 and CONTROL==2):
-            dataname = dir+IDX_RAT+'data_flt_ac_prevch_overall_mixx.npz'
+            dataname = dir+IDX_RAT+'data_flt_ac_mixed_mixs_.npz'
             np.savez(dataname, **data_flt)
         
 
@@ -3259,9 +3546,10 @@ if __name__ == '__main__':
         
         print('Get AUCs (and d-primes, single_pop)')
         data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='s_pop')
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
           
         if(RECORD_TRIALS == 1 and CONTROL==2):
-            dataname = dir+IDX_RAT+'data_flt_ac_prevch_single_mixx.npz'
+            dataname = dir+IDX_RAT+'data_flt_ac_single_mixs_.npz'
             np.savez(dataname, **data_flt)   
 
         # print('3D projections ac and ae (single_pop)')
@@ -3270,13 +3558,13 @@ if __name__ == '__main__':
         projections_2D(data_flt, prev_outc='c', fit=False, name='')
         
         
-        # # EACHSTATES=50
-        # # fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
-        # # curveslopes_correct, curveintercept_correct, curveslopes_error,\
-        # #     curveintercept_error, data_beh =\
-        # #     bias_VS_prob(data_tr, data_dec, unique_cohs, nselect, num_beh_trials,EACHSTATES,
-        # #                   NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-        # #                   REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
+        EACHSTATES=50
+        fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
+        curveslopes_correct, curveintercept_correct, curveslopes_error,\
+            curveintercept_error, data_beh =\
+            bias_VS_prob(data_tr, data_dec, unique_cohs, nselect, num_beh_trials,EACHSTATES,
+                          NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
+                          REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
             
             
         # # #####***************** The Second Stage ------ Behaviour *****************

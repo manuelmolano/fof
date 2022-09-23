@@ -614,34 +614,31 @@ def flatten_data(data_tr, data_dec):
         flatten data
 
     """
-    yevi_set_correct  = data_dec['yevi_set_correct'] # mixed-selectivity populations
+    yevi_set_correct      = data_dec['yevi_set_correct'] # mixed-selectivity populations
     yevi_set_correct_supp = data_dec['yevi_set_correct_supp'] # 3 Sept 
-    ytest_set_correct = data_dec['ytest_set_correct']
+    ytest_set_correct     = data_dec['ytest_set_correct']
     IPOOLS = NITERATIONS ## should be consistent with the number of iterations used in bootstrap
     
     ### flatten data --- after correct
-    nlabels = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
+    nlabels        = np.shape(np.squeeze(ytest_set_correct[0, :, :]))[1]
     ytruthlabels_c = np.zeros((nlabels, 1))
     yevi_c         = np.zeros((3 + 1 + 1, 1))
     ### Gaussian assumption
     dprimes_c    = np.zeros(IPOOLS)
     dprimes_repc = np.zeros(IPOOLS)
     dprimes_altc = np.zeros(IPOOLS) # overall
-    dprimes_repc_rel = np.zeros(IPOOLS)
-    dprimes_altc_rel = np.zeros(IPOOLS)
-    dprimes_repc_cross = np.zeros(IPOOLS)
-    dprimes_altc_cross = np.zeros(IPOOLS)
     
     dprimes_lc = np.zeros(IPOOLS)
     dprimes_rc = np.zeros(IPOOLS) # overall
-    dprimes_lc_rel = np.zeros(IPOOLS)
-    dprimes_rc_rel = np.zeros(IPOOLS)
-    dprimes_lc_cross = np.zeros(IPOOLS)
-    dprimes_rc_cross = np.zeros(IPOOLS)
 
     AUCs_c    = np.zeros(IPOOLS)
     AUCs_repc = np.zeros(IPOOLS)
     AUCs_altc = np.zeros(IPOOLS)
+
+    ### separation between left and right categorization
+    stds_repc_lr = np.zeros((IPOOLS,2))
+    stds_altc_lr = np.zeros((IPOOLS,2)) # two clusters
+
     
     AUCs_lc = np.zeros(IPOOLS)
     AUCs_rc = np.zeros(IPOOLS)
@@ -653,12 +650,12 @@ def flatten_data(data_tr, data_dec):
         ytruthlabels_c = np.append(
             ytruthlabels_c, test_labels[idx, :].T, axis=1)
         yevi_c = np.append(yevi_c, (yevi_set_correct[i, idx, :]).T, axis=1)
-        # dprimes_c[i] =\
-        #     guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),
-        #                           np.squeeze(ytest_set_correct[i, :, SVMAXIS])) # aligned direction
         dprimes_c[i] =\
-            guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]+yevi_set_correct[i,:,SVMAXIS-1]),
-                                  np.squeeze(ytest_set_correct[i, :, SVMAXIS]))
+            guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]),
+                                  np.squeeze(ytest_set_correct[i, :, SVMAXIS])) # aligned direction
+        # dprimes_c[i] =\
+        #     guc.calculate_dprime(np.squeeze(yevi_set_correct[i, :, SVMAXIS]+yevi_set_correct[i,:,SVMAXIS-1]),
+        #                           np.squeeze(ytest_set_correct[i, :, SVMAXIS]))
 
         ### calculate AUC
         yauc_c_org = np.squeeze(ytest_set_correct[i, :, SVMAXIS])
@@ -666,10 +663,10 @@ def flatten_data(data_tr, data_dec):
         yauc_c[np.where(yauc_c_org == 0+2)[0]] = 1
         yauc_c[np.where(yauc_c_org == 1+2)[0]] = 2
         assert (yauc_c != 0).all()
-        # fpr, tpr, thresholds = metrics.roc_curve(
-        #     yauc_c, np.squeeze(yevi_set_correct[i, :, SVMAXIS]), pos_label=2)
         fpr, tpr, thresholds = metrics.roc_curve(
-            yauc_c, np.squeeze(yevi_set_correct[i, :, SVMAXIS]+yevi_set_correct[i,:,SVMAXIS-1]), pos_label=2)
+            yauc_c, np.squeeze(yevi_set_correct[i, :, SVMAXIS]), pos_label=2)
+        # fpr, tpr, thresholds = metrics.roc_curve(
+        #     yauc_c, np.squeeze(yevi_set_correct[i, :, SVMAXIS]+yevi_set_correct[i,:,SVMAXIS-1]), pos_label=2)
         auc_ac = metrics.auc(fpr, tpr)
         AUCs_c[i] = auc_ac
 
@@ -679,15 +676,26 @@ def flatten_data(data_tr, data_dec):
         yauc_c_ctxtrep, yauc_c_ctxtalt =\
             np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
             np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
-        # yauc_c_evirep, yauc_c_evialt =\
-        #     np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]),\
-        #     np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS])
         yauc_c_evirep, yauc_c_evialt =\
-            np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]+yevi_set_correct[i, ctxtrep, SVMAXIS-1]),\
-            np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS]+yevi_set_correct[i, ctxtalt, SVMAXIS-1]) # mental states coexist
+            np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS])
+        # yauc_c_evirep, yauc_c_evialt =\
+        #     np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]+yevi_set_correct[i, ctxtrep, SVMAXIS-1]),\
+        #     np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS]+yevi_set_correct[i, ctxtalt, SVMAXIS-1]) # mental states coexist
         # print('ac overall:',len(ctxtrep),len(ctxtalt),'--------',yauc_c_evirep)
         dprimes_repc[i] = guc.calculate_dprime(yauc_c_evirep, yauc_c_ctxtrep)
         dprimes_altc[i] = guc.calculate_dprime(yauc_c_evialt, yauc_c_ctxtalt)
+
+        #### calculate the distance between left and right previous choices
+        yauc_c_ctxtrep_lr, yauc_c_ctxtalt_lr =\
+            np.squeeze(ytest_set_correct[i, ctxtrep, 0]),\
+            np.squeeze(ytest_set_correct[i, ctxtalt, 0])
+        yauc_c_evirep_lr, yauc_c_evialt_lr =\
+            np.squeeze(yevi_set_correct[i, ctxtrep, 0]),\
+            np.squeeze(yevi_set_correct[i, ctxtalt, 0])
+        stds_repc_lr[i,:] = guc.calculate_disperse(yauc_c_evirep_lr,yauc_c_ctxtrep_lr)
+        stds_altc_lr[i,:] = guc.calculate_disperse(yauc_c_evialt_lr,yauc_c_ctxtalt_lr)
+
 
         yauc_c_ctxtrep, yauc_c_ctxtalt = yauc_c_ctxtrep-1, yauc_c_ctxtalt-1
 
@@ -701,33 +709,33 @@ def flatten_data(data_tr, data_dec):
         auc_ac_alt = metrics.auc(fpr_alt, tpr_alt)
         AUCs_altc[i] = auc_ac_alt
         
-        ### calculate dprime context relevant
-        ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
-            np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
-        yauc_c_ctxtrep, yauc_c_ctxtalt =\
-            np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
-            np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
-        yauc_c_evirep_rel, yauc_c_evialt_rel =\
-            np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]),\
-            np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS])
-        # print('ac relevant:',len(ctxtrep),len(ctxtalt),'--------',yauc_c_evirep)
-        dprimes_repc_rel[i] = guc.calculate_dprime(yauc_c_evirep_rel, yauc_c_ctxtrep)
-        dprimes_altc_rel[i] = guc.calculate_dprime(yauc_c_evialt_rel, yauc_c_ctxtalt)
+        # ### calculate dprime context relevant
+        # ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
+        #     np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
+        # yauc_c_ctxtrep, yauc_c_ctxtalt =\
+        #     np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
+        # yauc_c_evirep_rel, yauc_c_evialt_rel =\
+        #     np.squeeze(yevi_set_correct[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(yevi_set_correct[i, ctxtalt, SVMAXIS])
+        # # print('ac relevant:',len(ctxtrep),len(ctxtalt),'--------',yauc_c_evirep)
+        # dprimes_repc_rel[i] = guc.calculate_dprime(yauc_c_evirep_rel, yauc_c_ctxtrep)
+        # dprimes_altc_rel[i] = guc.calculate_dprime(yauc_c_evialt_rel, yauc_c_ctxtalt)
         
         
-        ### calculate dprime context cross
-        ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
-            np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
-        yauc_c_ctxtrep, yauc_c_ctxtalt =\
-            np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
-            np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
-        yauc_c_evirep_cross, yauc_c_evialt_cross =\
-            np.squeeze(yevi_set_correct[i, ctxtrep, 2]),\
-            np.squeeze(yevi_set_correct[i, ctxtalt, 2])
+        # ### calculate dprime context cross
+        # ctxtrep, ctxtalt = np.where(ytest_set_correct[i, :, 1] == 0+2)[0],\
+        #     np.where(ytest_set_correct[i, :, 1] == 1+2)[0]
+        # yauc_c_ctxtrep, yauc_c_ctxtalt =\
+        #     np.squeeze(ytest_set_correct[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(ytest_set_correct[i, ctxtalt, SVMAXIS])
+        # yauc_c_evirep_cross, yauc_c_evialt_cross =\
+        #     np.squeeze(yevi_set_correct[i, ctxtrep, 2]),\
+        #     np.squeeze(yevi_set_correct[i, ctxtalt, 2])
             
-        # print('ac cross:',len(ctxtrep),len(ctxtalt),'--------',yauc_c_evirep)
-        dprimes_repc_cross[i] = guc.calculate_dprime(yauc_c_evirep_cross, yauc_c_ctxtrep)
-        dprimes_altc_cross[i] = guc.calculate_dprime(yauc_c_evialt_cross, yauc_c_ctxtalt)
+        # # print('ac cross:',len(ctxtrep),len(ctxtalt),'--------',yauc_c_evirep)
+        # dprimes_repc_cross[i] = guc.calculate_dprime(yauc_c_evirep_cross, yauc_c_ctxtrep)
+        # dprimes_altc_cross[i] = guc.calculate_dprime(yauc_c_evialt_cross, yauc_c_ctxtalt)
         
         
         ### calculate AUC conditioned on Previous choice --- overall
@@ -737,8 +745,11 @@ def flatten_data(data_tr, data_dec):
             np.squeeze(ytest_set_correct[i, prevchl, SVMAXIS]),\
             np.squeeze(ytest_set_correct[i, prevchr, SVMAXIS])
         yauc_c_evil, yauc_c_evir =\
-            np.squeeze(yevi_set_correct[i, prevchl, SVMAXIS]+yevi_set_correct[i, prevchl, SVMAXIS-1]),\
-            np.squeeze(yevi_set_correct[i, prevchr, SVMAXIS]+yevi_set_correct[i, prevchr, SVMAXIS-1])
+            np.squeeze(yevi_set_correct[i, prevchl, SVMAXIS]),\
+            np.squeeze(yevi_set_correct[i, prevchr, SVMAXIS])
+        # yauc_c_evil, yauc_c_evir =\
+        #     np.squeeze(yevi_set_correct[i, prevchl, SVMAXIS]+yevi_set_correct[i, prevchl, SVMAXIS-1]),\
+        #     np.squeeze(yevi_set_correct[i, prevchr, SVMAXIS]+yevi_set_correct[i, prevchr, SVMAXIS-1])
             
         # print('ac overall:',len(prevchr),len(prevchl),'--------',yauc_c_evil)
         dprimes_lc[i] = guc.calculate_dprime(yauc_c_evil, yauc_c_prevchl)
@@ -757,31 +768,31 @@ def flatten_data(data_tr, data_dec):
         auc_ac_prevchr = metrics.auc(fpr_r, tpr_r)
         AUCs_rc[i] = auc_ac_prevchr       
         
-        ### calculate dprime conditioned on Previous choice ----- relevant
-        prevchl, prevchr = np.where(ytest_set_correct[i, :, 0] == 0+2)[0],\
-            np.where(ytest_set_correct[i, :, 0] == 1+2)[0]
-        yauc_c_prevchl, yauc_c_prevchr =\
-            np.squeeze(ytest_set_correct[i, prevchl, SVMAXIS]),\
-            np.squeeze(ytest_set_correct[i, prevchr, SVMAXIS])
-        yauc_c_evil_rel, yauc_c_evir_rel =\
-            np.squeeze(yevi_set_correct[i, prevchl, SVMAXIS]),\
-            np.squeeze(yevi_set_correct[i, prevchr, SVMAXIS])
-        # print('ac relevant:',len(prevchr),len(prevchl),'--------',yauc_c_evil)
-        dprimes_lc_rel[i] = guc.calculate_dprime(yauc_c_evil_rel, yauc_c_prevchl)
-        dprimes_rc_rel[i] = guc.calculate_dprime(yauc_c_evir_rel, yauc_c_prevchr)
+        # ### calculate dprime conditioned on Previous choice ----- relevant
+        # prevchl, prevchr = np.where(ytest_set_correct[i, :, 0] == 0+2)[0],\
+        #     np.where(ytest_set_correct[i, :, 0] == 1+2)[0]
+        # yauc_c_prevchl, yauc_c_prevchr =\
+        #     np.squeeze(ytest_set_correct[i, prevchl, SVMAXIS]),\
+        #     np.squeeze(ytest_set_correct[i, prevchr, SVMAXIS])
+        # yauc_c_evil_rel, yauc_c_evir_rel =\
+        #     np.squeeze(yevi_set_correct[i, prevchl, SVMAXIS]),\
+        #     np.squeeze(yevi_set_correct[i, prevchr, SVMAXIS])
+        # # print('ac relevant:',len(prevchr),len(prevchl),'--------',yauc_c_evil)
+        # dprimes_lc_rel[i] = guc.calculate_dprime(yauc_c_evil_rel, yauc_c_prevchl)
+        # dprimes_rc_rel[i] = guc.calculate_dprime(yauc_c_evir_rel, yauc_c_prevchr)
         
-        ### calculate dprime conditioned on Previous choice ----- cross
-        prevchl, prevchr = np.where(ytest_set_correct[i, :, 0] == 0+2)[0],\
-            np.where(ytest_set_correct[i, :, 0] == 1+2)[0]
-        yauc_c_prevchl, yauc_c_prevchr =\
-            np.squeeze(ytest_set_correct[i, prevchl, SVMAXIS]),\
-            np.squeeze(ytest_set_correct[i, prevchr, SVMAXIS])
-        yauc_c_evil_cross, yauc_c_evir_cross =\
-            np.squeeze(yevi_set_correct[i, prevchl, 2]),\
-            np.squeeze(yevi_set_correct[i, prevchr, 2])
-        # print('ac ctoss:',len(prevchr),len(prevchl),'--------',yauc_c_evil)
-        dprimes_lc_cross[i] = guc.calculate_dprime(yauc_c_evil_cross, yauc_c_prevchl)
-        dprimes_rc_cross[i] = guc.calculate_dprime(yauc_c_evir_cross, yauc_c_prevchr)
+        # ### calculate dprime conditioned on Previous choice ----- cross
+        # prevchl, prevchr = np.where(ytest_set_correct[i, :, 0] == 0+2)[0],\
+        #     np.where(ytest_set_correct[i, :, 0] == 1+2)[0]
+        # yauc_c_prevchl, yauc_c_prevchr =\
+        #     np.squeeze(ytest_set_correct[i, prevchl, SVMAXIS]),\
+        #     np.squeeze(ytest_set_correct[i, prevchr, SVMAXIS])
+        # yauc_c_evil_cross, yauc_c_evir_cross =\
+        #     np.squeeze(yevi_set_correct[i, prevchl, 2]),\
+        #     np.squeeze(yevi_set_correct[i, prevchr, 2])
+        # # print('ac ctoss:',len(prevchr),len(prevchl),'--------',yauc_c_evil)
+        # dprimes_lc_cross[i] = guc.calculate_dprime(yauc_c_evil_cross, yauc_c_prevchl)
+        # dprimes_rc_cross[i] = guc.calculate_dprime(yauc_c_evir_cross, yauc_c_prevchr)
 
     ytruthlabels_c, yevi_c = ytruthlabels_c[:, 1:], yevi_c[:, 1:]
     # f, ax_temp = plt.subplots(ncols=2)
@@ -800,17 +811,15 @@ def flatten_data(data_tr, data_dec):
     dprimes_e    = np.zeros(IPOOLS)
     dprimes_repe = np.zeros(IPOOLS)
     dprimes_alte = np.zeros(IPOOLS)
-    dprimes_repe_rel = np.zeros(IPOOLS)
-    dprimes_alte_rel = np.zeros(IPOOLS)
-    dprimes_repe_cross = np.zeros(IPOOLS)
-    dprimes_alte_cross = np.zeros(IPOOLS)
+
     
     dprimes_le = np.zeros(IPOOLS)
     dprimes_re = np.zeros(IPOOLS)
-    dprimes_le_rel = np.zeros(IPOOLS)
-    dprimes_re_rel = np.zeros(IPOOLS)
-    dprimes_le_cross = np.zeros(IPOOLS)
-    dprimes_re_cross = np.zeros(IPOOLS)
+
+    ### separation between left and right categorization
+    stds_repe_lr = np.zeros((IPOOLS,2))
+    stds_alte_lr = np.zeros((IPOOLS,2)) # two clusters
+
 
     AUCs_e    = np.zeros(IPOOLS)
     AUCs_repe = np.zeros(IPOOLS)
@@ -825,12 +834,12 @@ def flatten_data(data_tr, data_dec):
         ytruthlabels_e = np.append(
             ytruthlabels_e, test_labels[idx, :].T, axis=1)
         yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)
-        # dprimes_e[i] =\
-        #     guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),
-        #                           np.squeeze(ytest_set_error[i, :, SVMAXIS]))
         dprimes_e[i] =\
-            guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]+yevi_set_error[i,:,SVMAXIS-1]),
-                                  np.squeeze(ytest_set_error[i, :, SVMAXIS])) # overall
+            guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]),
+                                  np.squeeze(ytest_set_error[i, :, SVMAXIS]))
+        # dprimes_e[i] =\
+        #     guc.calculate_dprime(np.squeeze(yevi_set_error[i, :, SVMAXIS]+yevi_set_error[i,:,SVMAXIS-1]),
+        #                           np.squeeze(ytest_set_error[i, :, SVMAXIS])) # overall
         
 
         yauc_e_org = np.squeeze(ytest_set_error[i, :, SVMAXIS])
@@ -838,10 +847,10 @@ def flatten_data(data_tr, data_dec):
         yauc_e[np.where(yauc_e_org == 0)[0]] = 1
         yauc_e[np.where(yauc_e_org == 1)[0]] = 2
         assert (yauc_e != 0).all()
-        # fpr, tpr, thresholds = metrics.roc_curve(
-        #     yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]), pos_label=2)
         fpr, tpr, thresholds = metrics.roc_curve(
-            yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]+yevi_set_error[i,:,SVMAXIS-1]), pos_label=2)
+            yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]), pos_label=2)
+        # fpr, tpr, thresholds = metrics.roc_curve(
+        #     yauc_e, np.squeeze(yevi_set_error[i, :, SVMAXIS]+yevi_set_error[i,:,SVMAXIS-1]), pos_label=2)
         auc_ae = metrics.auc(fpr, tpr)
         AUCs_e[i] = auc_ae
 
@@ -851,16 +860,27 @@ def flatten_data(data_tr, data_dec):
         yauc_e_ctxtrep, yauc_e_ctxtalt =\
             np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
             np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
-        # yauc_e_evirep, yauc_e_evialt =\
-        #     np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
-        #     np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
         yauc_e_evirep, yauc_e_evialt =\
-            np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]+yevi_set_error[i, ctxtrep, SVMAXIS-1]),\
-            np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS]+yevi_set_error[i, ctxtalt, SVMAXIS-1]) # overall
+            np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
+            np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
+        # yauc_e_evirep, yauc_e_evialt =\
+        #     np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]+yevi_set_error[i, ctxtrep, SVMAXIS-1]),\
+        #     np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS]+yevi_set_error[i, ctxtalt, SVMAXIS-1]) # overall
         
         # print('ae overall:','--------',yauc_e_evirep)
         dprimes_repe[i] = guc.calculate_dprime(yauc_e_evirep, yauc_e_ctxtrep)
         dprimes_alte[i] = guc.calculate_dprime(yauc_e_evialt, yauc_e_ctxtalt)
+
+
+        #### calculate the distance between left and right previous choices
+        yauc_e_ctxtrep_lr, yauc_e_ctxtalt_lr =\
+            np.squeeze(ytest_set_error[i, ctxtrep, 0]),\
+            np.squeeze(ytest_set_error[i, ctxtalt, 0])
+        yauc_e_evirep_lr, yauc_e_evialt_lr =\
+            np.squeeze(yevi_set_error[i, ctxtrep, 0]),\
+            np.squeeze(yevi_set_error[i, ctxtalt, 0])
+        stds_repe_lr[i,:] = guc.calculate_disperse(yauc_e_evirep_lr,yauc_e_ctxtrep_lr)
+        stds_alte_lr[i,:] = guc.calculate_disperse(yauc_e_evialt_lr,yauc_e_ctxtalt_lr)
 
         yauc_e_ctxtrep, yauc_e_ctxtalt = yauc_e_ctxtrep+1, yauc_e_ctxtalt+1
 
@@ -874,32 +894,32 @@ def flatten_data(data_tr, data_dec):
         auc_ae_alt = metrics.auc(fpr_alt, tpr_alt)
         AUCs_alte[i] = auc_ae_alt
         
-        # dprime conditioned on CONTEXTS --- relevant
-        ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
-            0], np.where(ytest_set_error[i, :, 1] == 1)[0]
-        yauc_e_ctxtrep, yauc_e_ctxtalt =\
-            np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
-            np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
-        yauc_e_evirep_rel, yauc_e_evialt_rel =\
-            np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
-            np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
-        # print('ae rfel:','--------',yauc_e_evirep_rel)
-        dprimes_repe_rel[i] = guc.calculate_dprime(yauc_e_evirep_rel, yauc_e_ctxtrep)
-        dprimes_alte_rel[i] = guc.calculate_dprime(yauc_e_evialt_rel, yauc_e_ctxtalt)
+        # # dprime conditioned on CONTEXTS --- relevant
+        # ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
+        #     0], np.where(ytest_set_error[i, :, 1] == 1)[0]
+        # yauc_e_ctxtrep, yauc_e_ctxtalt =\
+        #     np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
+        # yauc_e_evirep_rel, yauc_e_evialt_rel =\
+        #     np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
+        # # print('ae rfel:','--------',yauc_e_evirep_rel)
+        # dprimes_repe_rel[i] = guc.calculate_dprime(yauc_e_evirep_rel, yauc_e_ctxtrep)
+        # dprimes_alte_rel[i] = guc.calculate_dprime(yauc_e_evialt_rel, yauc_e_ctxtalt)
 
         
-        # dprime conditioned on CONTEXTS --- cross
-        ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
-            0], np.where(ytest_set_error[i, :, 1] == 1)[0]
-        yauc_e_ctxtrep, yauc_e_ctxtalt =\
-            np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
-            np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
-        yauc_e_evirep_cross, yauc_e_evialt_cross =\
-            np.squeeze(yevi_set_error[i, ctxtrep, 2]),\
-            np.squeeze(yevi_set_error[i, ctxtalt, 2])
-        # print('ae cross:','--------',yauc_e_evirep_cross)
-        dprimes_repe_cross[i] = guc.calculate_dprime(yauc_e_evirep_cross, yauc_e_ctxtrep)
-        dprimes_alte_cross[i] = guc.calculate_dprime(yauc_e_evialt_cross, yauc_e_ctxtalt)
+        # # dprime conditioned on CONTEXTS --- cross
+        # ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
+        #     0], np.where(ytest_set_error[i, :, 1] == 1)[0]
+        # yauc_e_ctxtrep, yauc_e_ctxtalt =\
+        #     np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
+        #     np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
+        # yauc_e_evirep_cross, yauc_e_evialt_cross =\
+        #     np.squeeze(yevi_set_error[i, ctxtrep, 2]),\
+        #     np.squeeze(yevi_set_error[i, ctxtalt, 2])
+        # # print('ae cross:','--------',yauc_e_evirep_cross)
+        # dprimes_repe_cross[i] = guc.calculate_dprime(yauc_e_evirep_cross, yauc_e_ctxtrep)
+        # dprimes_alte_cross[i] = guc.calculate_dprime(yauc_e_evialt_cross, yauc_e_ctxtalt)
         
         # SEPARATE previous left and previous right CONTEXTS
         prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
@@ -907,9 +927,13 @@ def flatten_data(data_tr, data_dec):
         yauc_e_prevchl, yauc_e_prevchr =\
             np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
             np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
+
         yauc_e_evil, yauc_e_evir =\
-            np.squeeze(yevi_set_error[i, prevchl, SVMAXIS]+yevi_set_error[i, prevchl, SVMAXIS-1]),\
-            np.squeeze(yevi_set_error[i, prevchr, SVMAXIS]+yevi_set_error[i, prevchr, SVMAXIS-1])
+            np.squeeze(yevi_set_error[i, prevchl, SVMAXIS]),\
+            np.squeeze(yevi_set_error[i, prevchr, SVMAXIS])
+        # yauc_e_evil, yauc_e_evir =\
+        #     np.squeeze(yevi_set_error[i, prevchl, SVMAXIS]+yevi_set_error[i, prevchl, SVMAXIS-1]),\
+        #     np.squeeze(yevi_set_error[i, prevchr, SVMAXIS]+yevi_set_error[i, prevchr, SVMAXIS-1])
         # print('ae overall:','--------',yauc_e_evil)
         dprimes_le[i] = guc.calculate_dprime(yauc_e_evil, yauc_e_prevchl)
         dprimes_re[i] = guc.calculate_dprime(yauc_e_evir, yauc_e_prevchr)
@@ -929,31 +953,31 @@ def flatten_data(data_tr, data_dec):
         auc_ae_prevchr = metrics.auc(fpr_r, tpr_r)
         AUCs_re[i] = auc_ae_prevchr
         
-        # dprime conditioned on PREVIOUS CHOICE --- relevant
-        prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
-            0], np.where(ytest_set_error[i, :, 0] == 1)[0]
-        yauc_e_prevchl, yauc_e_prevchr =\
-            np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
-            np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
-        yauc_e_evil_rel, yauc_e_evir_rel =\
-            np.squeeze(yevi_set_error[i, prevchl, SVMAXIS]),\
-            np.squeeze(yevi_set_error[i, prevchr, SVMAXIS])
-        # print('ae rel:','--------',yauc_e_evil_rel)
-        dprimes_le_rel[i] = guc.calculate_dprime(yauc_e_evil_rel, yauc_e_prevchl)
-        dprimes_re_rel[i] = guc.calculate_dprime(yauc_e_evir_rel, yauc_e_prevchr)
+        # # dprime conditioned on PREVIOUS CHOICE --- relevant
+        # prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
+        #     0], np.where(ytest_set_error[i, :, 0] == 1)[0]
+        # yauc_e_prevchl, yauc_e_prevchr =\
+        #     np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
+        #     np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
+        # yauc_e_evil_rel, yauc_e_evir_rel =\
+        #     np.squeeze(yevi_set_error[i, prevchl, SVMAXIS]),\
+        #     np.squeeze(yevi_set_error[i, prevchr, SVMAXIS])
+        # # print('ae rel:','--------',yauc_e_evil_rel)
+        # dprimes_le_rel[i] = guc.calculate_dprime(yauc_e_evil_rel, yauc_e_prevchl)
+        # dprimes_re_rel[i] = guc.calculate_dprime(yauc_e_evir_rel, yauc_e_prevchr)
         
-        # dprime conditioned on PREVIOUS CHOICE --- CROSS
-        prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
-            0], np.where(ytest_set_error[i, :, 0] == 1)[0]
-        yauc_e_prevchl, yauc_e_prevchr =\
-            np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
-            np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
-        yauc_e_evil_cross, yauc_e_evir_cross =\
-            np.squeeze(yevi_set_error[i, prevchl, 2]),\
-            np.squeeze(yevi_set_error[i, prevchr, 2])
-        # print('ae cross:','--------',yauc_e_evil_cross)
-        dprimes_le_cross[i] = guc.calculate_dprime(yauc_e_evil_cross, yauc_e_prevchl)
-        dprimes_re_cross[i] = guc.calculate_dprime(yauc_e_evir_cross, yauc_e_prevchr)
+        # # dprime conditioned on PREVIOUS CHOICE --- CROSS
+        # prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
+        #     0], np.where(ytest_set_error[i, :, 0] == 1)[0]
+        # yauc_e_prevchl, yauc_e_prevchr =\
+        #     np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
+        #     np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
+        # yauc_e_evil_cross, yauc_e_evir_cross =\
+        #     np.squeeze(yevi_set_error[i, prevchl, 2]),\
+        #     np.squeeze(yevi_set_error[i, prevchr, 2])
+        # # print('ae cross:','--------',yauc_e_evil_cross)
+        # dprimes_le_cross[i] = guc.calculate_dprime(yauc_e_evil_cross, yauc_e_prevchl)
+        # dprimes_re_cross[i] = guc.calculate_dprime(yauc_e_evir_cross, yauc_e_prevchr)
 
     # ax_temp[1].hist(AUCs_e, bins=20, alpha=0.9, facecolor='black')
 
@@ -962,26 +986,21 @@ def flatten_data(data_tr, data_dec):
     lst = [ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,
            dprimes_c, dprimes_e, AUCs_c, AUCs_e,
            dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte,
-           dprimes_repc_rel, dprimes_altc_rel, dprimes_repe_rel, dprimes_alte_rel,
-           dprimes_repc_cross, dprimes_altc_cross, dprimes_repe_cross, dprimes_alte_cross,
+           stds_repc_lr, stds_altc_lr,
            AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte, 
            dprimes_lc, dprimes_rc, dprimes_le, dprimes_re,
-           dprimes_lc_rel, dprimes_rc_rel, dprimes_le_rel, dprimes_re_rel,
-           dprimes_lc_cross, dprimes_rc_cross, dprimes_le_cross, dprimes_re_cross,
+           stds_repe_lr, stds_alte_lr,
            AUCs_lc, AUCs_rc, AUCs_le, AUCs_re]
     stg = ["ytruthlabels_c, ytruthlabels_e, yevi_c, yevi_e,"
            "dprimes_c, dprimes_e, AUCs_c, AUCs_e, "
            "dprimes_repc, dprimes_altc, dprimes_repe, dprimes_alte, "
-           "dprimes_repc_rel, dprimes_altc_rel, dprimes_repe_rel, dprimes_alte_rel, "
-           "dprimes_repc_cross, dprimes_altc_cross, dprimes_repe_cross, dprimes_alte_cross, "
+           "stds_repc_lr, stds_altc_lr, "
            "AUCs_repc, AUCs_altc, AUCs_repe, AUCs_alte, "
            "dprimes_lc, dprimes_rc, dprimes_le, dprimes_re, "
-           "dprimes_lc_rel, dprimes_rc_rel, dprimes_le_cross, dprimes_re_cross, "
-           "dprimes_lc_cross, dprimes_rc_cross, dprimes_le_cross, dprimes_re_cross, "
+           "stds_repe_lr, stds_alte_lr, "
            "AUCs_lc, AUCs_rc, AUCs_le, AUCs_re"]
     d = list_to_dict(lst=lst, string=stg)
     return d
-
 
 def flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop'):
     """
@@ -1538,7 +1557,7 @@ def flatten_data_supp(data_tr, data_dec, pop_type='s_pop'):
         # yevi_e = np.append(yevi_e, (yevi_set_error[i, idx, :]).T, axis=1)
         
         yevi_set_error_select[i, idx, SVMAXIS]   = yevi_set_error[i,idx,supi]
-        yevi_set_error_select[i, idx, SVMAXIS-1] = yevi_set_error[i,idx,supi-1]
+        # yevi_set_error_select[i, idx, SVMAXIS-1] = yevi_set_error[i,idx,supi-1]
         yevi_e = np.append(yevi_e, (yevi_set_error_select[i, idx, :]).T, axis=1) # 3 Sept
         
         # dprimes_e[i] =\
@@ -3282,7 +3301,7 @@ if __name__ == '__main__':
 
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats =['Rat31']#  ['Rat7','Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    rats =['Rat7','Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
         # plt.close('all')
         print('xxxxxxxxxxxxxxxx')
@@ -3433,13 +3452,13 @@ if __name__ == '__main__':
             dataname = dir+IDX_RAT+'data_flt_ae_overall_mixs_.npz'
             np.savez(dataname, **data_flt)
         
-        # print('3D projections ac and ae')
-        # projection_3D(data_flt, data_flt, 'c')
-        projection_3D(data_flt, data_flt, 'e')
+        # # print('3D projections ac and ae')
+        # # projection_3D(data_flt, data_flt, 'c')
+        # projection_3D(data_flt, data_flt, 'e')
         
-        print('2D projections')
-        # projections_2D(data_flt, prev_outc='c', fit=False, name='')
-        projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        # print('2D projections')
+        # # projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
         
         
@@ -3458,10 +3477,10 @@ if __name__ == '__main__':
             np.savez(dataname, **data_flt)
         
 
-        # print('3D projections ac and ae (overall)')
-        # projection_3D(data_flt, data_flt, 'e')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        # # print('3D projections ac and ae (overall)')
+        # # projection_3D(data_flt, data_flt, 'e')
+        # print('2D projections')
+        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
         print('Get AUCs (and d-primes, single_pop)')
         data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='s_pop')
@@ -3471,10 +3490,10 @@ if __name__ == '__main__':
             dataname = dir+IDX_RAT+'data_flt_ae_single_mixs_.npz'
             np.savez(dataname, **data_flt)   
 
-        # print('3D projections ac and ae (single_pop)')
-        # projection_3D(data_flt, data_flt, 'c')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        # # print('3D projections ac and ae (single_pop)')
+        # # projection_3D(data_flt, data_flt, 'c')
+        # print('2D projections')
+        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
         
         # -------------- change populations -- using ac trials ---------------- 
@@ -3509,12 +3528,12 @@ if __name__ == '__main__':
 
         print('Get AUCs (and d-primes)')
         data_flt         = flatten_data(data_tr, data_dec)
-        print('>>>>>>>>>>>>>>>>>>> dprime right ac:',np.mean(data_flt['dprimes_rc']), 'cross: ',np.mean(data_flt['dprimes_rc_cross']))        
-        print('>>>>>>>>>>>>>>>>>>> dprime left ac:',np.mean(data_flt['dprimes_lc']), 'cross: ',np.mean(data_flt['dprimes_lc_cross']))
+        # print('>>>>>>>>>>>>>>>>>>> dprime right ac:',np.mean(data_flt['dprimes_rc']), 'cross: ',np.mean(data_flt['dprimes_rc_cross']))        
+        # print('>>>>>>>>>>>>>>>>>>> dprime left ac:',np.mean(data_flt['dprimes_lc']), 'cross: ',np.mean(data_flt['dprimes_lc_cross']))
         
         
-        print('>>>>>>>>>>>>>>>>>>> dprime right ac:',np.mean(data_flt['dprimes_repc']), 'cross: ',np.mean(data_flt['dprimes_repc_cross']))        
-        print('>>>>>>>>>>>>>>>>>>> dprime left ac:',np.mean(data_flt['dprimes_altc']), 'cross: ',np.mean(data_flt['dprimes_altc_cross']))
+        # print('>>>>>>>>>>>>>>>>>>> dprime right ac:',np.mean(data_flt['dprimes_repc']), 'cross: ',np.mean(data_flt['dprimes_repc_cross']))        
+        # print('>>>>>>>>>>>>>>>>>>> dprime left ac:',np.mean(data_flt['dprimes_altc']), 'cross: ',np.mean(data_flt['dprimes_altc_cross']))
         
         
         if(RECORD_TRIALS == 1 and CONTROL==2):
@@ -3526,9 +3545,9 @@ if __name__ == '__main__':
         # projection_3D(data_flt, data_flt, 'c')
         # # projection_3D(data_flt, data_flt, 'e')
 
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='c', fit=False, name='')
-        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        # print('2D projections')
+        # projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        # # projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
         print('Get AUCs (and d-primes, mixed)')
         data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='mixed')       
@@ -3541,8 +3560,8 @@ if __name__ == '__main__':
 
         # print('3D projections ac and ae (overall)')
         # projection_3D(data_flt, data_flt, 'c')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        # print('2D projections')
+        # projections_2D(data_flt, prev_outc='c', fit=False, name='')
         
         print('Get AUCs (and d-primes, single_pop)')
         data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='s_pop')
@@ -3554,46 +3573,46 @@ if __name__ == '__main__':
 
         # print('3D projections ac and ae (single_pop)')
         # projection_3D(data_flt, data_flt, 'c')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        # print('2D projections')
+        # projections_2D(data_flt, prev_outc='c', fit=False, name='')
         
         
-        EACHSTATES=50
-        fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
-        curveslopes_correct, curveintercept_correct, curveslopes_error,\
-            curveintercept_error, data_beh =\
-            bias_VS_prob(data_tr, data_dec, unique_cohs, nselect, num_beh_trials,EACHSTATES,
-                          NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-                          REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
+        # EACHSTATES=50
+        # fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
+        # curveslopes_correct, curveintercept_correct, curveslopes_error,\
+        #     curveintercept_error, data_beh =\
+        #     bias_VS_prob(data_tr, data_dec, unique_cohs, nselect, num_beh_trials,EACHSTATES,
+        #                   NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
+        #                   REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
             
             
-        # # #####***************** The Second Stage ------ Behaviour *****************
-        # # # 1) calculate the axes
-        # # # 2) plot the psychometric curve 
+        # #####***************** The Second Stage ------ Behaviour *****************
+        # # 1) calculate the axes
+        # # 2) plot the psychometric curve 
         
-        # ### transition bias decoder 
-        # CONTROL=1
-        # data_int_ae,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_tr,[], [], [], [], nselect, false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',
-        #       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
+        ### transition bias decoder 
+        CONTROL=1
+        data_int_ae,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_tr,[], [], [], [], nselect, false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',
+              DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
+                                        REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
         
-        # if(RECORD_TRIALS == 1 and CONTROL==1):
-        #     dataname = dir+IDX_RAT+'data_beh_ae.npz'
-        #     np.savez(dataname, **data_int_ae)
+        if(RECORD_TRIALS == 1 and CONTROL==1):
+            dataname = dir+IDX_RAT+'data_beh_ae_mixs_.npz'
+            np.savez(dataname, **data_int_ae)
             
-        # CONTROL=2
-        # data_int_ac,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_tr,[], [], [], [],nselect, false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',
-        #       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)  
-        # if(RECORD_TRIALS == 1  and CONTROL==2):
-        #     dataname = dir+IDX_RAT+'data_beh_ac.npz'
-        #     np.savez(dataname, **data_int_ac)
+        CONTROL=2
+        data_int_ac,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_tr,[], [], [], [],nselect, false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',
+              DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
+                                        REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)  
+        if(RECORD_TRIALS == 1  and CONTROL==2):
+            dataname = dir+IDX_RAT+'data_beh_ac_mixs_.npz'
+            np.savez(dataname, **data_int_ac)
         
         
-        # print('Pearson Correlation: Transition bias v.s. context')
-        # # x-axis bin ctxt, y-axis transition bias
-        # corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(data_flt)
-        # print('>>>>>>>>>>> P-correlation, left AC: ', corrl_ac, ' right AC: ',  corrr_ac, ' left AE: ', corrl_ae, ' right AE: ', corrr_ae)
+        print('Pearson Correlation: Transition bias v.s. context')
+        # x-axis bin ctxt, y-axis transition bias
+        corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(data_flt)
+        print('>>>>>>>>>>> P-correlation, left AC: ', corrl_ac, ' right AC: ',  corrr_ac, ' left AE: ', corrl_ae, ' right AE: ', corrr_ae)
         
         
         

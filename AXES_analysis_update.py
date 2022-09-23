@@ -286,7 +286,7 @@ def pairwise_mtx(dir, IDX_RAT, timep, NITERATIONS):
 #     ax_fix.set_xlim([-0.2,0.2])
 #     ax_fix.set_ylim([-0.5,0.5])
 
-
+import general_util_ctxtgt as guc
 
 def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
     # ### ----------- history axis ------------------- 
@@ -296,31 +296,37 @@ def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
 
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histac, bi_histac = data_dec['coefs_correct'], data_dec['intercepts_correct']
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histae, bi_histae = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
-    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_behae, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
-    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
-    wiac_fix_hist,wiae_fix_hist= np.zeros((np.shape(wi_histac)[0],NITERATIONS)),np.zeros((np.shape(wi_histae)[0],NITERATIONS))
-    wiac_fix_beh,wiae_fix_beh   = np.zeros((np.shape(wi_behac)[0],NITERATIONS)),np.zeros((np.shape(wi_behae)[0],NITERATIONS))
-    print('--------------------',np.shape(wi_behac))
+    dataname       = dir+timep+IDX_RAT+'neuron_selectivity.npz'
+    d_selectivity  = np.load(dataname, allow_pickle=True) 
+                      
+    nselect, nnonselect, pop_left_correct, pop_right_correct, single_pop_correct, correct_zero, pop_left_error, pop_right_error, single_pop_error, error_zero =guc.mixed_selectivity_pop(d_selectivity)
+
+    # mixed_selectivity = np.union1d(pop_left_correct, pop_right_correct)
+    mixed_selectivity   = np.arange(len(nselect))#single_pop_error#np.union1d(pop_left_correct, pop_right_correct)#np.union1d(pop_left_correct, pop_right_correct)#
+    
+    wiac_fix_hist,wiae_fix_hist= np.zeros((len(mixed_selectivity),NITERATIONS)),np.zeros((len(mixed_selectivity),NITERATIONS))
+    wiac_fix_beh,wiae_fix_beh   = np.zeros((len(mixed_selectivity),NITERATIONS)),np.zeros((len(mixed_selectivity),NITERATIONS))
     for i in range(NITERATIONS):
-        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*5+1],wi_histae[:,i*5+1]
-        # wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*5+3],wi_histae[:, i*5+3]
-        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, (i*5)*3+4],wi_behae[:, (i*5)*3+4]
+        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[mixed_selectivity, i*5+3],wi_histae[mixed_selectivity,i*5+3]
+        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[mixed_selectivity, (i*5)*3+4],wi_behae[mixed_selectivity, (i*5)*3+4]
         for icoh in range(1,3):
-            wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]+wi_behac[:, (i*5)*3+5*icoh+4],wiae_fix_beh[:,i]  +wi_behae[:, (i*5)*3+5*icoh+4]
+            wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]+wi_behac[mixed_selectivity, (i*5)*3+5*icoh+4],wiae_fix_beh[:,i]  +wi_behae[mixed_selectivity, (i*5)*3+5*icoh+4]
         wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]/3,wiae_fix_beh[:,i]/3 
             
     ### Predicting upcoming stimulus 
@@ -353,8 +359,8 @@ def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
         # print(ag_fix_set[selfpair,selfpair])
 
     # figure ploting -- distribution of bootstrap results
-    fig_fix,ax_fix = plt.subplots(4,4, figsize=(4,6),sharex=True,sharey=True)
-    BOX_WDTH = 0.6
+    fig_fix,ax_fix = plt.subplots(4,4, figsize=(5,5),sharex=True,sharey=True)
+    BOX_WDTH = 0.3
     for i1, pair1 in enumerate (dec_names):
         for i2, pair2 in enumerate (dec_names):
             if i2<i1:
@@ -362,12 +368,16 @@ def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
             df = {pair1+' v.s. '+pair2: (ag_fix_set[pair1,pair2]).flatten()}
             df = pd.DataFrame(df)
             sns.violinplot(data=df,ax=ax_fix[i1,i2],width=BOX_WDTH)
-            ax_fix[i1,i2].set_ylim([30,150])
-            ax_fix[i1,i2].set_yticks([30,90,150])
+            ax_fix[i1,i2].set_ylim([45,120])
+            ax_fix[i1,i2].set_yticks([45,90,120])
 
     for i, pair in enumerate(dec_names):
         ax_fix[i,0].set_ylabel(pair)
         ax_fix[0,i].set_title(pair)
+
+        
+    plt.subplots_adjust(wspace=None,hspace=None)
+    plt.show()
         
         
     fig_beh, ax_beh=plt.subplots(figsize=(3,4))    
@@ -670,21 +680,21 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_ctxt.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_hist_ae = data_dec['stats_error'][:]
+    score_fix_hist_ae = data_dec['stats_error'][3,:]
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_ctxt.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_hist_ac = data_dec['stats_correct'][:]
+    score_fix_hist_ac = data_dec['stats_correct'][3,:]
     
-    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_beh_ae = data_dec['stats_error']
+    score_fix_beh_ae = data_dec['stats_error'][:,2]
     
-    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_beh_ac = data_dec['stats_correct']
+    score_fix_beh_ac = data_dec['stats_correct'][:,2]
     
     
     accuracy_fix_set = {}
@@ -692,7 +702,7 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     accuracy_fix_set['beh-ac'], accuracy_fix_set['beh-ae']  = score_fix_beh_ac.flatten(), score_fix_beh_ae.flatten() 
 
 
-    fig_score, ax_score=plt.subplots(1,2,figsize=(6,4),tight_layout=True, sharey=True)    
+    fig_score, ax_score=plt.subplots(1,2,figsize=(6,4), sharey=True)    
     df_hist = {'hist-ac': (accuracy_fix_set['hist-ac']).flatten(), 'hist-ae': (accuracy_fix_set['hist-ae']).flatten()}
     df_beh = {'beh-ac':accuracy_fix_set['beh-ac'],'beh-ae':accuracy_fix_set['beh-ae']}
     df_hist = pd.DataFrame(df_hist)
@@ -705,8 +715,15 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     box_pairs = [('beh-ac', 'beh-ae')]
     add_stat_annotation(ax_score[1], data=df_beh, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
     
-    ax_score[0].set_ylim([0.5,1.2])
+    ax_score[0].set_ylim([0.0,1.2])
     ax_score[0].set_yticks([0,0.5,1])
+    
+    ax_score[1].set_ylim([0.0,1.2])
+    ax_score[1].set_yticks([0,0.5,1])
+    
+    plt.subplots_adjust(wspace=None,hspace=None)
+    plt.show()
+        
     
 def accuracy_mtx_cross_ctxt(dir, IDX_RAT, timep, NITERATIONS):
     ## ----------- history axis ------------------- 
@@ -848,17 +865,17 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_ae, bi_ae = data_dec['coefs_correct'], data_dec['intercepts_correct']
     score_fix_hist_ae = data_dec['stats_error'][:]
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_ac, bi_ac = data_dec['coefs_correct'], data_dec['intercepts_correct']
     score_fix_hist_ac = data_dec['stats_correct'][:]
     
-    dataname  = dir+timep+IDX_RAT+'data_beh_ae.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_behae, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
     
@@ -867,7 +884,7 @@ def ref_accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     
     score_fix_beh_ae = data_dec['stats_error']
     
-    dataname  = dir+timep+IDX_RAT+'data_beh_ac.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac_mixs_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
     score_fix_beh_ac = data_dec['stats_correct']

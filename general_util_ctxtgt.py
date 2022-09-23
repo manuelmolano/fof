@@ -156,6 +156,20 @@ def calculate_dprime(Xdata, ylabel):
     dprimes = len(uniques)*(means[1]-means[0])**2/(sigmas[0]**2+sigmas[1]**2)
     return dprimes
 
+def calculate_disperse(Xdata, ylabel):
+    uniques = np.unique(ylabel)
+    if len(uniques) == 1:
+        return np.nan
+    means, sigmas = np.zeros(len(uniques)), np.zeros(len(uniques))
+
+    for i in range(len(uniques)):
+        means[i] = np.mean(Xdata[np.where(ylabel[:] == uniques[i])[0]])
+        sigmas[i] = np.std(Xdata[np.where(ylabel[:] == uniques[i])[0]])
+    if(sigmas[0] == 0):
+        print("-------", means[0], sigmas[0])
+    return sigmas
+
+
 
 
 

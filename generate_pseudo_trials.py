@@ -19,6 +19,55 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
     num_beh_trials = np.zeros((len(unique_cohs),8,len(files)))
     min_beh_trials = 1e5
 
+    # ### add context 
+    # for idxf in range(len(files)):
+    #     data_temp  = Xdata_set[idxf,'error'].copy()
+    #     for state in unique_states:
+    #         if state>=4:
+    #             break
+    #         totaltrials=0
+    #         for idxc, coh in enumerate(unique_cohs):
+    #             for choice in unique_choices:
+    #                 try:
+    #                     if(np.shape(data_temp[state,coh,choice])[0]==0):
+    #                         print('file error 00000, count----------',idxf)
+    #                     totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
+    #                 except:
+    #                     error_false=np.append(error_false,idxf)
+    #                     continue
+    #         if (totaltrials<THRESH_TRIAL):
+    #             # print('error',state,'--',coh,'--',choice,'--',idxf) 
+    #             error_false=np.append(error_false,idxf)
+    #             continue
+    #         if totaltrials<min_beh_trials:
+    #             min_beh_trials=totaltrials 
+    #         num_beh_trials[idxc,state,idxf] = totaltrials
+            
+
+    # for idxf in range(len(files)):
+    #     data_temp  = Xdata_set[idxf,'correct'].copy()
+    #     for state in unique_states:
+    #         if state<4:
+    #             continue
+    #         totaltrials=0
+    #         for idxc, coh in enumerate(unique_cohs):
+    #             for choice in unique_choices:
+    #                 try:
+    #                     if(np.shape(data_temp[state,coh,choice])[0]==0):
+    #                         print('correct 00000, count----------',idxf)
+    #                     totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
+    #                 except:
+    #                     correct_false=np.append(correct_false,idxf)
+    #                     continue
+    #         if (totaltrials<THRESH_TRIAL):
+    #             # print('correct',state,'--',coh,'--',choice,'--',idxf) 
+    #             correct_false=np.append(correct_false,idxf)
+    #             continue
+    #         if totaltrials<min_beh_trials:
+    #             min_beh_trials = totaltrials 
+    #         num_beh_trials[idxc,state,idxf]= totaltrials
+
+    ### add context 
     for idxf in range(len(files)):
         data_temp  = Xdata_set[idxf,'error'].copy()
         for idxc, coh in enumerate(unique_cohs):
@@ -28,6 +77,8 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                 totaltrials=0
                 for choice in unique_choices:
                     try:
+                        # if(np.shape(data_temp[state,coh,choice])[0]==0):
+                        #     print('gpt 81 file error 00000, count----------',idxf)
                         totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
                     except:
                         error_false=np.append(error_false,idxf)
@@ -38,7 +89,7 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                     continue
                 if totaltrials<min_beh_trials:
                     min_beh_trials=totaltrials 
-                num_beh_trials[idxc,state,idxf] = totaltrials
+            num_beh_trials[idxc,state,idxf] = totaltrials
             
 
     for idxf in range(len(files)):
@@ -48,8 +99,11 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                 if state<4:
                     continue
                 totaltrials=0
+                
                 for choice in unique_choices:
                     try:
+                        # if(np.shape(data_temp[state,coh,choice])[0]==0):
+                        #     print('correct 00000, count----------',idxf)
                         totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
                     except:
                         correct_false=np.append(correct_false,idxf)
@@ -60,17 +114,63 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                     continue
                 if totaltrials<min_beh_trials:
                     min_beh_trials = totaltrials 
-                num_beh_trials[idxc,state,idxf]= totaltrials
+            num_beh_trials[idxc,state,idxf]= totaltrials
 
-    ### hebaviour 
+    # ### behaviour 
+    # for idxf in range(len(files)):
+    #     data_temp  = Xdata_set[idxf,'error'].copy()
+    #     for idxc, coh in enumerate(unique_cohs):
+    #         for choice in unique_choices:
+    #             totaltrials=0
+    #             for state in unique_states:
+    #                 if state>=4:
+    #                     break
+    #                 try:
+    #                     totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
+    #                 except:
+    #                     error_false=np.append(error_false,idxf)
+    #                     continue
+    #             if (totaltrials<THRESH_TRIAL):
+    #                 error_false=np.append(error_false,idxf)
+    #                 continue
+            
+
+    # for idxf in range(len(files)):
+    #     data_temp  = Xdata_set[idxf,'correct'].copy()
+    #     for idxc, coh in enumerate(unique_cohs):
+    #         for choice in unique_choices:
+    #             totaltrials=0
+    #             for state in unique_states:
+    #                 if state<4:
+    #                     continue
+    #                 try:
+    #                     totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
+    #                 except:
+    #                     correct_false=np.append(correct_false,idxf)
+    #                     continue
+    #             if (totaltrials<THRESH_TRIAL):
+    #                 correct_false=np.append(correct_false,idxf)
+    #                 continue
+    ### behaviour 
+
+    ### error 
+    rep_states, alt_states = [0,1],[2,3]
     for idxf in range(len(files)):
         data_temp  = Xdata_set[idxf,'error'].copy()
         for idxc, coh in enumerate(unique_cohs):
             for choice in unique_choices:
                 totaltrials=0
-                for state in unique_states:
-                    if state>=4:
-                        break
+                for state in rep_states:
+                    try:
+                        totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
+                    except:
+                        error_false=np.append(error_false,idxf)
+                        continue
+                if (totaltrials<THRESH_TRIAL):
+                    error_false=np.append(error_false,idxf)
+                    continue
+                totaltrials=0
+                for state in alt_states:
                     try:
                         totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
                     except:
@@ -81,14 +181,24 @@ def valid_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, THRE
                     continue
             
 
+    rep_states, alt_states = [4,5],[6,7]
     for idxf in range(len(files)):
         data_temp  = Xdata_set[idxf,'correct'].copy()
         for idxc, coh in enumerate(unique_cohs):
             for choice in unique_choices:
                 totaltrials=0
-                for state in unique_states:
-                    if state<4:
+                for state in rep_states:
+                    try:
+                        totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
+                    except:
+                        correct_false=np.append(correct_false,idxf)
                         continue
+                if (totaltrials<THRESH_TRIAL):
+                    correct_false=np.append(correct_false,idxf)
+                    continue
+
+                totaltrials=0
+                for state in alt_states:
                     try:
                         totaltrials=totaltrials+np.shape(data_temp[state,coh,choice])[0]
                     except:
@@ -198,13 +308,68 @@ def train_test_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, fal
             # Xdata_hist_trainset[idxf,'correct'][state],ylabels_hist_trainset[idxf,'correct'][state]=Xhist_t[idxtrain,:],yhist_t[idxtrain,:] 
             # Xdata_hist_testset[idxf,'correct'][state],ylabels_hist_testset[idxf,'correct'][state]=Xhist_t[idxtest,:],yhist_t[idxtest,:] 
 
+        # for coh in unique_cohs:
+        #     for choice in unique_choices:
+        #         data_temp  = Xdata_set[idxf,'error'].copy()
+        #         label_temp = ylabels_set[idxf,'error'].copy()  
+        #         Xbeh_t,ybeh_t = [],[]              
+        #         numtrials = 0
+        #         for state in unique_states:
+        #             ### error 
+        #             if state>=4:
+        #                 break
+        #             numtrials_t = np.shape(data_temp[state,coh,choice])[0]
+        #             if numtrials_t>0:
+        #                 numtrials+=numtrials_t
+        #                 if(len(Xbeh_t)==0):
+        #                     Xbeh_t = data_temp[state,coh,choice].copy() 
+        #                     ybeh_t = label_temp[state,coh,choice].copy()  
+        #                 else:
+        #                     Xbeh_t = np.vstack((Xbeh_t,data_temp[state,coh,choice].copy()))
+        #                     ybeh_t = np.vstack((ybeh_t,label_temp[state,coh,choice].copy())) 
+        #             else:
+        #                 continue 
+        #         idxtrain = np.random.choice(np.arange(numtrials),size=int(numtrials/2),replace=False) 
+        #         idxtest  = np.setdiff1d(np.arange(numtrials),idxtrain)  
+        #         Xdata_beh_trainset[idxf,'error'][coh,choice],ylabels_beh_trainset[idxf,'error'][coh,choice]=Xbeh_t[idxtrain,:],ybeh_t[idxtrain,:] 
+        #         Xdata_beh_testset[idxf,'error'][coh,choice],ylabels_beh_testset[idxf,'error'][coh,choice]=Xbeh_t[idxtest,:],ybeh_t[idxtest,:] 
+
+
+        # for coh in unique_cohs:
+        #     for choice in unique_choices:
+        #         data_temp  = Xdata_set[idxf,'correct'].copy()
+        #         label_temp = ylabels_set[idxf,'correct'].copy()  
+        #         Xbeh_t,ybeh_t = [],[]              
+        #         numtrials = 0
+        #         for state in unique_states:
+        #             ### correct
+        #             if state<4:
+        #                 continue
+        #             numtrials_t = np.shape(data_temp[state,coh,choice])[0]
+        #             if numtrials_t>0:
+        #                 numtrials+=numtrials_t
+        #                 if(len(Xbeh_t)==0):
+        #                     Xbeh_t = data_temp[state,coh,choice].copy() 
+        #                     ybeh_t = label_temp[state,coh,choice].copy()  
+        #                 else:
+        #                     Xbeh_t = np.vstack((Xbeh_t,data_temp[state,coh,choice].copy()))
+        #                     ybeh_t = np.vstack((ybeh_t,label_temp[state,coh,choice].copy())) 
+        #             else:
+        #                 continue 
+        #         idxtrain = np.random.choice(np.arange(numtrials),size=int(numtrials/2),replace=False) 
+        #         idxtest  = np.setdiff1d(np.arange(numtrials),idxtrain)  
+        #         Xdata_beh_trainset[idxf,'correct'][coh,choice],ylabels_beh_trainset[idxf,'correct'][coh,choice]=Xbeh_t[idxtrain,:],ybeh_t[idxtrain,:] 
+        #         Xdata_beh_testset[idxf,'correct'][coh,choice],ylabels_beh_testset[idxf,'correct'][coh,choice]=Xbeh_t[idxtest,:],ybeh_t[idxtest,:] 
+
+        ctxt_rep, ctxt_alt = [0,1],[2,3]
         for coh in unique_cohs:
             for choice in unique_choices:
                 data_temp  = Xdata_set[idxf,'error'].copy()
                 label_temp = ylabels_set[idxf,'error'].copy()  
+                ### repeating context -- after error
                 Xbeh_t,ybeh_t = [],[]              
                 numtrials = 0
-                for state in unique_states:
+                for state in ctxt_rep:
                     ### error 
                     if state>=4:
                         break
@@ -214,9 +379,11 @@ def train_test_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, fal
                         if(len(Xbeh_t)==0):
                             Xbeh_t = data_temp[state,coh,choice].copy() 
                             ybeh_t = label_temp[state,coh,choice].copy()  
+                            # print('gpt 382rep error:',np.unique(ybeh_t[:,1]))
                         else:
                             Xbeh_t = np.vstack((Xbeh_t,data_temp[state,coh,choice].copy()))
                             ybeh_t = np.vstack((ybeh_t,label_temp[state,coh,choice].copy())) 
+                            # print('rep error:',np.unique(ybeh_t[:,1]),np.shape(ybeh_t))
                     else:
                         continue 
                 idxtrain = np.random.choice(np.arange(numtrials),size=int(numtrials/2),replace=False) 
@@ -224,14 +391,41 @@ def train_test_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, fal
                 Xdata_beh_trainset[idxf,'error'][coh,choice],ylabels_beh_trainset[idxf,'error'][coh,choice]=Xbeh_t[idxtrain,:],ybeh_t[idxtrain,:] 
                 Xdata_beh_testset[idxf,'error'][coh,choice],ylabels_beh_testset[idxf,'error'][coh,choice]=Xbeh_t[idxtest,:],ybeh_t[idxtest,:] 
 
+                ### alternating context -- after error  
+                Xbeh_t,ybeh_t = [],[]            
+                numtrials = 0
+                for state in ctxt_alt:
+                    ### error 
+                    if state>=4:
+                        break
+                    numtrials_t = np.shape(data_temp[state,coh,choice])[0]
+                    if numtrials_t>0:
+                        numtrials+=numtrials_t
+                        if(len(Xbeh_t)==0):
+                            Xbeh_t = data_temp[state,coh,choice].copy() 
+                            ybeh_t = label_temp[state,coh,choice].copy() 
+                            # print('alt error:',np.unique(ybeh_t[:,1])) 
+                        else:
+                            Xbeh_t = np.vstack((Xbeh_t,data_temp[state,coh,choice].copy()))
+                            ybeh_t = np.vstack((ybeh_t,label_temp[state,coh,choice].copy())) 
+                            # print('alt error:',np.unique(ybeh_t[:,1]))
+                    else:
+                        continue 
+                idxtrain = np.random.choice(np.arange(numtrials),size=int(numtrials/2),replace=False) 
+                idxtest  = np.setdiff1d(np.arange(numtrials),idxtrain)  
+                Xdata_beh_trainset[idxf,'error'][coh,choice],ylabels_beh_trainset[idxf,'error'][coh,choice]=np.vstack((Xdata_beh_trainset[idxf,'error'][coh,choice],Xbeh_t[idxtrain,:])),np.vstack((ylabels_beh_trainset[idxf,'error'][coh,choice],ybeh_t[idxtrain,:]))
+                Xdata_beh_testset[idxf,'error'][coh,choice],ylabels_beh_testset[idxf,'error'][coh,choice]=np.vstack((Xdata_beh_testset[idxf,'error'][coh,choice],Xbeh_t[idxtest,:])),np.vstack((ylabels_beh_testset[idxf,'error'][coh,choice],ybeh_t[idxtest,:])) 
 
+
+        ctxt_rep, ctxt_alt = [4,5],[6,7]
         for coh in unique_cohs:
             for choice in unique_choices:
                 data_temp  = Xdata_set[idxf,'correct'].copy()
                 label_temp = ylabels_set[idxf,'correct'].copy()  
+                ### repeating context -- after correct 
                 Xbeh_t,ybeh_t = [],[]              
                 numtrials = 0
-                for state in unique_states:
+                for state in ctxt_rep:
                     ### correct
                     if state<4:
                         continue
@@ -241,15 +435,44 @@ def train_test_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,files, fal
                         if(len(Xbeh_t)==0):
                             Xbeh_t = data_temp[state,coh,choice].copy() 
                             ybeh_t = label_temp[state,coh,choice].copy()  
+                            # print('rep correct:',np.unique(ybeh_t[:,1]))
                         else:
                             Xbeh_t = np.vstack((Xbeh_t,data_temp[state,coh,choice].copy()))
                             ybeh_t = np.vstack((ybeh_t,label_temp[state,coh,choice].copy())) 
+                            # print('rep correct:',np.unique(ybeh_t[:,1]))
                     else:
                         continue 
                 idxtrain = np.random.choice(np.arange(numtrials),size=int(numtrials/2),replace=False) 
                 idxtest  = np.setdiff1d(np.arange(numtrials),idxtrain)  
                 Xdata_beh_trainset[idxf,'correct'][coh,choice],ylabels_beh_trainset[idxf,'correct'][coh,choice]=Xbeh_t[idxtrain,:],ybeh_t[idxtrain,:] 
                 Xdata_beh_testset[idxf,'correct'][coh,choice],ylabels_beh_testset[idxf,'correct'][coh,choice]=Xbeh_t[idxtest,:],ybeh_t[idxtest,:] 
+
+                ### alternating context -- after correct 
+                Xbeh_t,ybeh_t = [],[]              
+                numtrials = 0
+                for state in ctxt_alt:
+                    ### correct
+                    if state<4:
+                        continue
+                    numtrials_t = np.shape(data_temp[state,coh,choice])[0]
+                    if numtrials_t>0:
+                        numtrials+=numtrials_t
+                        if(len(Xbeh_t)==0):
+                            Xbeh_t = data_temp[state,coh,choice].copy() 
+                            ybeh_t = label_temp[state,coh,choice].copy()  
+                            # print('alt correct:',np.unique(ybeh_t[:,1]))
+                        else:
+                            Xbeh_t = np.vstack((Xbeh_t,data_temp[state,coh,choice].copy()))
+                            ybeh_t = np.vstack((ybeh_t,label_temp[state,coh,choice].copy())) 
+                            # print('alt correct:',np.unique(ybeh_t[:,1]))
+                    else:
+                        continue 
+                idxtrain = np.random.choice(np.arange(numtrials),size=int(numtrials/2),replace=False) 
+                idxtest  = np.setdiff1d(np.arange(numtrials),idxtrain)  
+                Xdata_beh_trainset[idxf,'correct'][coh,choice],ylabels_beh_trainset[idxf,'correct'][coh,choice]=np.vstack((Xdata_beh_trainset[idxf,'correct'][coh,choice],Xbeh_t[idxtrain,:])),np.vstack((ylabels_beh_trainset[idxf,'correct'][coh,choice],ybeh_t[idxtrain,:])) 
+                Xdata_beh_testset[idxf,'correct'][coh,choice],ylabels_beh_testset[idxf,'correct'][coh,choice]=np.vstack((Xdata_beh_testset[idxf,'correct'][coh,choice],Xbeh_t[idxtest,:])),np.vstack((ylabels_beh_testset[idxf,'correct'][coh,choice],ybeh_t[idxtest,:]))
+
+                # print('shape gpt file 465:',np.shape(Xdata_beh_testset[idxf,'correct'][coh,choice]),np.shape(Xdata_beh_trainset[idxf,'correct'][coh,choice])) 
     return Xdata_hist_trainset, ylabels_hist_trainset, Xdata_hist_testset, ylabels_hist_testset,Xdata_psy_trainset, ylabels_psy_trainset, Xdata_psy_testset, ylabels_psy_testset,Xdata_beh_trainset, ylabels_beh_trainset, Xdata_beh_testset, ylabels_beh_testset 
 
 
@@ -582,44 +805,214 @@ def merge_pseudo_beh_trials(Xdata_set,ylabels_set,unique_states,unique_cohs,nsel
             Xmerge_trials_error[state,coh] = Xmerge_trials_error[state,coh][:,nselect]
     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials
 
+# def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,unique_cohs,nselect,vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
+#     unique_choices = [0,1]
+#     Xmerge_trials_correct,ymerge_labels_correct = {},{}
+#     yright_ratio_correct = {}
+#     Xmerge_trials_error,ymerge_labels_error = {},{}
+#     yright_ratio_error = {}
+#     merge_trials = {}
+
+#     for coh in unique_cohs:
+#         for choice in unique_choices:
+#             for idxf in range(len(vfiles)):
+#                 if(idxf in falsefiles):
+#                     continue
+#                 temp_trials  = Xdata_set[idxf,'correct'][coh,choice].copy()
+#                 temp_beh     = ylabels_set[idxf,'correct'][coh,choice].copy()
+#                 totaltrials  = np.shape(temp_trials)[0]
+#                 #### generate sampled true trials for individual neurons in each pseudo trial
+#                 NN = np.shape(temp_trials)[1]
+#                 sampled_true_trials = np.zeros((EACHSTATES,NN),dtype=int32)
+#                 Xmerge_trials_t     = np.zeros((EACHSTATES,NN))
+#                 ymerge_trials_t     = np.zeros((1,EACHSTATES))
+#                 for iii in range(EACHSTATES):
+#                     sampled_true_trials[iii,:] = np.random.choice(np.arange(totaltrials),size=NN, replace=True)
+#                     Xmerge_trials_t[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials[iii,:])])
+#                     iidrandom=np.random.choice(sampled_true_trials[iii,:],size=1,replace=False)
+#                     ymerge_trials_t[0,iii]     = choice
+                    
+#                 if(RECORD_TRIALS):
+#                     merge_trials[coh,choice,idxf] = sampled_true_trials
+#                 else:
+#                     idxsample = RECORDED_TRIALS_SET[coh,choice,idxf]
+#                 try:
+#                     ymerge_labels_correct[coh,choice] = np.vstack((ymerge_labels_correct[coh,choice],ymerge_trials_t))
+#                     Xmerge_trials_correct[coh,choice] = np.hstack((Xmerge_trials_correct[coh,choice],Xmerge_trials_t))
+#                 except:
+#                     ymerge_labels_correct[coh,choice]     = ymerge_trials_t
+#                     Xmerge_trials_correct[coh,choice] = Xmerge_trials_t
+#             Xmerge_trials_correct[coh,choice] = Xmerge_trials_correct[coh,choice][:,nselect]
+
+#     for coh in unique_cohs:
+#         for choice in unique_choices:
+#             for idxf in range(len(vfiles)):
+#                 if(idxf in falsefiles):
+#                     continue
+#                 temp_trials  = Xdata_set[idxf,'error'][coh,choice].copy()
+#                 temp_beh     = ylabels_set[idxf,'error'][coh,choice].copy()
+#                 totaltrials  = np.shape(temp_trials)[0]
+#                 #### generate sampled true trials for individual neurons in each pseudo trial
+#                 NN = np.shape(temp_trials)[1]
+#                 sampled_true_trials = np.zeros((EACHSTATES,NN),dtype=int32)
+#                 Xmerge_trials_t     = np.zeros((EACHSTATES,NN))
+#                 ymerge_trials_t     = np.zeros((1,EACHSTATES))
+#                 for iii in range(EACHSTATES):
+#                     sampled_true_trials[iii,:] = np.random.choice(np.arange(totaltrials),size=NN, replace=True)
+#                     Xmerge_trials_t[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials[iii,:])])
+#                     iidrandom=np.random.choice(sampled_true_trials[iii,:],size=1,replace=False)
+#                     ymerge_trials_t[0,iii]     = choice
+                    
+#                 if(RECORD_TRIALS):
+#                     merge_trials[coh,choice,idxf] = sampled_true_trials
+#                 else:
+#                     idxsample = RECORDED_TRIALS_SET[coh,choice,idxf]
+#                 try:
+#                     ymerge_labels_error[coh,choice] = np.vstack((ymerge_labels_error[coh,choice],ymerge_trials_t))
+#                     Xmerge_trials_error[coh,choice] = np.hstack((Xmerge_trials_error[coh,choice],Xmerge_trials_t))
+#                 except:
+#                     ymerge_labels_error[coh,choice]     = ymerge_trials_t
+#                     Xmerge_trials_error[coh,choice]     = Xmerge_trials_t
+#             Xmerge_trials_error[coh,choice] = Xmerge_trials_error[coh,choice][:,nselect]
+
+
+#     return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials
+
+
+'''
+Separate context repeating from context alternating
+'''
 def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,unique_cohs,nselect,vfiles,falsefiles,EACHSTATES=60, RECORD_TRIALS=1, RECORDED_TRIALS_SET=[],STIM_BEH=1):
     unique_choices = [0,1]
-    Xmerge_trials_correct,ymerge_labels_correct = {},{}
-    yright_ratio_correct = {}
-    Xmerge_trials_error,ymerge_labels_error = {},{}
-    yright_ratio_error = {}
+    Xmerge_trials_correct_rep,ymerge_labels_correct_rep = {},{}
+    yright_ratio_correct_rep = {}
+    Xmerge_trials_error_rep,ymerge_labels_error_rep = {},{}
+    yright_ratio_error_rep = {}
+
+    Xmerge_trials_correct_alt,ymerge_labels_correct_alt = {},{}
+    yright_ratio_correct_alt = {}
+    Xmerge_trials_error_alt,ymerge_labels_error_alt = {},{}
+    yright_ratio_error_alt = {}
+
     merge_trials = {}
 
     for coh in unique_cohs:
         for choice in unique_choices:
+            ymerge_labels_correct_rep[coh,choice]     = []
+            Xmerge_trials_correct_rep[coh,choice]     = []
+  
+            ymerge_labels_correct_alt[coh,choice]     = []
+            Xmerge_trials_correct_alt[coh,choice]     = []
+            
+            ymerge_labels_error_rep[coh,choice]     = []
+            Xmerge_trials_error_rep[coh,choice]     = []
+  
+            ymerge_labels_error_alt[coh,choice]     = []
+            Xmerge_trials_error_alt[coh,choice]     = []
+            
             for idxf in range(len(vfiles)):
                 if(idxf in falsefiles):
                     continue
                 temp_trials  = Xdata_set[idxf,'correct'][coh,choice].copy()
                 temp_beh     = ylabels_set[idxf,'correct'][coh,choice].copy()
+                temp_ctxt    = temp_beh[:,1].copy()  ### context information 
                 totaltrials  = np.shape(temp_trials)[0]
+                reptrials    = np.where(temp_ctxt==0+2)[0]
+                alttrials    = np.where(temp_ctxt==1+2)[0]
                 #### generate sampled true trials for individual neurons in each pseudo trial
                 NN = np.shape(temp_trials)[1]
-                sampled_true_trials = np.zeros((EACHSTATES,NN),dtype=int32)
-                Xmerge_trials_t     = np.zeros((EACHSTATES,NN))
-                ymerge_trials_t     = np.zeros((1,EACHSTATES))
+
+                sampled_true_trials_rep = np.zeros((EACHSTATES,NN),dtype=int32)
+                Xmerge_trials_t_rep     = np.zeros((EACHSTATES,NN))
+                ymerge_trials_t_rep     = np.zeros((1,EACHSTATES))
+
+                sampled_true_trials_alt = np.zeros((EACHSTATES,NN),dtype=int32)
+                Xmerge_trials_t_alt     = np.zeros((EACHSTATES,NN))
+                ymerge_trials_t_alt     = np.zeros((1,EACHSTATES))
+
                 for iii in range(EACHSTATES):
-                    sampled_true_trials[iii,:] = np.random.choice(np.arange(totaltrials),size=NN, replace=True)
-                    Xmerge_trials_t[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials[iii,:])])
-                    iidrandom=np.random.choice(sampled_true_trials[iii,:],size=1,replace=False)
-                    ymerge_trials_t[0,iii]     = choice
+                    # sampled_true_trials[iii,:] = np.random.choice(np.arange(totaltrials),size=NN, replace=True)
+                    # Xmerge_trials_t[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials[iii,:])])
+                    # iidrandom=np.random.choice(sampled_true_trials[iii,:],size=1,replace=False)
+                    # ymerge_trials_t[0,iii]     = choice
+
+                    ### repeating 
+                    try:
+                        sampled_true_trials_rep[iii,:] = np.random.choice(reptrials,size=NN, replace=True)
+                        Xmerge_trials_t_rep[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials_rep[iii,:])])
+                        iidrandom=np.random.choice(sampled_true_trials_rep[iii,:],size=1,replace=False)
+                        ymerge_trials_t_rep[0,iii]     = choice
+                    except:
+                        print('No repeating trials (beh-c)')
+                        sampled_true_trials_rep = []
+                        Xmerge_trials_t_rep     = []
+                        ymerge_trials_t_rep     = []
+                        continue
+                    ### alternating
+                    try:
+                        sampled_true_trials_alt[iii,:] = np.random.choice(alttrials,size=NN, replace=True)
+                        Xmerge_trials_t_alt[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials_alt[iii,:])])
+                        iidrandom=np.random.choice(sampled_true_trials_alt[iii,:],size=1,replace=False)
+                        ymerge_trials_t_alt[0,iii]     = choice
+                    except:
+                        print('No alternating trials (beh-c')
+                        sampled_true_trials_alt = []
+                        Xmerge_trials_t_alt     = []
+                        ymerge_trials_t_alt     = []
+                        continue
                     
                 if(RECORD_TRIALS):
-                    merge_trials[coh,choice,idxf] = sampled_true_trials
+                    try:
+                        merge_trials[coh,choice,idxf] = np.vstack((sampled_true_trials_rep,sampled_true_trials_alt))
+                    except:
+                        merge_trials[coh,choice,idxf] = []
                 else:
                     idxsample = RECORDED_TRIALS_SET[coh,choice,idxf]
-                try:
-                    ymerge_labels_correct[coh,choice] = np.vstack((ymerge_labels_correct[coh,choice],ymerge_trials_t))
-                    Xmerge_trials_correct[coh,choice] = np.hstack((Xmerge_trials_correct[coh,choice],Xmerge_trials_t))
-                except:
-                    ymerge_labels_correct[coh,choice]     = ymerge_trials_t
-                    Xmerge_trials_correct[coh,choice] = Xmerge_trials_t
-            Xmerge_trials_correct[coh,choice] = Xmerge_trials_correct[coh,choice][:,nselect]
+                # try:
+                #     ### repeating
+                #     ymerge_labels_correct_rep[coh,choice] = np.vstack((ymerge_labels_correct_rep[coh,choice],ymerge_trials_t_rep))
+                #     Xmerge_trials_correct_rep[coh,choice] = np.hstack((Xmerge_trials_correct_rep[coh,choice],Xmerge_trials_t_rep))
+                #     ### alternating
+                #     ymerge_labels_correct_alt[coh,choice] = np.vstack((ymerge_labels_correct_alt[coh,choice],ymerge_trials_t_alt))
+                #     Xmerge_trials_correct_alt[coh,choice] = np.hstack((Xmerge_trials_correct_alt[coh,choice],Xmerge_trials_t_alt))
+                # except:
+                #     ### repeating
+                #     ymerge_labels_correct_rep[coh,choice]     = ymerge_trials_t_rep
+                #     Xmerge_trials_correct_rep[coh,choice]     = Xmerge_trials_t_rep
+                #     ### alternationg
+                #     ymerge_labels_correct_alt[coh,choice]     = ymerge_trials_t_alt
+                #     Xmerge_trials_correct_alt[coh,choice]     = Xmerge_trials_t_alt
+                
+                if (len(ymerge_labels_correct_rep[coh,choice])==0):
+                    ### repeating
+                    ymerge_labels_correct_rep[coh,choice]     = ymerge_trials_t_rep
+                    Xmerge_trials_correct_rep[coh,choice]     = Xmerge_trials_t_rep
+                elif(len(ymerge_trials_t_rep)==0):
+                    ### repeating
+                    ymerge_labels_correct_rep[coh,choice]     = ymerge_labels_correct_rep[coh,choice]
+                    Xmerge_trials_correct_rep[coh,choice]     = Xmerge_trials_correct_rep[coh,choice]
+                else:
+                    ### repeating
+                    ymerge_labels_correct_rep[coh,choice] = np.vstack((ymerge_labels_correct_rep[coh,choice],ymerge_trials_t_rep))
+                    Xmerge_trials_correct_rep[coh,choice] = np.hstack((Xmerge_trials_correct_rep[coh,choice],Xmerge_trials_t_rep))
+                    
+                if (len(ymerge_labels_correct_alt[coh,choice])==0):
+                    ### repeating
+                    ymerge_labels_correct_alt[coh,choice]     = ymerge_trials_t_alt
+                    Xmerge_trials_correct_alt[coh,choice]     = Xmerge_trials_t_alt
+                elif(len(ymerge_trials_t_alt)==0):
+                    ### repeating
+                    ymerge_labels_correct_alt[coh,choice]     = ymerge_labels_correct_alt[coh,choice]
+                    Xmerge_trials_correct_alt[coh,choice]     = Xmerge_trials_correct_alt[coh,choice]
+                else:
+                    ### repeating
+                    ymerge_labels_correct_alt[coh,choice] = np.vstack((ymerge_labels_correct_alt[coh,choice],ymerge_trials_t_alt))
+                    Xmerge_trials_correct_alt[coh,choice] = np.hstack((Xmerge_trials_correct_alt[coh,choice],Xmerge_trials_t_alt))
+
+            # print('gpt 1012 ...shape correct:',coh,choice,'...',np.shape(Xmerge_trials_correct_rep[coh,choice]))
+            # print('shape correct:',coh,choice,'...',np.shape(Xmerge_trials_correct_alt[coh,choice]))
+            Xmerge_trials_correct_rep[coh,choice] = Xmerge_trials_correct_rep[coh,choice][:,nselect]
+            Xmerge_trials_correct_alt[coh,choice] = Xmerge_trials_correct_alt[coh,choice][:,nselect]
 
     for coh in unique_cohs:
         for choice in unique_choices:
@@ -628,32 +1021,103 @@ def merge_pseudo_beh_trials_individual(Xdata_set,ylabels_set,unique_states,uniqu
                     continue
                 temp_trials  = Xdata_set[idxf,'error'][coh,choice].copy()
                 temp_beh     = ylabels_set[idxf,'error'][coh,choice].copy()
+                temp_ctxt    = temp_beh[:,1].copy()
                 totaltrials  = np.shape(temp_trials)[0]
+                reptrials    = np.where(temp_ctxt==0)[0]
+                alttrials    = np.where(temp_ctxt==1)[0]
+                # print('gpt 1028 ctxt......error',np.unique(temp_ctxt),idxf,coh,choice)
                 #### generate sampled true trials for individual neurons in each pseudo trial
                 NN = np.shape(temp_trials)[1]
-                sampled_true_trials = np.zeros((EACHSTATES,NN),dtype=int32)
-                Xmerge_trials_t     = np.zeros((EACHSTATES,NN))
-                ymerge_trials_t     = np.zeros((1,EACHSTATES))
+                ### repeating
+                sampled_true_trials_rep = np.zeros((EACHSTATES,NN),dtype=int32)
+                Xmerge_trials_t_rep     = np.zeros((EACHSTATES,NN))
+                ymerge_trials_t_rep     = np.zeros((1,EACHSTATES))
+                ### alternating
+                sampled_true_trials_alt = np.zeros((EACHSTATES,NN),dtype=int32)
+                Xmerge_trials_t_alt     = np.zeros((EACHSTATES,NN))
+                ymerge_trials_t_alt     = np.zeros((1,EACHSTATES))
                 for iii in range(EACHSTATES):
-                    sampled_true_trials[iii,:] = np.random.choice(np.arange(totaltrials),size=NN, replace=True)
-                    Xmerge_trials_t[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials[iii,:])])
-                    iidrandom=np.random.choice(sampled_true_trials[iii,:],size=1,replace=False)
-                    ymerge_trials_t[0,iii]     = choice
+                    # sampled_true_trials[iii,:] = np.random.choice(np.arange(totaltrials),size=NN, replace=True)
+                    # Xmerge_trials_t[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials[iii,:])])
+                    # iidrandom=np.random.choice(sampled_true_trials[iii,:],size=1,replace=False)
+                    # ymerge_trials_t[0,iii]     = choice
+                    try:
+                        ### repeating 
+                        sampled_true_trials_rep[iii,:] = np.random.choice(reptrials,size=NN, replace=True)
+                        Xmerge_trials_t_rep[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials_rep[iii,:])])
+                        iidrandom=np.random.choice(sampled_true_trials_rep[iii,:],size=1,replace=False)
+                        ymerge_trials_t_rep[0,iii]     = choice
+                    except:
+                        # print('gpt 1051  No repeating trials (beh-e)',idxf, coh, choice)
+                        sampled_true_trials_rep = []
+                        Xmerge_trials_t_rep     = []
+                        ymerge_trials_t_rep     = []
+                        continue
+                    try:    
+                        ### alternating
+                        sampled_true_trials_alt[iii,:] = np.random.choice(alttrials,size=NN, replace=True)
+                        Xmerge_trials_t_alt[iii,:]     = np.array([temp_trials[item,i] for i, item in enumerate(sampled_true_trials_alt[iii,:])])
+                        iidrandom=np.random.choice(sampled_true_trials_alt[iii,:],size=1,replace=False)
+                        ymerge_trials_t_alt[0,iii]     = choice
+                    except:
+                        # print('gpt 1063 ...No alternating trials (beh-e)',idxf, coh, choice)
+                        sampled_true_trials_alt = []
+                        Xmerge_trials_t_alt     = []
+                        ymerge_trials_t_alt     = []              
                     
                 if(RECORD_TRIALS):
-                    merge_trials[coh,choice,idxf] = sampled_true_trials
+                    try:
+                        merge_trials[coh,choice,idxf] = np.vstack((sampled_true_trials_rep,sampled_true_trials_alt))
+                    except:
+                        merge_trials[coh,choice,idxf] =[]
                 else:
                     idxsample = RECORDED_TRIALS_SET[coh,choice,idxf]
-                try:
-                    ymerge_labels_error[coh,choice] = np.vstack((ymerge_labels_error[coh,choice],ymerge_trials_t))
-                    Xmerge_trials_error[coh,choice] = np.hstack((Xmerge_trials_error[coh,choice],Xmerge_trials_t))
-                except:
-                    ymerge_labels_error[coh,choice]     = ymerge_trials_t
-                    Xmerge_trials_error[coh,choice]     = Xmerge_trials_t
-            Xmerge_trials_error[coh,choice] = Xmerge_trials_error[coh,choice][:,nselect]
+                # try:
+                #     ### repeating
+                #     ymerge_labels_error_rep[coh,choice] = np.vstack((ymerge_labels_error_rep[coh,choice],ymerge_trials_t_rep))
+                #     Xmerge_trials_error_rep[coh,choice] = np.hstack((Xmerge_trials_error_rep[coh,choice],Xmerge_trials_t_rep))
+                #     ### alternating
+                #     ymerge_labels_error_alt[coh,choice] = np.vstack((ymerge_labels_error_alt[coh,choice],ymerge_trials_t_alt))
+                #     Xmerge_trials_error_alt[coh,choice] = np.hstack((Xmerge_trials_error_alt[coh,choice],Xmerge_trials_t_alt))
+                # except:
+                #     ### repeating
+                #     ymerge_labels_error_rep[coh,choice]     = ymerge_trials_t_rep
+                #     Xmerge_trials_error_rep[coh,choice]     = Xmerge_trials_t_rep
+                #     ### alternating
+                #     ymerge_labels_error_alt[coh,choice]     = ymerge_trials_t_alt
+                #     Xmerge_trials_error_alt[coh,choice]     = Xmerge_trials_t_alt
+                
+                if (len(ymerge_labels_error_rep[coh,choice])==0):
+                    ### repeating
+                    ymerge_labels_error_rep[coh,choice]     = ymerge_trials_t_rep
+                    Xmerge_trials_error_rep[coh,choice]     = Xmerge_trials_t_rep
+                elif(len(ymerge_trials_t_rep)==0):
+                    ### repeating
+                    ymerge_labels_error_rep[coh,choice]     = ymerge_labels_error_rep[coh,choice]
+                    Xmerge_trials_error_rep[coh,choice]     = Xmerge_trials_error_rep[coh,choice]
+                else:
+                    ### repeating
+                    ymerge_labels_error_rep[coh,choice] = np.vstack((ymerge_labels_error_rep[coh,choice],ymerge_trials_t_rep))
+                    Xmerge_trials_error_rep[coh,choice] = np.hstack((Xmerge_trials_error_rep[coh,choice],Xmerge_trials_t_rep))
+                    
+                if (len(ymerge_labels_error_alt[coh,choice])==0):
+                    ### repeating
+                    ymerge_labels_error_alt[coh,choice]     = ymerge_trials_t_alt
+                    Xmerge_trials_error_alt[coh,choice]     = Xmerge_trials_t_alt
+                elif(len(ymerge_trials_t_alt)==0):
+                    ### repeating
+                    ymerge_labels_error_alt[coh,choice]     = ymerge_labels_error_alt[coh,choice]
+                    Xmerge_trials_error_alt[coh,choice]     = Xmerge_trials_error_alt[coh,choice]
+                else:
+                    ### repeating
+                    ymerge_labels_error_alt[coh,choice] = np.vstack((ymerge_labels_error_alt[coh,choice],ymerge_trials_t_alt))
+                    Xmerge_trials_error_alt[coh,choice] = np.hstack((Xmerge_trials_error_alt[coh,choice],Xmerge_trials_t_alt))
+            
+            Xmerge_trials_error_rep[coh,choice] = Xmerge_trials_error_rep[coh,choice][:,nselect]
+            Xmerge_trials_error_alt[coh,choice] = Xmerge_trials_error_alt[coh,choice][:,nselect]
 
 
-    return Xmerge_trials_correct,ymerge_labels_correct,Xmerge_trials_error,ymerge_labels_error, merge_trials
+    return Xmerge_trials_correct_rep,ymerge_labels_correct_rep,Xmerge_trials_error_rep,ymerge_labels_error_rep, Xmerge_trials_correct_alt,ymerge_labels_correct_alt,Xmerge_trials_error_alt,ymerge_labels_error_alt, merge_trials
 
 def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
                                      ymerge_labels, unique_states,unique_cohs,unique_choices, num_beh_trials, EACHSTATES=20,FIX_TRBIAS_BINS=[],NBINS=5,mmodel=[],PCA_n_components=0):

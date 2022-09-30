@@ -296,23 +296,25 @@ def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
 
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histac, bi_histac = data_dec['coefs_correct'], data_dec['intercepts_correct']
+    print('shape:hist 302', np.shape(wi_histac))
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histae, bi_histae = data_dec['coefs_correct'], data_dec['intercepts_correct']
+    print('shape:hist 302', np.shape(wi_histae))
 
-    dataname  = dir+timep+IDX_RAT+'data_beh_ae_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_behae, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
-    dataname  = dir+timep+IDX_RAT+'data_beh_ac_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_behac, _ = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
-    dataname       = dir+timep+IDX_RAT+'neuron_selectivity.npz'
+    dataname       = dir+timep+IDX_RAT+'neuron_selectivity_Sept.npz'
     d_selectivity  = np.load(dataname, allow_pickle=True) 
                       
     nselect, nnonselect, pop_left_correct, pop_right_correct, single_pop_correct, correct_zero, pop_left_error, pop_right_error, single_pop_error, error_zero =guc.mixed_selectivity_pop(d_selectivity)
@@ -320,13 +322,14 @@ def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
     # mixed_selectivity = np.union1d(pop_left_correct, pop_right_correct)
     mixed_selectivity   = np.arange(len(nselect))#single_pop_error#np.union1d(pop_left_correct, pop_right_correct)#np.union1d(pop_left_correct, pop_right_correct)#
     
+    caxis=4
     wiac_fix_hist,wiae_fix_hist= np.zeros((len(mixed_selectivity),NITERATIONS)),np.zeros((len(mixed_selectivity),NITERATIONS))
     wiac_fix_beh,wiae_fix_beh   = np.zeros((len(mixed_selectivity),NITERATIONS)),np.zeros((len(mixed_selectivity),NITERATIONS))
     for i in range(NITERATIONS):
-        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[mixed_selectivity, i*5+3],wi_histae[mixed_selectivity,i*5+3]
-        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[mixed_selectivity, (i*5)*3+4],wi_behae[mixed_selectivity, (i*5)*3+4]
+        wiac_fix_hist[:,i], wiae_fix_hist[:,i]= wi_histac[:, i*6+caxis],wi_histae[:,i*6+caxis]
+        wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wi_behac[:, (i*5)*3+caxis],wi_behae[:, (i*5)*3+caxis]
         for icoh in range(1,3):
-            wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]+wi_behac[mixed_selectivity, (i*5)*3+5*icoh+4],wiae_fix_beh[:,i]  +wi_behae[mixed_selectivity, (i*5)*3+5*icoh+4]
+            wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]+wi_behac[mixed_selectivity, (i*5)*3+5*icoh+caxis],wiae_fix_beh[:,i]  +wi_behae[mixed_selectivity, (i*5)*3+5*icoh+caxis]
         wiac_fix_beh[:,i],wiae_fix_beh[:,i]   = wiac_fix_beh[:,i]/3,wiae_fix_beh[:,i]/3 
             
     ### Predicting upcoming stimulus 
@@ -508,17 +511,17 @@ def pairwise_mtx_hist(dir, IDX_RAT, timep, NITERATIONS):
     
 def pairwise_mtx_hist_condition(dir, IDX_RAT, timep, NITERATIONS):
     # ### ----------- history axis ------------------- 
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
-    IDX_RAT = 'Rat31_'
-    timep = '/'#'-01-00s/'
-    NITERATIONS = 50
+    # dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys'
+    # IDX_RAT = 'Rat7_'
+    # timep = '/'#'-01-00s/'
+    # NITERATIONS = 50
     ### compute the angles between history encoding axises
 
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_prevch.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histac, bi_histac = data_dec['coefs_correct'], data_dec['intercepts_correct']
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_prevch.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     wi_histae, bi_histae = data_dec['coefs_correct'], data_dec['intercepts_correct']
 
@@ -680,21 +683,21 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_dec_ae_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ae_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ae = data_dec['stats_error'][3,:]
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ac = data_dec['stats_correct'][3,:]
     
-    dataname  = dir+timep+IDX_RAT+'data_beh_ae_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ae_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_beh_ae = data_dec['stats_error'][:,2]
+    score_fix_beh_ae = data_dec['stats_error_alt'][:,0]
     
-    dataname  = dir+timep+IDX_RAT+'data_beh_ac_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_beh_ac_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
-    score_fix_beh_ac = data_dec['stats_correct'][:,2]
+    score_fix_beh_ac = data_dec['stats_correct_alt'][:,0]
     
     
     accuracy_fix_set = {}

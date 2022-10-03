@@ -514,14 +514,6 @@ def get_dec_axes(data_tr, wc, bc, we, be,nselect, false_files,pop_correct, pop_z
     ### compare single neuron activity       
     Xdata_hist_trainset, ylabels_hist_trainset = data_traintest_tr['Xdata_hist_trainset'], \
     data_traintest_tr['ylabels_hist_trainset']
-    
-
-    # Xmerge_hist_trials_correct, ymerge_hist_labels_correct,\
-    # Xmerge_hist_trials_error, ymerge_hist_labels_error, _ =\
-    # gpt.merge_pseudo_hist_trials_individual(Xdata_hist_trainset, ylabels_hist_trainset,
-    #                               unique_states, unique_cohs, files,
-    #                               false_files, 2,  RECORD_TRIALS=1,
-    #                               RECORDED_TRIALS=[])
 
     #### valid neuron number  --- take the advantage of single cell selectivity 
     NN = len(nselect)# np.shape(Xmerge_hist_trials_correct[4])[1]
@@ -531,23 +523,7 @@ def get_dec_axes(data_tr, wc, bc, we, be,nselect, false_files,pop_correct, pop_z
             REC_TRIALS_SET[itr] = {}
             
         
-    if(RECORD_TRIALS == 1):
-        
-        # mmodel, stats_correct, stats_error,coeffs, intercepts, Xtest_set_correct, ytest_set_correct, yevi_set_correct,\
-        #     Xtest_set_error, ytest_set_error, yevi_set_error, REC_TRIALS_SET\
-        
-        # mmodel,stats_correct,stats_error,stats_correct_pop, stats_error_pop, coeffs, intercepts,\
-        # Xtest_set_correct, ytest_set_correct, yevi_set_correct, yevi_set_correct_supp, \
-        # Xtest_set_error, ytest_set_error, yevi_set_error, yevi_set_error_supp, REC_TRIALS_SET\
-        #     = bl.bootstrap_linsvm_step(data_tr, NN,
-        #                                 unique_states, unique_cohs, nselect, files,
-        #                                 false_files, pop_correct, pop_zero, pop_error, single_pop, USE_POP, type, DOREVERSE=DOREVERSE,
-        #                                 CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, n_iterations=NITERATIONS,
-        #                                 N_pseudo_dec=NPSEUDODEC, ACE_RATIO = ACE_RATIO,
-        #                                 train_percent=PERCENTTRAIN,
-        #                                 RECORD_TRIALS=RECORD_TRIALS,
-        #                                 RECORDED_TRIALS_SET=REC_TRIALS_SET,mmodel=mmodel,PCA_n_components=PCA_n_components)
-            
+    if(RECORD_TRIALS == 1):    
         mmodel, stats_correct, stats_error, stats_correct_pop, stats_error_pop, coeffs, intercepts, Xtest_set_correct, ytest_set_correct, yevi_set_correct, yevi_set_correct_supp,\
             Xtest_set_error, ytest_set_error, yevi_set_error,  yevi_set_error_supp, REC_TRIALS_SET\
             = bl.bootstrap_linsvm_step_gaincontrol(data_tr, NN, 
@@ -1243,9 +1219,7 @@ def flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop'):
         yauc_e_ctxtrep, yauc_e_ctxtalt =\
             np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
             np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
-        # yauc_e_evirep, yauc_e_evialt =\
-        #     np.squeeze(yevi_set_error[i, ctxtrep, SVMAXIS]),\
-        #     np.squeeze(yevi_set_error[i, ctxtalt, SVMAXIS])
+
         yauc_e_evirep, yauc_e_evialt =\
             np.squeeze(yevi_set_error[i, ctxtrep, supi]-yevi_set_error[i, ctxtrep, supi-1]),\
             np.squeeze(yevi_set_error[i, ctxtalt, supi]-yevi_set_error[i, ctxtalt, supi-1]) # overall
@@ -1263,30 +1237,6 @@ def flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop'):
             yauc_e_ctxtalt, yauc_e_evialt, pos_label=2)
         auc_ae_alt = metrics.auc(fpr_alt, tpr_alt)
         AUCs_alte[i] = auc_ae_alt
-        
-        # # dprime conditioned on CONTEXTS --- relevant
-        # ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
-        #     0], np.where(ytest_set_error[i, :, 1] == 1)[0]
-        # yauc_e_ctxtrep, yauc_e_ctxtalt =\
-        #     np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
-        #     np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
-        # yauc_e_evirep_rel, yauc_e_evialt_rel =\
-        #     np.squeeze(yevi_set_error[i, ctxtrep, supi]),\
-        #     np.squeeze(yevi_set_error[i, ctxtalt, supi])
-        # dprimes_repe_rel[i] = guc.calculate_dprime(yauc_e_evirep_rel, yauc_e_ctxtrep)
-        # dprimes_alte_rel[i] = guc.calculate_dprime(yauc_e_evialt_rel, yauc_e_ctxtalt)
-        
-        # # dprime conditioned on CONTEXTS --- cross
-        # ctxtrep, ctxtalt = np.where(ytest_set_error[i, :, 1] == 0)[
-        #     0], np.where(ytest_set_error[i, :, 1] == 1)[0]
-        # yauc_e_ctxtrep, yauc_e_ctxtalt =\
-        #     np.squeeze(ytest_set_error[i, ctxtrep, SVMAXIS]),\
-        #     np.squeeze(ytest_set_error[i, ctxtalt, SVMAXIS])
-        # yauc_e_evirep_cross, yauc_e_evialt_cross =\
-        #     np.squeeze(yevi_set_error[i, ctxtrep, supi-1]),\
-        #     np.squeeze(yevi_set_error[i, ctxtalt, supi-1])
-        # dprimes_repe_cross[i] = guc.calculate_dprime(yauc_e_evirep_cross, yauc_e_ctxtrep)
-        # dprimes_alte_cross[i] = guc.calculate_dprime(yauc_e_evialt_cross, yauc_e_ctxtalt)
         
         # SEPARATE previous left and previous right CONTEXTS
         prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
@@ -1315,32 +1265,6 @@ def flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop'):
         auc_ae_prevchr = metrics.auc(fpr_r, tpr_r)
         AUCs_re[i] = auc_ae_prevchr
         
-        # # dprime conditioned on PREVIOUS CHOICE --- relevant
-        # prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
-        #     0], np.where(ytest_set_error[i, :, 0] == 1)[0]
-        # yauc_e_prevchl, yauc_e_prevchr =\
-        #     np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
-        #     np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
-        # yauc_e_evil_rel, yauc_e_evir_rel =\
-        #     np.squeeze(yevi_set_error[i, prevchl, supi]),\
-        #     np.squeeze(yevi_set_error[i, prevchr, supi])
-        # dprimes_le_rel[i] = guc.calculate_dprime(yauc_e_evil_rel, yauc_e_prevchl)
-        # dprimes_re_rel[i] = guc.calculate_dprime(yauc_e_evir_rel, yauc_e_prevchr)
-        
-        # # dprime conditioned on PREVIOUS CHOICE --- CROSS
-        # prevchl, prevchr = np.where(ytest_set_error[i, :, 0] == 0)[
-        #     0], np.where(ytest_set_error[i, :, 0] == 1)[0]
-        # yauc_e_prevchl, yauc_e_prevchr =\
-        #     np.squeeze(ytest_set_error[i, prevchl, SVMAXIS]),\
-        #     np.squeeze(ytest_set_error[i, prevchr, SVMAXIS])
-        # yauc_e_evil_cross, yauc_e_evir_cross =\
-        #     np.squeeze(yevi_set_error[i, prevchl, supi-1]),\
-        #     np.squeeze(yevi_set_error[i, prevchr, supi-1])
-        # # print('~~~~~cross',yauc_e_evil_cross,np.unique(yauc_e_prevchl))
-        # dprimes_le_cross[i] = guc.calculate_dprime(yauc_e_evil_cross, yauc_e_prevchl)
-        # dprimes_re_cross[i] = guc.calculate_dprime(yauc_e_evir_cross, yauc_e_prevchr)
-
-    # ax_temp[1].hist(AUCs_e, bins=20, alpha=0.9, facecolor='black')
 
     ytruthlabels_e, yevi_e = ytruthlabels_e[:, 1:], yevi_e[:, 1:]
     
@@ -1357,16 +1281,6 @@ def flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop'):
            "dprimes_lc, dprimes_rc, dprimes_le, dprimes_re, "
            "AUCs_lc, AUCs_rc, AUCs_le, AUCs_re"]
     d = list_to_dict(lst=lst, string=stg)
-
-           # dprimes_repc_rel, dprimes_altc_rel, dprimes_repe_rel, dprimes_alte_rel,
-           # dprimes_repc_cross, dprimes_altc_cross, dprimes_repe_cross, dprimes_alte_cross,
-           # dprimes_lc_rel, dprimes_rc_rel, dprimes_le_rel, dprimes_re_rel,
-           # dprimes_lc_cross, dprimes_rc_cross, dprimes_le_cross, dprimes_re_cross,
-
-           # "dprimes_repc_rel, dprimes_altc_rel, dprimes_repe_rel, dprimes_alte_rel, "
-           # "dprimes_repc_cross, dprimes_altc_cross, dprimes_repe_cross, dprimes_alte_cross, "
-           # "dprimes_lc_rel, dprimes_rc_rel, dprimes_le_cross, dprimes_re_cross, "
-           # "dprimes_lc_cross, dprimes_rc_cross, dprimes_le_cross, dprimes_re_cross, "
     return d
 
 def flatten_data_supp(data_tr, data_dec, pop_type='s_pop'):
@@ -3118,147 +3032,7 @@ def neural_activity_sort_ctxt(Xdata_set,ylabels_set,unique_states,files,idx_dele
     pop_b_error       = np.setdiff1d(np.arange(len(nselect)),pop_use_error)
     print('************ Neuron number **********')
     print(len(nselect))
-    return pop_rep_correct, pop_alt_correct,pop_b_correct, pop_rep_error, pop_alt_error, pop_b_error, NN_error,p_values_correct, p_values_error
-
-# def neural_activity_sort_ctxt(Xdata_set,ylabels_set,unique_states,files,idx_delete, nselect):
-#     Xflat_trials_correct,Xflat_trials_error = {},{}
-    
-#     df_correct, df_error = {},{}  
-#     p_values_correct,p_values_error = [],[]
-    
-#     ### counting overall neuron number 
-#     NN_error = 0
-#     Nstart, Nend = 0,0
-#     statec=[4,5,6,7]
-#     statee=[0,1,2,3]
-    
-#     unique_cohs,unique_choices = [-1,0,1],[0,1]
-#     for idxf in range(len(files)):
-#         if(idxf in idx_delete):
-#             continue
-#         Nstart = Nend
-#         for state in statec:   
-#             X_t = []
-#             data_temp  = Xdata_set[idxf,'correct'].copy()
-            
-#             for coh in unique_cohs:
-#                 for ch in unique_choices:
-#                     try:
-#                         totaltrials=np.shape(data_temp[state,coh,ch])[0]
-#                     except:
-#                         print('exist for initial finding')
-#                         continue
-#                     if totaltrials<1:
-#                         continue
-#                     #### generate sampled true trials for individual neurons in each pseudo trial
-#                     NN, ntrials = np.shape(data_temp[state,coh,ch])[1], np.shape(data_temp[state,coh,ch])[0]
-#                     if(len(X_t)==0 and state==4):
-#                         Nend +=np.shape(data_temp[state,coh,ch])[1]
-#                         NN_error +=np.shape(data_temp[state,coh,ch])[1]
-#                         X_t = data_temp[state,coh,ch].copy()
-#                     elif(len(X_t)==0):
-#                         X_t = data_temp[state,coh,ch].copy()
-#                     else:
-#                         X_t = np.vstack((X_t,data_temp[state,coh,ch].copy()))
-                            
-                
-#             df_correct[state,idxf] = pd.DataFrame(X_t,columns = np.arange(Nstart,Nend))        
-        
-        
-
-#         for state in (statee):   
-#             data_temp  = Xdata_set[idxf,'error'].copy()
-#             X_t = []
-#             for coh in unique_cohs:
-#                 for ch in unique_choices:
-#                     try:
-#                         totaltrials=np.shape(data_temp[state,coh,ch])[0]
-#                     except:
-#                         print('exist for initial finding')
-#                         continue
-#                     if totaltrials<1:
-#                         continue
-#                     #### generate sampled true trials for individual neurons in each pseudo trial
-#                     NN, ntrials = np.shape(data_temp[state,coh,ch])[1], np.shape(data_temp[state,coh,ch])[0]
-#                     if(len(X_t)==0):
-#                         X_t = data_temp[state,coh,ch].copy()
-#                     else:
-#                         X_t = np.vstack((X_t,data_temp[state,coh,ch].copy()))
-                
-#             df_error[state,idxf] = pd.DataFrame(X_t,columns = np.arange(Nstart,Nend))
-        
-#         for icol in range(Nstart,Nend):
-#             try:
-#                 _,pg4=mwu(df_correct[6,idxf][icol],df_correct[4,idxf][icol],alternative='greater')
-#                 _,pg5=mwu(df_correct[5,idxf][icol],df_correct[4,idxf][icol],alternative='greater')
-#                 _,pg6=mwu(df_correct[7,idxf][icol],df_correct[4,idxf][icol],alternative='greater')
-
-
-#                 _,pl5=mwu(df_correct[4,idxf][icol],df_correct[7,idxf][icol],alternative='greater')
-#                 _,pl6=mwu(df_correct[6,idxf][icol],df_correct[7,idxf][icol],alternative='greater')
-#                 _,pl7=mwu(df_correct[4,idxf][icol],df_correct[7,idxf][icol],alternative='greater')
-
-#                 # _,pg4=mwu(df_correct[4,idxf][icol],df_correct[5,idxf][icol],alternative='less')
-#                 # _,pg5=mwu(df_correct[6,idxf][icol],df_correct[5,idxf][icol],alternative='less')
-#                 # _,pg6=mwu(df_correct[7,idxf][icol],df_correct[5,idxf][icol],alternative='less')
-
-
-#                 # _,pl5=mwu(df_correct[4,idxf][icol],df_correct[7,idxf][icol],alternative='less')
-#                 # _,pl6=mwu(df_correct[6,idxf][icol],df_correct[7,idxf][icol],alternative='less')
-#                 # _,pl7=mwu(df_correct[,idxf][icol],df_correct[7,idxf][icol],alternative='less')
-#             except:
-#                 pg4,pg5,pg6,pl5,pl6,pl7 = 1,1,1,1,1,1
-#             mean4, mean7 = np.mean(df_correct[4,idxf][icol]),np.mean(df_correct[7,idxf][icol])
-#             mean5, mean6  = np.mean(df_correct[5,idxf][icol]),np.mean(df_correct[6,idxf][icol])
-#             if (len(p_values_correct)==0):
-#                 p_values_correct=np.array([pg4,pg5,pg6, pl5,pl6,pl7,mean4,mean5,mean6,mean7])
-#             else:
-#                 p_values_correct = np.vstack((p_values_correct,np.array([pg4,pg5,pg6, pl5,pl6,pl7,mean4,mean5,mean6,mean7])))
-                
-#         # for icol in range(Nstart,Nend):
-#         #     try:
-#         #         _,pg=mwu(df_error['left',idxf][icol],df_error['right',idxf][icol],alternative='greater')
-#         #         _,pl=mwu(df_error['left',idxf][icol],df_error['right',idxf][icol],alternative='less')
-#         #     except:
-#         #         pg,pl = 1,1
-#         #     left_mean, right_mean = np.mean(df_error['left',idxf][icol]),np.mean(df_error['right',idxf][icol])
-#         #     if (len(p_values_error)==0):
-#         #         p_values_error=np.array([pg, pl, min(pg,pl),left_mean,right_mean])
-#         #     else:
-#         #         p_values_error = np.vstack((p_values_error,np.array([pg, pl, min(pg,pl),left_mean,right_mean])))
-        
-    
-#     larger4 = np.where(p_values_correct[nselect,0]<0.05)[0]
-#     larger5 = np.where(p_values_correct[nselect,1]<0.05)[0]
-#     larger6 = np.where(p_values_correct[nselect,2]<0.05)[0]
-#     larger = np.intersect1d(larger4,larger5)
-#     larger = np.intersect1d(larger,larger6)
-
-
-#     less5 = np.where(p_values_correct[nselect,3]<0.05)[0]  
-#     less6 = np.where(p_values_correct[nselect,4]<0.05)[0]  
-#     less7 = np.where(p_values_correct[nselect,5]<0.05)[0]  
-#     less = np.intersect1d(less5,less6)
-#     less = np.intersect1d(less,less7)
-
-#     pop_left_correct    = less.copy()
-#     pop_right_correct   = larger.copy()
-#     pop_use_correct     = np.union1d(pop_left_correct, pop_right_correct)
-#     pop_zero_correct    = np.setdiff1d(np.arange(len(nselect)),pop_use_correct)
-    
-    
-#     larger = np.where(p_values_correct[nselect,0]<0.05)[0]
-#     less = np.where(p_values_correct[nselect,1]<0.05)[0]   
-#     pop_left_error    = less.copy()
-#     pop_right_error   = larger.copy()
-#     pop_use_error     = np.union1d(pop_left_error, pop_right_error)
-#     pop_zero_error    = np.setdiff1d(np.arange(len(nselect)),pop_use_error)
-#     print('************ Neuron number **********')
-#     print(len(nselect))
-#     return pop_left_correct, pop_right_correct,pop_zero_correct, pop_left_error, pop_right_error, pop_zero_error, NN_error,p_values_correct, p_values_error
-             
-        
-        
+    return pop_rep_correct, pop_alt_correct,pop_b_correct, pop_rep_error, pop_alt_error, pop_b_error, NN_error,p_values_correct, p_values_error   
         
   
 # --- MAIN
@@ -3316,7 +3090,7 @@ if __name__ == '__main__':
 
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats =['Rat31']#,'Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    rats =['Rat7']#,'Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
         # plt.close('all')
         print('xxxxxxxxxxxxxxxx')
@@ -3401,19 +3175,7 @@ if __name__ == '__main__':
             np.savez(dataname, **d_selectivity)
         else:
             dataname  = dir+IDX_RAT+'neuron_selectivity_Sept.npz'
-            d_selectivity  = np.load(dataname, allow_pickle=True) 
-            # single_params,single_p_values,nnonselect,nselect, pop_left_correct,\
-            #     pop_right_correct,pop_zero_correct,pop_left_error, pop_right_error, pop_zero_error,pop_rep_correct,\
-            #         pop_alt_correct,pop_b_correct, pop_rep_error, pop_alt_error, pop_b_error, NN_error  =\
-            #             d_selectivity['single_params'],d_selectivity['single_p_values'],d_selectivity['nnonselect'],\
-            #                 d_selectivity['nselect'],d_selectivity['pop_left_correct'],\
-            #                     d_selectivity['pop_right_correct'],d_selectivity['pop_zero_correct'],\
-            #                         d_selectivity['pop_left_error'],d_selectivity['pop_right_error'],\
-            #                             d_selectivity['pop_zero_error'],d_selectivity['pop_rep_correct'],\
-            #                                 d_selectivity['pop_alt_correct'],d_selectivity['pop_b_correct'],\
-            #                                     d_selectivity['pop_rep_error'],d_selectivity['pop_alt_error'],\
-            #                                         d_selectivity['pop_b_error'],d_selectivity['NN_error']
-            
+            d_selectivity  = np.load(dataname, allow_pickle=True)             
             
             nselect, nnonselect, pop_left_correct, pop_right_correct, single_pop_correct, correct_zero, pop_left_error, pop_right_error, single_pop_error, error_zero =guc.mixed_selectivity_pop(d_selectivity)
             
@@ -3629,179 +3391,5 @@ if __name__ == '__main__':
         # # # x-axis bin ctxt, y-axis transition bias
         # # corrl_ac, corrr_ac, corrl_ae, corrr_ae, ctx_tb_trcs = ctxtbin_defect(data_flt)
         # # print('>>>>>>>>>>> P-correlation, left AC: ', corrl_ac, ' right AC: ',  corrr_ac, ' left AE: ', corrl_ae, ' right AE: ', corrr_ae)
-        
-        
-        
-        '''
-        Backup
-        '''
-        
-        
-        # # #####***************** The Second Stage ------ Behaviour *****************
-        # # # 1) calculate the axes
-        # # # 2) plot the psychometric curve 
-        
-        # ### transition bias decoder 
-        # coef_hist = data_dec['coefs_correct']
-        
-        # CONTROL=1
-        # data_int_ae,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_traintest_tr,[], [], [], [], false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',
-        #       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
-        
-        # # #### ae behaviour decoders (weights)
-        # # coef_beh_ae = data_int_ae['coefs_error']
-        # # ang_beh_ae  = coef_beh_ae[:,4]*coef_hist[:,3]
-        # # for i in range(1,50):
-        # #     ang_beh_ae +=coef_beh_ae[:,i*5+4]*coef_hist[:,i*5+3]   ### if the relationship is not stable (Random), the summation should be zero.
-            
-        # # pos_ae, neg_ae = np.where(ang_beh_ae>0)[0],np.where(ang_beh_ae<=0)[0]
-        # # fig,ax = plt.subplots(figsize=(4,4))
-        
-        # # ae_weights_r, ae_weights_b, beh_weights_r, beh_weights_b = [], [], [], []
-        
-        # # ax.scatter(coef_beh_ae[pos_ae,4],coef_hist[pos_ae,3],s=5,c='tab:red',alpha=0.25)
-        # # ae_weights_r, beh_weights_r = coef_hist[pos_ae,3],coef_beh_ae[pos_ae,4]
-        # # ax.scatter(coef_beh_ae[neg_ae,4],coef_hist[neg_ae,3],s=5,c='tab:blue',alpha=0.25)
-        # # ae_weights_b, beh_weights_b = coef_hist[neg_ae,3], coef_beh_ae[neg_ae,4]
-        # # for i in range(1,50):
-        # #     ax.scatter(coef_beh_ae[pos_ae,4+5*i],coef_hist[pos_ae,3+5*i],s=5,c='tab:red',alpha=0.25)
-        # #     ae_weights_r, beh_weights_r = np.hstack((ae_weights_r, coef_hist[pos_ae,3+5*i])), np.hstack((beh_weights_r,coef_beh_ae[pos_ae,4+5*i]))
-        # #     ax.scatter(coef_beh_ae[neg_ae,4+5*i],coef_hist[neg_ae,3+5*i],s=5,c='tab:blue',alpha=0.25)
-        # #     ae_weights_b, beh_weights_b = np.hstack((ae_weights_b, coef_hist[neg_ae,3+5*i])), np.hstack((beh_weights_b,coef_beh_ae[neg_ae,4+5*i]))
-        # # ax.set_xlim([-0.2,0.2])
-        # # ax.set_ylim([-0.5,0.5])
-        # # ### calculate the axis 
-        # # r_data = np.vstack((beh_weights_r,ae_weights_r))
-        # # b_data = np.vstack((beh_weights_b,ae_weights_b))
-        # # cov_rdata = r_data @ r_data.T 
-        # # cov_bdata = b_data @ b_data.T
-        
-        # # _, dirred = la.eig(cov_rdata)
-        # # _, dirblue = la.eig(cov_bdata)
-        # # ax.plot([-dirred[0,1]*10,dirred[0,1]*10],[-dirred[1,1]*10,dirred[1,1]*10], color='black',lw=1.5)
-        # # ax.plot([-dirblue[0,1]*10,dirblue[0,1]*10],[-dirblue[1,1]*10,dirblue[1,1]*10], color='white',lw=1.5)
-        
-        
-        # if(RECORD_TRIALS == 1 and CONTROL==1):
-        #     dataname = dir+IDX_RAT+'data_beh_ae.npz'
-        #     np.savez(dataname, **data_int_ae)
-        
-        # CONTROL=2
-        # data_int_ac,Xbeh_test_correct, Xbeh_test_error = hist_integration_balanced(data_traintest_tr,[], [], [], [], false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',
-        #       DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)  
-        # if(RECORD_TRIALS == 1  and CONTROL==2):
-        #     dataname = dir+IDX_RAT+'data_beh_ac.npz'
-        #     np.savez(dataname, **data_int_ac)
-    
-    
-    
-    
-        
-        # #### ac behaviour decoders (weights)
-        # coef_beh_ac = data_int_ac['coefs_correct']
-        # ang_beh_ac = coef_beh_ac[:,4]*coef_hist[:,3]
-        # for i in range(1,50):
-        #     ang_beh_ac +=coef_beh_ac[:,i*5+4]*coef_hist[:,i*5+3] 
-        # pos_ac, neg_ac = np.where(ang_beh_ac>0)[0],np.where(ang_beh_ac<=0)[0]
-        # fig,ax = plt.subplots(figsize=(4,4))
-        # ax.scatter(coef_beh_ac[pos_ac,4],coef_hist[pos_ac,3],s=5,c='tab:red',alpha=0.25)
-        # ax.scatter(coef_beh_ac[neg_ac,4],coef_hist[neg_ac,3],s=5,c='tab:blue',alpha=0.25)
-        
-        # ac_weights_r, beh_weights_r = coef_hist[pos_ac,3],coef_beh_ac[pos_ac,4]
-        # ac_weights_b, beh_weights_b = coef_hist[neg_ac,3], coef_beh_ac[neg_ac,4]
-        # for i in range(1,50):
-        #     ax.scatter(coef_beh_ac[pos_ac,4+5*i],coef_hist[pos_ac,3+5*i],s=5,c='tab:red',alpha=0.25)
-        #     ax.scatter(coef_beh_ac[neg_ac,4+5*i],coef_hist[neg_ac,3+5*i],s=5,c='tab:blue',alpha=0.25)
-        #     ac_weights_r, beh_weights_r = np.hstack((ac_weights_r, coef_hist[pos_ac,3+5*i])), np.hstack((beh_weights_r,coef_beh_ac[pos_ac,4+5*i]))
-        #     ac_weights_b, beh_weights_b = np.hstack((ac_weights_b, coef_hist[neg_ac,3+5*i])), np.hstack((beh_weights_b,coef_beh_ac[neg_ac,4+5*i]))
-        # ax.set_xlim([-0.2,0.2])
-        # ax.set_ylim([-0.5,0.5])
-        
-        # ### calculate the axis 
-        # r_data = np.vstack((beh_weights_r,ac_weights_r))
-        # b_data = np.vstack((beh_weights_b,ac_weights_b))
-        # cov_rdata = r_data @ r_data.T 
-        # cov_bdata = b_data @ b_data.T 
-        
-        # _, dirred = la.eig(cov_rdata)
-        # _, dirblue = la.eig(cov_bdata)
-        # ax.plot([-dirred[0,1]*10,dirred[0,1]*10],[-dirred[1,1]*10,dirred[1,1]*10], color='black',lw=1.5)
-        # ax.plot([-dirblue[0,1]*10,dirblue[0,1]*10],[-dirblue[1,1]*10,dirblue[1,1]*10], color='white',lw=1.5)
-        
-        # ### ac weights over ae weights, used for classification
-        # ratioss=coef_beh_ac[:,4]/(coef_beh_ae[:,4])
-        # for i in range(1,50):
-        #     ratioss =np.vstack((ratioss, coef_beh_ac[:,4+i*5]/(coef_beh_ae[:,4+i*5])))  
-        # print('********shape:',np.shape(ratioss))
-        
-        # pos_neg_labels = np.zeros(np.shape(ratioss)[1],dtype=int)
-        # for i in range(np.shape(ratioss)[1]):
-        #     rationeuron = ratioss[:,i].copy()
-        #     if np.mean(rationeuron) <-1.5:
-        #         pos_neg_labels[i]=0
-        #     elif np.mean(rationeuron)>1.5:
-        #         pos_neg_labels[i]=2
-        #     else:
-        #         pos_neg_labels[i]=1
-                
-        # fig,ax = plt.subplots(figsize=(4,4))
-        # cms = ['tab:blue','black','tab:red']
-        # pos_neg_labels=np.array(pos_neg_labels,int)
-        # for j in range(0,3,2):
-        #     idxx = np.where(pos_neg_labels==j)[0]
-        #     ax.scatter(coef_beh_ac[idxx,4],coef_beh_ae[idxx,4],s=5,c=cms[j],alpha=0.15)
-        #     for i in range(1,50):
-        #         ax.scatter(coef_beh_ac[idxx,4+5*i],coef_beh_ae[idxx,4+i*5],s=5,c=cms[j],alpha=0.15)
-        # ax.set_aspect('equal')
-        
-        # fig,ax = plt.subplots(2,1,figsize=(3,5),tight_layout = True, sharex=True)
-        # ax[0].hist(coef_beh_ac[:,4],facecolor='tab:red',alpha=0.05,density=True)
-        # ax[1].hist(coef_beh_ae[:,4],facecolor='tab:blue',alpha=0.05,density=True) 
-        # for i in range(1,50):
-        #     ax[0].hist(coef_beh_ac[:,4+i*5],facecolor='tab:red',alpha=0.05,density=True)
-        #     ax[1].hist(coef_beh_ae[:,4+i*5],facecolor='tab:blue',alpha=0.05,density=True) 
-
-        
-            
-            
-        # # pop_e = np.union1d(pop_error, pop_zero)
-        # # pop_c = np.union1d(pop_correct, pop_zero)
-        # # gc.gaincontrol_test(data_tr,data_int,false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,pop_correct,pop_zero, pop_error, mode='decoding',
-        # #           DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        # #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
-        
-        # # gc.gaincontrol_test(data_tr,data_int,false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,pop_c,pop_zero, pop_e, mode='decoding',
-        # #           DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,
-        # #                                 REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)
-        
-    
-
-        # # # transition bias to behaviour
-        # # print('Slopes -- Psychometric curves')
-        # # # unique_cohs = [-1, 0, 1]
-        # # EACHSTATES = 20
-        # # if(RECORD_TRIALS == 0):
-        # #     dataname = dir+IDX_RAT+'data_beh.npz'
-        # #     data_be h = np.load(dataname, allow_pickle=True)
-        # #     REC_TRIALS_SET = data_beh['REC_TRIALS_SET']
-        # #     REC_TRIALS_SET = REC_TRIALS_SET.item()
-        # # else:
-        # #     REC_TRIALS_SET = np.zeros(EACHSTATES)
-        
-        # EACHSTATES=50 
-        # fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
-        # curveslopes_correct, curveintercept_correct, curveslopes_error,\
-        #     curveintercept_error, data_beh =\
-        #     bias_VS_prob(data_traintest_tr, data_dec, unique_cohs, num_beh_trials,EACHSTATES,
-        #                   NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-        #                   REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
-        
-        
-        # fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
-        # data_beh =bias_VS_prob_evi(data_tr, data_dec, data_int_ac, data_int_ae, unique_cohs, num_beh_trials,neg_ac, pop_zero,pos_ae,1, EACHSTATES,NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-        #                   REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
-            
         
 

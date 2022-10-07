@@ -194,10 +194,10 @@ def pairwise_mtx_classical(dir, IDX_RAT, timep, NITERATIONS):
     decoders_fix_set = {}
     dec_names = ['rep-ac-h','rep-ae-h','alt-ac-h','alt-ae-h','rep-ac-b','rep-ae-b','alt-ac-b','alt-ae-b']
     decoders_fix_set['rep-ac-h'],decoders_fix_set['rep-ae-h'] = wiac_fix_hist_rep.copy(),wiae_fix_hist_rep.copy()
-    decoders_fix_set['alt-ac-h'],decoders_fix_set['alt-ae-h']  = wiac_fix_hist_alt.copy(), wiae_fix_hist_alt.copy() 
+    decoders_fix_set['alt-ac-h'],decoders_fix_set['alt-ae-h'] = wiac_fix_hist_alt.copy(), wiae_fix_hist_alt.copy() 
 
     decoders_fix_set['rep-ac-b'],decoders_fix_set['rep-ae-b'] = wiac_fix_beh_rep.copy(),wiae_fix_beh_rep.copy()
-    decoders_fix_set['alt-ac-b'],decoders_fix_set['alt-ae-b']  = wiac_fix_beh_alt.copy(), wiae_fix_beh_alt.copy() 
+    decoders_fix_set['alt-ac-b'],decoders_fix_set['alt-ae-b'] = wiac_fix_beh_alt.copy(), wiae_fix_beh_alt.copy() 
 
     ag_fix_set = {}
     for i1, pair1 in enumerate (dec_names):
@@ -494,7 +494,7 @@ def accuracy_mtx_pop(dir, IDX_RAT, timep, NITERATIONS):
     # ax_score.set_ylim([0.3,1.2])
     # ax_score.set_yticks([0.5,1])
     
-    dataname  = dir+timep+IDX_RAT+'data_dec_ac_mixs_.npz'
+    dataname  = dir+timep+IDX_RAT+'data_dec_ac_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ac_single  = data_dec['stats_correct_pop'][0,:]
     score_fix_hist_ac_pop     = data_dec['stats_correct_pop'][1,:]
@@ -520,7 +520,7 @@ def accuracy_mtx_pop(dir, IDX_RAT, timep, NITERATIONS):
     df_hist = {'ac-overall-dec': (accuracy_fix_set['ac-overall-dec']).flatten(), 'ac-mixed-dec': (accuracy_fix_set['ac-mixed-dec']).flatten(), 'ac-single-dec': (accuracy_fix_set['ac-single-dec']).flatten(),'ae-overall-dec': (accuracy_fix_set['ae-overall-dec']).flatten(), 'ae-mixed-dec': 1-(accuracy_fix_set['ae-mixed-dec']).flatten(), 'ae-single-dec': (accuracy_fix_set['ae-single-dec']).flatten()}
     df_hist = pd.DataFrame(df_hist)
     
-    ax_score = sns.boxplot(ax=ax_score,data=df_hist,width=0.35)
+    ax_score = sns.violinplot(ax=ax_score,data=df_hist)#,width=0.35)
     # box_pairs = [('ac-trials_ac-dec', 'ae-trials_ac-dec')]
     # add_stat_annotation(ax_score, data=df_hist, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
     
@@ -543,7 +543,7 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_hist_ac = data_dec['stats_correct'][3,:]
     
-    idxcoh = 2
+    idxcoh = 1
     dataname  = dir+timep+IDX_RAT+'data_beh_ae_cond_.npz'
     data_dec  = np.load(dataname, allow_pickle=True)
     score_fix_beh_ae = data_dec['stats_error_alt'][:,idxcoh]
@@ -564,10 +564,10 @@ def accuracy_mtx(dir, IDX_RAT, timep, NITERATIONS):
     df_hist = pd.DataFrame(df_hist)
     df_beh = pd.DataFrame(df_beh)
     
-    ax_score[0] = sns.violinplot(ax=ax_score[0],data=df_hist)
+    ax_score[0] = sns.violinplot(ax=ax_score[0],data=df_hist,annot=df_hist)
     box_pairs = [('hist-ac', 'hist-ae')]
     add_stat_annotation(ax_score[0], data=df_hist, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
-    ax_score[1] = sns.violinplot(ax=ax_score[1],data=df_beh)
+    ax_score[1] = sns.violinplot(ax=ax_score[1],data=df_beh,annot=df_beh)
     box_pairs = [('beh-ac', 'beh-ae')]
     add_stat_annotation(ax_score[1], data=df_beh, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)
     
@@ -623,29 +623,29 @@ def subpop_projection(dir, IDX_RAT, timep, NITERATIONS):
     # timep = '/-01-00s/'
     # NITERATIONS = 50
     ### compute the angles between history encoding axises
-    dataname  = dir+timep+IDX_RAT+'data_flt_ac_overall_mixs.npz'
-    data_dprime  = np.load(dataname, allow_pickle=True)
-    dprime_left_overall,dprime_right_overall = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
-    #data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
+    dataname    = dir+timep+IDX_RAT+'data_flt_ae_overall_cond_.npz'
+    data_dprime = np.load(dataname, allow_pickle=True)
+    dprime_rep_overall,dprime_alt_overall = data_dprime['dprimes_repc'],data_dprime['dprimes_altc']
+    #data_dprime['AUCs_lc'],data_dprime['AUCs_rc']
     
-    dataname  = dir+timep+IDX_RAT+'data_flt_ac_mixed_mixs.npz'
-    data_dprime  = np.load(dataname, allow_pickle=True)
-    dprime_left_mixed,dprime_right_mixed = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
-    #data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
+    dataname    = dir+timep+IDX_RAT+'data_flt_ae_mixed_cond_.npz'
+    data_dprime = np.load(dataname, allow_pickle=True)
+    dprime_rep_mixed,dprime_alt_mixed = data_dprime['dprimes_repc'],data_dprime['dprimes_altc']
+    #data_dprime['AUCs_lc'],data_dprime['AUCs_rc']
 
-    dataname  = dir+timep+IDX_RAT+'data_flt_ac_single_mixs.npz'
-    data_dprime  = np.load(dataname, allow_pickle=True)
-    dprime_left_single,dprime_right_single = data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
-    #data_dprime['dprimes_lc'],data_dprime['dprimes_rc']
+    dataname    = dir+timep+IDX_RAT+'data_flt_ae_single_cond_.npz'
+    data_dprime = np.load(dataname, allow_pickle=True)
+    dprime_rep_single,dprime_alt_single = data_dprime['dprimes_repc'],data_dprime['dprimes_altc']
+    #data_dprime['AUCs_lc'],data_dprime['AUCs_rc']
 
     fig_dprime, ax_dprime=plt.subplots(1,2,figsize=(4,2),tight_layout=True,sharey=True,sharex=True)    
-    df_left = {'overall': (dprime_left_overall).flatten(), 'mixed': (dprime_left_mixed).flatten(),'single': (dprime_left_single).flatten(),}
+    df_left = {'overall': (dprime_rep_overall).flatten(), 'mixed': (dprime_rep_mixed).flatten(),'single': (dprime_rep_single).flatten(),}
     df_left  = pd.DataFrame(df_left)   
     ax_dprime[0] = sns.boxplot(ax=ax_dprime[0],data=df_left,width=0.35)
     
     plt.xticks(rotation=45)
     
-    df_right = {'overall': (dprime_right_overall).flatten(), 'mixed': (dprime_right_mixed).flatten(),'single-': (dprime_right_single).flatten(),}
+    df_right = {'overall': (dprime_alt_overall).flatten(), 'mixed': (dprime_alt_mixed).flatten(),'single-': (dprime_alt_single).flatten(),}
     df_right  = pd.DataFrame(df_right)   
     ax_dprime[1] = sns.boxplot(ax=ax_dprime[1],data=df_right,width=0.35)
     plt.xticks(rotation=45)
@@ -655,10 +655,10 @@ def subpop_projection(dir, IDX_RAT, timep, NITERATIONS):
     # ax_dprime[0].set_yticks([0.5,1.0])
     # ax_dprime[1].set_yticks([0.5,1.0])
     
-    ax_dprime[0].set_ylim([-0.2,1.2])
-    ax_dprime[1].set_ylim([-0.2,1.2])
-    ax_dprime[0].set_yticks([0,4.5])
-    ax_dprime[1].set_yticks([0,4.5])
+    # ax_dprime[0].set_ylim([-0.2,1.2])
+    # ax_dprime[1].set_ylim([-0.2,1.2])
+    # ax_dprime[0].set_yticks([0,4.5])
+    # ax_dprime[1].set_yticks([0,4.5])
     
     # box_pairs = [('left org', 'left cross-projection'),('right org', 'right cross-projection')]
     # add_stat_annotation(ax_dprime, data=df, box_pairs=box_pairs,test='Mann-Whitney', text_format='star', loc='inside',verbose=2)

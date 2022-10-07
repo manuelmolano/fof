@@ -3090,7 +3090,7 @@ if __name__ == '__main__':
 
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats =['Rat7']#,'Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    rats =['Rat32']#,'Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
         # plt.close('all')
         print('xxxxxxxxxxxxxxxx')

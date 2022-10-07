@@ -1302,12 +1302,18 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             linw_cc_rep, linb_cc_rep = lin_cc_rep.coef_[:], lin_cc_rep.intercept_[:] #rep
             linw_cc_alt, linb_cc_alt = lin_cc_alt.coef_[:], lin_cc_alt.intercept_[:] #alt
             # evaluate evidence model
-            evidences_c = np.zeros((ntest, 3 + 2))
-            # print('shape...',np.shape(Xdata_testc),np.shape(evidences_c))
+            evidences_c      = np.zeros((ntest, 3 + 2))
+            evidences_c_supp = np.zeros((ntest, 3 + 2))
+
             evidences_c[:, 3] = np.squeeze(
                 Xdata_testc_rep @ linw_cc_rep.reshape(-1, 1) + linb_cc_rep)
             evidences_c[:, 4] = np.squeeze(
                 Xdata_testc_alt @ linw_cc_alt.reshape(-1, 1) + linb_cc_alt)
+
+            evidences_c[:, 1] = np.squeeze(
+                Xdata_testc_rep @ linw_cc_alt.reshape(-1, 1) + linb_cc_alt)
+            evidences_c[:, 2] = np.squeeze(
+                Xdata_testc_alt @ linw_cc_rep.reshape(-1, 1) + linb_cc_rep)
 
 
             ### --- percentage of right choices -----
@@ -1319,7 +1325,7 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             ylabels_testc_rep[:,0] = ycchoice_test_rep[:]
             
             ypredict_choice_rep = np.zeros_like(ycchoice_test_rep)
-            ypredict_choice_rep[np.where(evidences_c[:,3]>0)[0]]=1 # evidence 3
+            ypredict_choice_rep[np.where(evidences_c[:,3]-evidences_c[:,1]>0)[0]]=1 # evidence 3 ### all about repeating
             prediction_correct_rep = accuracy_score((ylabels_testc_rep[:,0]).flatten(),ypredict_choice_rep)
 
             stats_c_rep[i,idxcoh] = prediction_correct_rep
@@ -1333,7 +1339,7 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             ylabels_testc_alt[:,0] = ycchoice_test_alt[:]
             
             ypredict_choice_alt = np.zeros_like(ycchoice_test_alt)
-            ypredict_choice_alt[np.where(evidences_c[:,4]>0)[0]]=1 ### evidence 4
+            ypredict_choice_alt[np.where(evidences_c[:,4]-evidences_c[:,2]>0)[0]]=1 ### evidence 4 ### all about alternating
             prediction_correct_alt = accuracy_score((ylabels_testc_alt[:,0]).flatten(),ypredict_choice_alt)
 
             stats_c_alt[i,idxcoh] = prediction_correct_alt
@@ -1346,10 +1352,16 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             #### -------- AE testing trials --------------
             # evaluate evidence model
             evidences_e = np.zeros((ntest, 3 + 2))
+            evidences_e_supp = np.zeros((ntest, 3 + 2))
             evidences_e[:, 3] = np.squeeze(
                 Xdata_teste_rep @ linw_cc_rep.reshape(-1, 1) + linb_cc_rep)
             evidences_e[:, 4] = np.squeeze(
                 Xdata_teste_alt @ linw_cc_alt.reshape(-1, 1) + linb_cc_alt)
+
+            evidences_e[:, 1] = np.squeeze(
+                Xdata_teste_rep @ linw_cc_alt.reshape(-1, 1) + linb_cc_alt)
+            evidences_e[:, 2] = np.squeeze(
+                Xdata_teste_alt @ linw_cc_rep.reshape(-1, 1) + linb_cc_rep)
 
 
             ### --- percentage of right choices -----
@@ -1361,7 +1373,7 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             ylabels_teste_rep[:,4] = ycchoice_test_rep[:]
             
             ypredict_choice_rep = np.zeros_like(ycchoice_test_rep)
-            ypredict_choice_rep[np.where(evidences_e[:,3]>0)[0]]=1
+            ypredict_choice_rep[np.where(evidences_e[:,3]-evidences_e[:,1]>0)[0]]=1
             
             prediction_error_rep = accuracy_score((ylabels_teste_rep[:,4]).flatten(),ypredict_choice_rep)
             stats_e_rep[i,idxcoh] = prediction_error_rep           
@@ -1374,7 +1386,7 @@ def bootstrap_linsvm_step_fixationperiod_balanced(data_tr, NN, unique_states,uni
             ylabels_teste_alt[:,4] = ycchoice_test_alt[:]
             
             ypredict_choice_alt = np.zeros_like(ycchoice_test_alt)
-            ypredict_choice_alt[np.where(evidences_e[:,4]>0)[0]]=1
+            ypredict_choice_alt[np.where(evidences_e[:,4]-evidences_e[:,2]>0)[0]]=1
             
             prediction_error_alt = accuracy_score((ylabels_teste_alt[:,4]).flatten(),ypredict_choice_alt)
             stats_e_alt[i,idxcoh] = prediction_error_alt           

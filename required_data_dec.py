@@ -31,6 +31,7 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
     Xgts_0 = []
     Xgts_1 = []
     Xcohs_0 = []
+    Xcohs_1 = [] #### previous coherence -- strength of previous action?
     
     Xstates  = []
     nstats   = 4
@@ -115,6 +116,7 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
             rsevid_curr = e_tcurr*r_tpre
             Xrse_6.append(rsevid_curr)
             Xcohs_0.append(coh_tcurr*gt_tcurr)
+            Xcohs_1.append(prev1_stats['stim_coh'][0])
             # Xacts_0.append(curr_stats['choice'])
             if(curr_stats['choice'] == -1):
                 Xacts_0.append(0)
@@ -201,6 +203,7 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
             rsevid_curr = e_tcurr*r_tpre
             Xrse_6.append(rsevid_curr)
             Xcohs_0.append(coh_tcurr*gt_tcurr)
+            Xcohs_1.append(prev1_stats['stim_coh'][0])
             if(curr_stats['choice'] == -1):
                 Xacts_0.append(0)
             else:
@@ -281,6 +284,7 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
             rsevid_curr = e_tcurr*r_tpre
             Xrse_6.append(rsevid_curr)
             Xcohs_0.append(coh_tcurr*gt_tcurr)
+            Xcohs_1.append(prev1_stats['stim_coh'][0])
             if(curr_stats['choice'] == -1):
                 Xacts_0.append(0)
             else:
@@ -360,6 +364,7 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
             rsevid_curr = e_tcurr*r_tpre
             Xrse_6.append(rsevid_curr)
             Xcohs_0.append(coh_tcurr*gt_tcurr)
+            Xcohs_1.append(prev1_stats['stim_coh'][0])
             if(curr_stats['choice'] == -1):
                 Xacts_0.append(0)
             else:
@@ -375,7 +380,7 @@ def req_quantities_0(stim_trials, stm, dyns, gt, choice, eff_choice,
                 Xgts_1.append(1)
         # print('state -----',Xstates[-1],'xor--------',Xacts_1[-1])
     return Xdata, ydata, Xdata_idx,Xconds_2, Xacts_1, Xrws_1,\
-        Xlfs_1, Xrse_6, rses, Xacts_0, Xgts_0, Xcohs_0, \
+        Xlfs_1, Xrse_6, rses, Xacts_0, Xgts_0, Xcohs_0, Xcohs_1,\
         Xdata_trialidx, Xstates
 
 def req_quantities_3all(stim_trials, stm, dyns, gt, choice,
@@ -656,7 +661,7 @@ def req_quantities_3all(stim_trials, stm, dyns, gt, choice,
 
 def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx,  Xconds_2,
                       Xacts_1, Xrws_1, Xlfs_1, Xrse_6, rses, Xacts_0,
-                      Xgts_0, Xcohs_0, Xdata_trialidx, Xstates,
+                      Xgts_0, Xcohs_0, Xcohs_1, Xdata_trialidx, Xstates,
                       margin=[1, 2], idd=1):
     ydata_bias    = Xrws_1*2+Xgts_0  # Xacts_0#  ### this 3
     ydata_xor     = Xrws_1*2+Xacts_1  # Xgts_0#Xacts_0#### this 2
@@ -719,7 +724,7 @@ def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx,  Xconds_2,
 
     return ac_ae_ratio,Xdata_correct, Xdata_error,correct_trial, error_trial,rses_correct, rses_error, \
         Xrse_6_correct, Xrse_6_error, Xcohs_0_correct,\
-        Xcohs_0_error, ydata_bias_correct, ydata_bias_error, ydata_xor_correct,\
+        Xcohs_0_error, Xcohs_1_correct,Xcohs_1_error, ydata_bias_correct, ydata_bias_error, ydata_xor_correct,\
         ydata_xor_error, ydata_conds_correct, ydata_conds_error,\
         ydata_choices_correct, ydata_choices_error, ydata_cchoices_correct,\
         ydata_cchoices_error, ydata_cgts_correct, ydata_cgts_error,\
@@ -727,14 +732,16 @@ def sep_correct_error(stm, dyns, Xdata, ydata, Xdata_idx,  Xconds_2,
         Xdata_trialidx_correct, Xdata_trialidx_error, ydata_states_correct,ydata_states_error
 
 
-def set_ylabels(Xdata,ydata_choices,ydata_conds,ydata_xor,ydata_bias,ydata_cchoices,Xcohs_0):
-    ytruthlabels      = np.zeros((np.shape(Xdata)[0],3+1+1+1))
+def set_ylabels(Xdata,ydata_choices,ydata_conds,ydata_xor,ydata_bias,ydata_cchoices,Xcohs_0, Xcohs_1):
+    ytruthlabels      = np.zeros((np.shape(Xdata)[0],3+1+1+1+1)) #### 13 Oct
     ytruthlabels[:, 0]= ydata_choices.copy()
     ytruthlabels[:, 1]= ydata_conds.copy()
     ytruthlabels[:, 2]= ydata_xor.copy()
     ytruthlabels[:, 3]= ydata_bias.copy()
     ytruthlabels[:, 4]= ydata_cchoices.copy()
     ytruthlabels[:, 5]= Xcohs_0.copy()
+    # ytruthlabels[:, 6]= Xcohs_1.copy()
+
 
     return ytruthlabels
 

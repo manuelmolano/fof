@@ -1639,6 +1639,8 @@ def projection_3D(data_flt, data_flt_light, prev_outc):
     ax.scatter(x[igreen], y[igreen], zflat[igreen],
                s=S_PLOTS*3, c=BLUE, alpha=0.9)
     ax.scatter(x[iblue], y[iblue], zflat[iblue], s=S_PLOTS*3, c=RED, alpha=0.9)
+    ax.set_xlim([-15,15])
+    ax.set_ylim([-5,5])
 
 
 def projections_2D(data_flt, prev_outc, fit=False, name=''):
@@ -1787,6 +1789,55 @@ def projections_2D(data_flt, prev_outc, fit=False, name=''):
             new_y = poly([np.min(prev_ch), np.max(prev_ch)])
             fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
                               lw=0.5)
+            print('@cp--line 1790 trbias fitting',coefficients)
+            
+    for idx, ctxt in zip([idxrpt, idxalt], ['Rep', 'Alt']):
+        prev_ch = np.squeeze(yevi[0, idx])
+        tr_bias = np.squeeze(yevi[SVMAXIS, idx])
+        df = {'Prev ch. encoding': prev_ch, 'Transition bias encoding': tr_bias,
+              'Prev ch. label': ytruthlabels[0, idx]}
+        df = pd.DataFrame(df)
+        fig = multivariateGrid(col_x='Prev ch. encoding',
+                                col_y='Transition bias encoding',
+                                col_k='Prev ch. label', df=df,
+                                colors=[GREEN, PURPLE], s=S_PLOTS, alpha=.75)
+        fig.ax_marg_x.set_xlim(XLIMS_2D)
+        fig.ax_marg_y.set_ylim(YLIMS_2D)
+        fig.ax_joint.axhline(y=0, color='k', linestyle='--', lw=0.5)
+        fig.fig.suptitle('a'+prev_outc+' / Ctxt. '+ctxt)
+        if prev_outc == 'c':
+            fig.ax_joint.set_yticks(YTICKS_2D)
+        else:
+            fig.ax_joint.set_yticks([])
+            fig.ax_joint.set_ylabel('')
+        fig.ax_joint.set_xticks(XTICKS_2D)
+        fig.fig.set_figwidth(3)
+        fig.fig.set_figheight(3)
+        # fit
+        if fit:
+            coefficients = np.polyfit(prev_ch, tr_bias, 1)
+            poly = np.poly1d(coefficients)
+            new_y = poly([np.min(prev_ch), np.max(prev_ch)])
+            fig.ax_joint.plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
+                              lw=0.5)
+            print('@cp--line 1820 prev ch. fitting',coefficients)
+            
+    fig_gradient,ax_grad = plt.subplots(1,2,figsize=(8,3),tight_layout=True, sharex=True, sharey=True)
+    cc = 0
+    for idx, ctxt in zip([idxrpt, idxalt], ['Rep', 'Alt']):
+        prev_ch = np.squeeze(yevi[0, idx])
+        tr_bias = np.squeeze(yevi[SVMAXIS, idx])
+        df = {'Prev ch. encoding': prev_ch, 'Transition bias encoding': tr_bias,
+              'Prev ch. label': ytruthlabels[0, idx]}
+        ax_grad[cc].scatter(np.abs(prev_ch),np.abs(yevi[1,idx]),s=5,c=np.abs(yevi[1,idx]),cmap='gray')
+        
+        coefficients = np.polyfit(np.abs(prev_ch),np.abs(yevi[1,idx]), 1)
+        poly = np.poly1d(coefficients)
+        new_y = poly([np.min(prev_ch), np.max(prev_ch)])
+        ax_grad[cc].plot([np.min(prev_ch), np.max(prev_ch)], new_y, color='k',
+                          lw=0.5)
+        cc+=1
+        print('@CP-line 1800, linear slope:',coefficients)
     
     
     
@@ -3064,41 +3115,43 @@ if __name__ == '__main__':
     CONTROL       = 0#normal#1#ae trained#2#ac trained
 
 
-    BOTTOM_3D = -3  # where to plot blue/red projected dots in 3D figure
-    XLIMS_2D = [-3, 3]
-    YLIMS_2D = [-3, 3]
-    YTICKS_2D = [-3., 0., 3.]
-    XTICKS_2D = [-2., 0., 2.]
-    CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
-    XLIM_CTXT = [12000, 13000]
-    YTICKS_CTXT = [-2, 0, 2]
-    YLIM_CTXT = [-2.2, 2.2]
-    # BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
+    # BOTTOM_3D = -3  # where to plot blue/red projected dots in 3D figure
     # XLIMS_2D = [-3, 3]
-    # YLIMS_2D = [-7, 7]
-    # YTICKS_2D = [-6., 0., 6.]
+    # YLIMS_2D = [-3, 3]
+    # YTICKS_2D = [-3., 0., 3.]
     # XTICKS_2D = [-2., 0., 2.]
     # CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
     # XLIM_CTXT = [12000, 13000]
     # YTICKS_CTXT = [-2, 0, 2]
     # YLIM_CTXT = [-2.2, 2.2]
+    
+    BOTTOM_3D = -6  # where to plot blue/red projected dots in 3D figure
+    XLIMS_2D = [-3, 3]
+    YLIMS_2D = [-7, 7]
+    YTICKS_2D = [-6., 0., 6.]
+    XTICKS_2D = [-2., 0., 2.]
+    CTXT_BIN = np.linspace(0, 1.65, 7)  # (0,1.8,7)
+    XLIM_CTXT = [12000, 13000]
+    YTICKS_CTXT = [-2, 0, 2]
+    YLIM_CTXT = [-2.2, 2.2]
 
-    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/'#'-00s/'#'files_pop_analysis/'
+    dir = '/Users/yuxiushao/Public/DataML/Auditory/DataEphys/files_pop_analysis/'
     STIM_PERIOD = 0
     STIM_BEH    = 1 # 0 psychometric curve for upcoming stimuli/ 1 psychometric curve for choices
     PCA_only    = 0
 
     # dir = '/home/molano/DMS_electro/DataEphys/pre_processed/'
     # 'files_pop_analysis/'
-    rats =['Rat32']#,'Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
+    rats =['LE81']#,'Rat15','Rat31','Rat32'] #,'Rat15'['Patxi',  'Rat31', 'Rat15', 'Rat7',
     for r in rats:
         # plt.close('all')
         print('xxxxxxxxxxxxxxxx')
         print(r)
         IDX_RAT = r+'_'
-        # files = glob.glob(dir+IDX_RAT+'202*.npz')
+        files = glob.glob(dir+IDX_RAT+'202*.npz')
         # dir = 'D://Yuxiu/Code/Data/Auditory/NeuralData/Rat7/Rat7/'
-        files = glob.glob(dir+IDX_RAT+'ss_*.npz')
+        # files = glob.glob(dir+IDX_RAT+'ss_*.npz')
+        # files = glob.glob(dir+IDX_RAT+'_*.npz')
 
         # # GET QUANTITIES
         # print('Get quantities')
@@ -3106,8 +3159,8 @@ if __name__ == '__main__':
         # # Whether to skip the NaN at the beginning or not
         # SKIPNAN = 0
         # data_tr = get_all_quantities(files, numtrans=0, SKIPNAN=SKIPNAN) 
-        # # dataname = dir+IDX_RAT+'data_trials.npz'
-        # # np.savez(dataname, **data_tr)
+        # dataname = dir+IDX_RAT+'data_trials.npz'
+        # np.savez(dataname, **data_tr)
         
         '''
         Sept 29
@@ -3129,7 +3182,7 @@ if __name__ == '__main__':
         # print(">>>>>>>>>>>>>>> Minimum Trials per state/beh_state:", MIN_TRIALS)
         
         
-        RECOMPUTE_POP = 0
+        RECOMPUTE_POP = 1
         ##### recompute subpopulations 
         if (RECOMPUTE_POP):
             unique_states = np.arange(8)
@@ -3172,7 +3225,8 @@ if __name__ == '__main__':
                     "pop_rep_error, pop_alt_error, pop_b_error, NN_error "]
             d_selectivity = list_to_dict(lst=lst, string=stg)
             dataname = dir+IDX_RAT+'neuron_selectivity_Sept.npz'
-            np.savez(dataname, **d_selectivity)
+            # np.savez(dataname, **d_selectivity)
+            nselect, nnonselect, pop_left_correct, pop_right_correct, single_pop_correct, correct_zero, pop_left_error, pop_right_error, single_pop_error, error_zero =guc.mixed_selectivity_pop(d_selectivity)
         else:
             dataname  = dir+IDX_RAT+'neuron_selectivity_Sept.npz'
             d_selectivity  = np.load(dataname, allow_pickle=True)             
@@ -3223,57 +3277,57 @@ if __name__ == '__main__':
             
         if(RECORD_TRIALS == 1 and CONTROL==1):
             dataname = dir+IDX_RAT+'data_dec_ae_cond_.npz'
-            np.savez(dataname, **data_dec)
+            # np.savez(dataname, **data_dec)
         
         print('Get AUCs (and d-primes)')
         data_flt  = flatten_data(data_tr, data_dec)
 
         if(RECORD_TRIALS == 1 and CONTROL==1):
             dataname = dir+IDX_RAT+'data_flt_ae_overall_cond_.npz'
-            np.savez(dataname, **data_flt)
+            # np.savez(dataname, **data_flt)
         
-        # # # # print('3D projections ac and ae')
-        # # # # projection_3D(data_flt, data_flt, 'c')
-        # # # projection_3D(data_flt, data_flt, 'e')
-        
-        print('2D projections')
-        # projections_2D(data_flt, prev_outc='c', fit=False, name='')
-        projections_2D(data_flt, prev_outc='e', fit=False, name='')
-        
-        
-        
-        # if(PCA_only ==1):
-        #     data_name = dir+IDX_RAT +'pca_mmodel.pkl'
-        #     pk.dump(mmodel, open(data_name,"wb"))
-        #     continue
-
-        
-        print('Get AUCs (and d-primes, mixed)')
-        # data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='mixed')       
-        data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='mixed') ### for conditional decoders
-          
-        if(RECORD_TRIALS == 1 and CONTROL==1):
-            dataname = dir+IDX_RAT+'data_flt_ae_mixed_cond_.npz'
-            np.savez(dataname, **data_flt)
-        
-
-        # print('3D projections ac and ae (overall)')
-        # projection_3D(data_flt, data_flt, 'e')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='e', fit=False, name='')
-        
-        print('Get AUCs (and d-primes, single_pop)')
-        # data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='s_pop')
-        data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
-          
-        if(RECORD_TRIALS == 1 and CONTROL==1):
-            dataname = dir+IDX_RAT+'data_flt_ae_single_cond_.npz'
-            np.savez(dataname, **data_flt)   
-
-        # print('3D projections ac and ae (single_pop)')
+        print('3D projections ac and ae')
         # projection_3D(data_flt, data_flt, 'c')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        projection_3D(data_flt, data_flt, 'e')
+        
+        # print('2D projections')
+        # # projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        
+        
+        
+        # # if(PCA_only ==1):
+        # #     data_name = dir+IDX_RAT +'pca_mmodel.pkl'
+        # #     pk.dump(mmodel, open(data_name,"wb"))
+        # #     continue
+
+        
+        # print('Get AUCs (and d-primes, mixed)')
+        # # data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='mixed')       
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='mixed') ### for conditional decoders
+          
+        # if(RECORD_TRIALS == 1 and CONTROL==1):
+        #     dataname = dir+IDX_RAT+'data_flt_ae_mixed_cond_.npz'
+        #     # np.savez(dataname, **data_flt)
+        
+
+        # # print('3D projections ac and ae (overall)')
+        # # projection_3D(data_flt, data_flt, 'e')
+        # # print('2D projections')
+        # # projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        
+        # print('Get AUCs (and d-primes, single_pop)')
+        # # data_flt         = flatten_data_supp(data_tr, data_dec, pop_type='s_pop')
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
+          
+        # if(RECORD_TRIALS == 1 and CONTROL==1):
+        #     dataname = dir+IDX_RAT+'data_flt_ae_single_cond_.npz'
+        #     # np.savez(dataname, **data_flt)   
+
+        # # print('3D projections ac and ae (single_pop)')
+        # # projection_3D(data_flt, data_flt, 'c')
+        # # print('2D projections')
+        # # projections_2D(data_flt, prev_outc='e', fit=False, name='')
         
         
         # -------------- change populations -- using ac trials ---------------- 
@@ -3297,7 +3351,7 @@ if __name__ == '__main__':
         
         if(RECORD_TRIALS == 1 and CONTROL==2):
             dataname = dir+IDX_RAT+'data_dec_ac_cond_.npz'
-            np.savez(dataname, **data_dec)
+            # np.savez(dataname, **data_dec)
         
             
         # if(PCA_only ==1):
@@ -3312,54 +3366,54 @@ if __name__ == '__main__':
         
         if(RECORD_TRIALS == 1 and CONTROL==2):
             dataname = dir+IDX_RAT+'data_flt_ac_overall_cond_.npz'
-            np.savez(dataname, **data_flt)
+            # np.savez(dataname, **data_flt)
         
 
-        # # # print('3D projections ac and ae (mixed-selectivity)')
-        # # # projection_3D(data_flt, data_flt, 'c')
+        print('3D projections ac and ae (mixed-selectivity)')
+        projection_3D(data_flt, data_flt, 'c')
         # # # # projection_3D(data_flt, data_flt, 'e')
 
         print('2D projections')
-        projections_2D(data_flt, prev_outc='c', fit=False, name='')
-        # projections_2D(data_flt, prev_outc='e', fit=False, name='')
+        projections_2D(data_flt, prev_outc='c', fit=True, name='')
+        projections_2D(data_flt, prev_outc='e', fit=True, name='')
         
-        print('Get AUCs (and d-primes, mixed)')
-        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='mixed')       
-        data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='mixed') ### for conditional decoders
+        # print('Get AUCs (and d-primes, mixed)')
+        # # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='mixed')       
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='mixed') ### for conditional decoders
           
-        if(RECORD_TRIALS == 1 and CONTROL==2):
-            dataname = dir+IDX_RAT+'data_flt_ac_mixed_cond_.npz'
-            np.savez(dataname, **data_flt)
+        # if(RECORD_TRIALS == 1 and CONTROL==2):
+        #     dataname = dir+IDX_RAT+'data_flt_ac_mixed_cond_.npz'
+        #     # np.savez(dataname, **data_flt)
         
 
-        # print('3D projections ac and ae (overall)')
-        # projection_3D(data_flt, data_flt, 'c')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='c', fit=False, name='')
-        
-        print('Get AUCs (and d-primes, single_pop)')
-        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
-        data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
-          
-        if(RECORD_TRIALS == 1 and CONTROL==2):
-            dataname = dir+IDX_RAT+'data_flt_ac_single_cond_.npz'
-            np.savez(dataname, **data_flt)   
-
-        # # # print('3D projections ac and ae (single_pop)')
+        # # # print('3D projections ac and ae (overall)')
         # # # projection_3D(data_flt, data_flt, 'c')
-        print('2D projections')
-        projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        # # print('2D projections')
+        # # projections_2D(data_flt, prev_outc='c', fit=False, name='')
         
-        # #####------------------------------------------
+        # print('Get AUCs (and d-primes, single_pop)')
+        # # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
+        # data_flt         = flatten_data_cond_supp(data_tr, data_dec, pop_type='s_pop')
+          
+        # if(RECORD_TRIALS == 1 and CONTROL==2):
+        #     dataname = dir+IDX_RAT+'data_flt_ac_single_cond_.npz'
+        #     # np.savez(dataname, **data_flt)   
+
+        # # # # # print('3D projections ac and ae (single_pop)')
+        # # # # # projection_3D(data_flt, data_flt, 'c')
+        # # print('2D projections')
+        # # projections_2D(data_flt, prev_outc='c', fit=False, name='')
+        
+        # # #####------------------------------------------
         
         
-        # # # EACHSTATES=50
-        # # # fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
-        # # # curveslopes_correct, curveintercept_correct, curveslopes_error,\
-        # # #     curveintercept_error, data_beh =\
-        # # #     bias_VS_prob(data_tr, data_dec, unique_cohs, nselect, num_beh_trials,EACHSTATES,
-        # # #                   NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
-        # # #                   REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
+        EACHSTATES=50
+        fig, ax = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True, tight_layout=True)
+        curveslopes_correct, curveintercept_correct, curveslopes_error,\
+            curveintercept_error, data_beh =\
+            bias_VS_prob(data_tr, data_dec, unique_cohs, nselect, num_beh_trials,EACHSTATES,
+                          NITERATIONS, ax, RECORD_TRIALS=RECORD_TRIALS,
+                          REC_TRIALS_SET=REC_TRIALS_SET,STIM_BEH=STIM_BEH,PCA_only=PCA_only,mmodel=mmodel)
             
             
         # #####***************** The Second Stage ------ Behaviour *****************
@@ -3375,7 +3429,7 @@ if __name__ == '__main__':
         
         if(RECORD_TRIALS == 1 and CONTROL==1):
             dataname = dir+IDX_RAT+'data_beh_ae_cond_.npz'
-            np.savez(dataname, **data_int_ae)
+            # np.savez(dataname, **data_int_ae)
             
         CONTROL=2
         pop_correct = pop_left_correct
@@ -3384,7 +3438,7 @@ if __name__ == '__main__':
         data_int_ac,Xbeh_test_correct_rep, Xbeh_test_error_rep, Xbeh_test_correct_alt, Xbeh_test_error_alt = hist_integration_balanced(data_tr,[], [], [], [],nselect, false_files, coh_ch_stateratio_correct, coh_ch_stateratio_error,  pop_correct, pop_error, USE_POP = USE_POP,mode='decoding',DOREVERSE=0,CONTROL=CONTROL, STIM_PERIOD=STIM_PERIOD, RECORD_TRIALS=1,REC_TRIALS_SET=np.zeros(NITERATIONS),PCA_only=PCA_only, mmodel=mmodel)  
         if(RECORD_TRIALS == 1  and CONTROL==2):
             dataname = dir+IDX_RAT+'data_beh_ac_cond_.npz'
-            np.savez(dataname, **data_int_ac)
+            # np.savez(dataname, **data_int_ac)
         
         
         # # print('Pearson Correlation: Transition bias v.s. context')

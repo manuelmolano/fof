@@ -1181,30 +1181,95 @@ def behaviour_trbias_proj(coeffs_pool, intercepts_pool, Xmerge_trials,
         trbias_range[idxcoh,:]        = ax_trbias.copy()
     return psychometric_trbias,trbias_range
 
+# ##### only one decoders for the repeating trials
+# def behaviour_trbias_proj_new(coeffs_pool, intercepts_pool, Xmerge_trials,
+#                                      ymerge_labels, unique_states,unique_cohs,unique_choices, num_beh_trials, EACHSTATES=20,FIX_TRBIAS_BINS=[],NBINS=5,mmodel=[],PCA_n_components=0,CONDITION_CTXT=-1):
+
+#     #### using Xdata_hist_testset
+#     MAXV = 100
+#     NDEC = int(np.shape(coeffs_pool)[1]/6)#5  13 Oct
+#     NN   = np.shape(Xmerge_trials[unique_states[0],unique_cohs[0]])[1]
+#     NS, NC, NCH = len(unique_states),len(unique_cohs),len(unique_choices)
+#     nbins_trbias = NBINS
+#     psychometric_trbias = np.zeros((len(unique_cohs), nbins_trbias))
+#     trbias_range        = np.zeros((len(unique_cohs), nbins_trbias))
+    
+#     for idxcoh, coh in enumerate(unique_cohs):
+#         maxtrbias,mintrbias=-MAXV,MAXV
+#         evidences   = []#
+#         rightchoice = []#
+#         for idxs, state in enumerate(unique_states):
+#             if(PCA_n_components>0):
+#                 Xmerge_trials[state,coh] = mmodel.transform(Xmerge_trials[state,coh])
+#             for idx in range(EACHSTATES):
+#                 Xdata_test = Xmerge_trials[state,coh][idx,:]
+#                 idxdecoder = idx+idxs*EACHSTATES+idxcoh*(len(unique_states)*EACHSTATES)#np.random.choice(np.arange(0, NDEC, 1),size=1, replace=True)
+#                 idxdecoder = np.mod(idxdecoder, NDEC)
+#                 linw_bias, linb_bias = coeffs_pool[:, idxdecoder*6+3], intercepts_pool[0, 6*idxdecoder+3]
+#                 evidences   = np.append(evidences,np.squeeze(
+#                 Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
+#                 temp_perc   = np.sum(ymerge_labels[state,coh][:,idx])/np.shape(ymerge_labels[state,coh])[0]
+
+#                 rightchoice = np.append(rightchoice,temp_perc)
+        
+#         ### 
+#         maxtrbias ,mintrbias = 0.8*max(evidences),1.2*min(evidences)
+#         binss = np.linspace(mintrbias,maxtrbias,nbins_trbias+1)
+#         perc_right = np.zeros(nbins_trbias)
+#         ax_trbias  = (binss[1:]+binss[:-1])/2.0
+#         for i in range(1,nbins_trbias+1):
+#             idxbinh = np.where(evidences<binss[i])[0]
+#             idxbinl = np.where(evidences>binss[i-1])[0]
+#             idxbin  = np.intersect1d(idxbinh,idxbinl)
+            
+#             perc_right[i-1] = np.sum(rightchoice[idxbin])/len(idxbin)# 
+#         psychometric_trbias[idxcoh,:] = perc_right.copy()
+#         trbias_range[idxcoh,:]        = ax_trbias.copy()
+#     return psychometric_trbias,trbias_range
+
+
+##### consider decoders for repeating 3 and alternating 4
 def behaviour_trbias_proj_new(coeffs_pool, intercepts_pool, Xmerge_trials,
                                      ymerge_labels, unique_states,unique_cohs,unique_choices, num_beh_trials, EACHSTATES=20,FIX_TRBIAS_BINS=[],NBINS=5,mmodel=[],PCA_n_components=0,CONDITION_CTXT=-1):
 
     #### using Xdata_hist_testset
     MAXV = 100
-    NDEC = int(np.shape(coeffs_pool)[1]/5)
+    NDEC = int(np.shape(coeffs_pool)[1]/6)#5  13 Oct
     NN   = np.shape(Xmerge_trials[unique_states[0],unique_cohs[0]])[1]
     NS, NC, NCH = len(unique_states),len(unique_cohs),len(unique_choices)
     nbins_trbias = NBINS
     psychometric_trbias = np.zeros((len(unique_cohs), nbins_trbias))
     trbias_range        = np.zeros((len(unique_cohs), nbins_trbias))
     
+    if (unique_states[0]<4):
+        # print('Psychometric curves for After Error Trials...')
+        rep_states = [0,1] # unique_states[:2]
+        alt_states = [2,3] # unique_states[2:]
     for idxcoh, coh in enumerate(unique_cohs):
         maxtrbias,mintrbias=-MAXV,MAXV
         evidences   = []#
         rightchoice = []#
-        for idxs, state in enumerate(unique_states):
-            if(PCA_n_components>0):
-                Xmerge_trials[state,coh] = mmodel.transform(Xmerge_trials[state,coh])
+
+        ### repeating
+        for idxs, state in enumerate(unique_states[:2]):#unique_states):
             for idx in range(EACHSTATES):
                 Xdata_test = Xmerge_trials[state,coh][idx,:]
                 idxdecoder = idx+idxs*EACHSTATES+idxcoh*(len(unique_states)*EACHSTATES)#np.random.choice(np.arange(0, NDEC, 1),size=1, replace=True)
                 idxdecoder = np.mod(idxdecoder, NDEC)
-                linw_bias, linb_bias = coeffs_pool[:, idxdecoder*5+3], intercepts_pool[0, 5*idxdecoder+3]
+                linw_bias, linb_bias = coeffs_pool[:, idxdecoder*6+3], intercepts_pool[0, 6*idxdecoder+3]
+                evidences   = np.append(evidences,np.squeeze(
+                Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
+                temp_perc   = np.sum(ymerge_labels[state,coh][:,idx])/np.shape(ymerge_labels[state,coh])[0]
+
+                rightchoice = np.append(rightchoice,temp_perc)
+        ### alternating
+        for idxs, state in enumerate(unique_states[2:]):#unique_states):
+            for idx in range(EACHSTATES):
+                Xdata_test = Xmerge_trials[state,coh][idx,:]
+                idxdecoder = idx+(idxs+2)*EACHSTATES+idxcoh*(len(unique_states)*EACHSTATES)
+                ### here adding the previous 2
+                idxdecoder = np.mod(idxdecoder, NDEC)
+                linw_bias, linb_bias = coeffs_pool[:, idxdecoder*6+4], intercepts_pool[0, 6*idxdecoder+4]
                 evidences   = np.append(evidences,np.squeeze(
                 Xdata_test @ linw_bias.reshape(-1, 1) + linb_bias))
                 temp_perc   = np.sum(ymerge_labels[state,coh][:,idx])/np.shape(ymerge_labels[state,coh])[0]

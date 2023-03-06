@@ -88,7 +88,7 @@ def bootstrap_linsvm_step_PCAonly(Xdata_hist_set,NN, ylabels_hist_set,unique_sta
 def bootstrap_linsvm_step_gaincontrol(data_tr,NN, unique_states,unique_cohs,nselect, files,false_files, pop_correct, pop_zero, pop_error, single_pop, CONDITION_CTXT, type, DOREVERSE=0, CONTROL = 0, STIM_PERIOD=0, n_iterations=10, N_pseudo_dec=25, ACE_RATIO=0.5, train_percent=0.6, RECORD_TRIALS=0, RECORDED_TRIALS_SET=[], mmodel=[],PCA_n_components=0):
 
     ### ac/ae ratio 
-    CRATIO =ACE_RATIO/(1+ACE_RATIO)# according to theratio#0.5#share the same #  
+    CRATIO = ACE_RATIO/(1+ACE_RATIO)# according to theratio#0.5#share the same #  
     ERATIO = 1-CRATIO
     # NN      = np.shape(Xdata_hist_set[unique_states[0],'correct'])[1] 
     nlabels = 6*(len(files)-len(false_files))
